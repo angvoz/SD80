@@ -57,7 +57,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	/*package*/ static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
 	
 	/*package*/ static final Pattern PATTERN_COMPILE_QUOTED_FILE = Pattern.compile(
-			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+Integer.toString(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
+			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
 	/*package*/ static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
 	
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?");
@@ -119,6 +119,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				return matcher.replaceAll(str);
 			return null;
 		}
+		
 	}
 
 	private class IncludePathOptionParser extends OptionParser {
@@ -129,24 +130,21 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CIncludePathEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			IPath path = new Path(name);
 			
-			if (!isExpandRelativePaths()) {
-				return new CIncludePathEntry(name, 0);
-			}
-
-			URI uri = getURI(path);
-			if (uri!=null) {
-				IPath includePath = getFullWorkspacePathForFolder(uri);
-				if (includePath!=null) {
-					return new CIncludePathEntry(includePath, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+			if (isExpandRelativePaths()) {
+				URI uri = getURI(new Path(name));
+				if (uri!=null) {
+					IPath path = getFullWorkspacePathForFolder(uri);
+					if (path!=null) {
+						return new CIncludePathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+					}
+					
+					path = getCanonicalFilesystemLocation(uri);
+					if (path!=null)
+						return new CIncludePathEntry(path, 0);
 				}
-				
-				includePath = getCanonicalFilesystemLocation(uri);
-				if (includePath!=null)
-					return new CIncludePathEntry(includePath, 0);
 			}
 			
 			return new CIncludePathEntry(name, 0);
@@ -162,42 +160,24 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CIncludeFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			
-			IPath path = new Path(name);
-			
-			if (!isExpandRelativePaths()) {
-				return new CIncludeFileEntry(name, 0);
-			}
-
-			URI uri = getURI(path);
-			if (uri!=null) {
-				IPath includeFilePath = getFullWorkspacePathForFile(uri);
-				if (includeFilePath!=null) {
-					return new CIncludeFileEntry(includeFilePath, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+			if (isExpandRelativePaths()) {
+				URI uri = getURI(new Path(name));
+				if (uri!=null) {
+					IPath path = getFullWorkspacePathForFile(uri);
+					if (path!=null) {
+						return new CIncludeFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+					}
+					
+					path = getCanonicalFilesystemLocation(uri);
+					if (path!=null)
+						return new CIncludeFileEntry(path, 0);
 				}
-				
-				includeFilePath = getCanonicalFilesystemLocation(uri);
-				if (includeFilePath!=null)
-					return new CIncludeFileEntry(includeFilePath, 0);
 			}
 			
 			return new CIncludeFileEntry(name, 0);
-
-			
-			
-			
-			
-			
-//			if (errorParserManager!=null) {
-//				IFile file = errorParserManager.findFileName(name);
-//				if (file!=null) {
-//					return new CIncludeFileEntry(file, 0);
-//				}
-//			}
-//
-//			return new CIncludeFileEntry(name, 0);
 		}
 
 	}
@@ -212,7 +192,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.valueExpression = valueExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CMacroEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			String value = parseStr(matcher, valueExpression);
 			return new CMacroEntry(name, value, 0);
@@ -228,8 +208,23 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CMacroFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
+
+			if (isExpandRelativePaths()) {
+				URI uri = getURI(new Path(name));
+				if (uri!=null) {
+					IPath path = getFullWorkspacePathForFile(uri);
+					if (path!=null) {
+						return new CMacroFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+					}
+					
+					path = getCanonicalFilesystemLocation(uri);
+					if (path!=null)
+						return new CMacroFileEntry(path, 0);
+				}
+			}
+			
 			return new CMacroFileEntry(name, 0);
 		}
 
@@ -243,11 +238,24 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CLibraryPathEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
+			
+			if (isExpandRelativePaths()) {
+				URI uri = getURI(new Path(name));
+				if (uri!=null) {
+					IPath path = getFullWorkspacePathForFolder(uri);
+					if (path!=null) {
+						return new CLibraryPathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+					}
+					
+					path = getCanonicalFilesystemLocation(uri);
+					if (path!=null)
+						return new CLibraryPathEntry(path, 0);
+				}
+			}
 			return new CLibraryPathEntry(name, 0);
 		}
-
 	}
 
 	private class LibraryFileOptionParser extends OptionParser {
@@ -258,7 +266,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this.nameExpression = nameExpression;
 		}
 		@Override
-		public ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
+		public CLibraryFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
 			return new CLibraryFileEntry(name, 0);
 		}
@@ -413,13 +421,13 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	}
 	
 	private IPath getCanonicalFilesystemLocation(URI uri) {
-		IPath path1 = null;
+		IPath path = null;
 		try {
 			File file = new java.io.File(uri);
-			path1 = new Path(file.getCanonicalPath());
+			path = new Path(file.getCanonicalPath());
 		} catch (IOException e) {
 			MakeCorePlugin.log(e);
 		}
-		return path1;
+		return path;
 	}
 }

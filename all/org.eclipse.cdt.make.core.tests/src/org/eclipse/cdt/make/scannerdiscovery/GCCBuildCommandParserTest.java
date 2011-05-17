@@ -528,7 +528,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			CMacroFileEntry expected = new CMacroFileEntry("/macro.file", 0);
+			IPath path = new Path("/macro.file").setDevice(project.getLocation().getDevice());
+			CMacroFileEntry expected = new CMacroFileEntry(path, 0);
 			CMacroFileEntry entry = (CMacroFileEntry)entries.get(0);
 			assertEquals(expected.getName(), entry.getName());
 			assertEquals(expected.getValue(), entry.getValue());
@@ -537,7 +538,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entry);
 		}
 		{
-			CMacroFileEntry expected = new CMacroFileEntry("/macro.file with spaces", 0);
+			IPath path = new Path("/macro.file with spaces").setDevice(project.getLocation().getDevice());
+			CMacroFileEntry expected = new CMacroFileEntry(path, 0);
 			CMacroFileEntry entry = (CMacroFileEntry)entries.get(1);
 			assertEquals(expected, entry);
 		}
@@ -570,7 +572,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check populated entries
 		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 		{
-			CLibraryPathEntry expected = new CLibraryPathEntry("/path0", 0);
+			IPath path = new Path("/path0").setDevice(project.getLocation().getDevice());
+			CLibraryPathEntry expected = new CLibraryPathEntry(path, 0);
 			CLibraryPathEntry entry = (CLibraryPathEntry)entries.get(0);
 			assertEquals(expected.getName(), entry.getName());
 			assertEquals(expected.getValue(), entry.getValue());
@@ -579,7 +582,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entry);
 		}
 		{
-			CLibraryPathEntry expected = new CLibraryPathEntry("/path with spaces", 0);
+			IPath path = new Path("/path with spaces").setDevice(project.getLocation().getDevice());
+			CLibraryPathEntry expected = new CLibraryPathEntry(path, 0);
 			CLibraryPathEntry entry = (CLibraryPathEntry)entries.get(1);
 			assertEquals(expected, entry);
 		}
@@ -688,7 +692,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 			}
 	//		+ " -L/usr/lib"
 			{
-				CLibraryPathEntry expected = new CLibraryPathEntry("/usr/lib", 0);
+				IPath path = new Path("/usr/lib").setDevice(project.getLocation().getDevice());
+				CLibraryPathEntry expected = new CLibraryPathEntry(path, 0);
 				assertEquals(expected, entries.get(6));
 			}
 

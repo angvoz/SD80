@@ -1,14 +1,13 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2011 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
+ *     Andrew Gvozdev - initial API and implementation
  *******************************************************************************/
-
 package org.eclipse.cdt.make.core.scannerconfig;
 
 import java.io.File;
@@ -53,13 +52,13 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private static final String PATTERN_FILE_NAME   = "([^'\"\\s]*\\." + PATTERN_FILE_EXTENSIONS + ")";
 	private static final String PATTERN_FILE_NAME_INSIDE_QUOTES = "(.*\\." + PATTERN_FILE_EXTENSIONS + ")";
 	
-	private static final Pattern PATTERN_COMPILE_UNQUOTED_FILE = Pattern.compile(
+	/*package*/ static final Pattern PATTERN_COMPILE_UNQUOTED_FILE = Pattern.compile(
 			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + PATTERN_FILE_NAME + "(\\s.*)?[\r\n]*");
-	private static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
+	/*package*/ static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
 	
-	private static final Pattern PATTERN_COMPILE_QUOTED_FILE = Pattern.compile(
+	/*package*/ static final Pattern PATTERN_COMPILE_QUOTED_FILE = Pattern.compile(
 			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+Integer.toString(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
-	private static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
+	/*package*/ static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
 	
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?");
 	private static final int PATTERN_OPTION_GROUP = 0;

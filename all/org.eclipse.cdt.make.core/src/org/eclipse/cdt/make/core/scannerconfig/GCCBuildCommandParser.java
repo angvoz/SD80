@@ -48,8 +48,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return str.replaceAll("[^\\(]","").length();
 	}
 	private static final String PATTERN_GCC_COMMAND = "((gcc)|(g\\+\\+)|(c\\+\\+))";
-	private static final String PATTERN_FILE_NAME   = "([^'\"\\s]*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))";
-	private static final String PATTERN_FILE_NAME_INSIDE_QUOTES = "(.*\\.((c)|(cc)|(cpp)|(cxx)|(C)|(CC)|(CPP)|(CXX)))";
+	private static final String PATTERN_FILE_EXTENSIONS = "((cc)|(cpp)|(cxx)|(c)|(CC)|(CPP)|(CXX)|(C))";
+
+	private static final String PATTERN_FILE_NAME   = "([^'\"\\s]*\\." + PATTERN_FILE_EXTENSIONS + ")";
+	private static final String PATTERN_FILE_NAME_INSIDE_QUOTES = "(.*\\." + PATTERN_FILE_EXTENSIONS + ")";
 	
 	private static final Pattern PATTERN_COMPILE_UNQUOTED_FILE = Pattern.compile(
 			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + PATTERN_FILE_NAME + "(\\s.*)?[\r\n]*");

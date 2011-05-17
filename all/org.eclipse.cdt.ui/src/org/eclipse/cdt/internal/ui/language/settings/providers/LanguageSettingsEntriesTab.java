@@ -165,7 +165,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 			if (element instanceof ICLanguageSettingEntry) {
 				ICLanguageSettingEntry entry = (ICLanguageSettingEntry) element;
 				String s = entry.getName();
-				if (entry.getKind() == ICSettingEntry.MACRO) {
+				if ((entry.getKind() == ICSettingEntry.MACRO) && (entry.getFlags()&ICSettingEntry.UNDEFINED) == 0) {
 					s = s + '=' + entry.getValue();
 				}
 				return s;

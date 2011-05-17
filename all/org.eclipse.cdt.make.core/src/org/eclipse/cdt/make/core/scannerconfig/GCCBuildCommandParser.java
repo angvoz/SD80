@@ -73,6 +73,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)=(\\\\([\"']))(.*?)\\2", "$1", "$3$4$3"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)=([\"'])(.*?)\\2", "$1", "$3"),
 			new MacroOptionParser("-D\\s*([^\\s=\"']*)(=([^\\s\"']*))?", "$1", "$3"),
+			new MacroOptionParser("-U\\s*([^\\s=\"']*)", "$1", ICSettingEntry.UNDEFINED),
 			new MacroFileOptionParser("-macros\\s*([\"'])(.*)\\1", "$2"),
 			new MacroFileOptionParser("-macros\\s*([^\\s\"']*)", "$1"),
 			new LibraryPathOptionParser("-L\\s*([\"'])(.*)\\1", "$2"),
@@ -185,17 +186,28 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private class MacroOptionParser extends OptionParser {
 		private String nameExpression;
 		private String valueExpression;
+		private int flag = 0;
 
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
 			super(pattern);
 			this.nameExpression = nameExpression;
 			this.valueExpression = valueExpression;
 		}
+		
+		public MacroOptionParser(String pattern, String nameExpression, int flag) {
+			super(pattern);
+			this.nameExpression = nameExpression;
+			this.valueExpression = null;
+			this.flag = flag;
+		}
+		
 		@Override
 		public CMacroEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
 			String name = parseStr(matcher, nameExpression);
-			String value = parseStr(matcher, valueExpression);
-			return new CMacroEntry(name, value, 0);
+			String value = null;
+			if ((flag&ICSettingEntry.UNDEFINED) != ICSettingEntry.UNDEFINED)
+				value = parseStr(matcher, valueExpression);
+			return new CMacroEntry(name, value, flag);
 		}
 
 	}

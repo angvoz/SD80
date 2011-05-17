@@ -21,6 +21,7 @@ import org.eclipse.jface.viewers.IDecoration;
 import org.eclipse.swt.graphics.Image;
 
 import org.eclipse.cdt.core.settings.model.ACPathEntry;
+import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.ui.CDTSharedImages;
@@ -73,6 +74,9 @@ public class LanguageSettingsImages {
 		int flags = entry.getFlags();
 		String imageKey = getImageKey(kind, flags, isProjectRelative);
 		if (imageKey!=null) {
+			if ((entry.getFlags()&ICSettingEntry.UNDEFINED) == ICSettingEntry.UNDEFINED)
+				return CDTSharedImages.getImageOverlaid(imageKey, CDTSharedImages.IMG_OVR_INACTIVE, IDecoration.BOTTOM_LEFT);
+			
 			if (entry instanceof ACPathEntry) {
 				String overlayKey=null;
 				IStatus status = getStatus(entry);

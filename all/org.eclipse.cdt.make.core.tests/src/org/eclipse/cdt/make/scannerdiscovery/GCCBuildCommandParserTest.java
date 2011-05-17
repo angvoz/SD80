@@ -451,6 +451,36 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
+	public void testCMacroEntry_undef() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -UMACRO"
+				+ " file.cpp");
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CMacroEntry("MACRO", null, ICSettingEntry.UNDEFINED), entries.get(0));
+		}
+	}
+	
+	/**
+	 */
 	public void testCIncludeFileEntry() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();

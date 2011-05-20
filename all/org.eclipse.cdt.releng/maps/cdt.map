@@ -2,155 +2,155 @@
 feature@org.eclipse.cdt.master=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=releng/org.eclipse.cdt.master
 
 ! Cross platform
-plugin@org.eclipse.cdt.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core
-plugin@org.eclipse.cdt.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.ui
+plugin@org.eclipse.cdt.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core
+plugin@org.eclipse.cdt.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.ui
 
-plugin@org.eclipse.cdt.make.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.make.core
-plugin@org.eclipse.cdt.make.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.make.ui
+plugin@org.eclipse.cdt.make.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.make.core
+plugin@org.eclipse.cdt.make.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.make.ui
 
-plugin@org.eclipse.cdt.managedbuilder.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.core
-plugin@org.eclipse.cdt.managedbuilder.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.ui
-plugin@org.eclipse.cdt.managedbuilder.gnu.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.gnu.ui
+plugin@org.eclipse.cdt.managedbuilder.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.core
+plugin@org.eclipse.cdt.managedbuilder.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.ui
+plugin@org.eclipse.cdt.managedbuilder.gnu.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.gnu.ui
 
-plugin@org.eclipse.cdt.debug.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.debug.core
-plugin@org.eclipse.cdt.debug.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.debug.ui
+plugin@org.eclipse.cdt.debug.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.debug.core
+plugin@org.eclipse.cdt.debug.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.debug.ui
 
-plugin@org.eclipse.cdt.debug.mi.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.debug.mi.core
-plugin@org.eclipse.cdt.debug.mi.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.debug.mi.ui
+plugin@org.eclipse.cdt.debug.mi.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.debug.mi.core
+plugin@org.eclipse.cdt.debug.mi.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.debug.mi.ui
 
-plugin@org.eclipse.cdt.launch=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.launch
+plugin@org.eclipse.cdt.launch=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.launch
 
-plugin@org.eclipse.cdt.doc.user=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.doc.user
-plugin@org.eclipse.cdt.doc.isv=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.doc.isv
+plugin@org.eclipse.cdt.doc.user=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.doc.user
+plugin@org.eclipse.cdt.doc.isv=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.doc.isv
 
-plugin@org.eclipse.cdt=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt
+plugin@org.eclipse.cdt=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt
 
 
 ! CDT Features
-feature@org.eclipse.cdt.platform=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.platform-feature
-feature@org.eclipse.cdt.gnu.build=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.gnu.build-feature
-feature@org.eclipse.cdt.gnu.debug=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.gnu.debug-feature
-feature@org.eclipse.cdt=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt-feature
+feature@org.eclipse.cdt.platform=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.platform-feature
+feature@org.eclipse.cdt.gnu.build=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.gnu.build-feature
+feature@org.eclipse.cdt.gnu.debug=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.gnu.debug-feature
+feature@org.eclipse.cdt=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt-feature
 
 
 ! GDB feature
-feature@org.eclipse.cdt.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.gdb-feature
-plugin@org.eclipse.cdt.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.gdb
-plugin@org.eclipse.cdt.gdb.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.gdb.ui
+feature@org.eclipse.cdt.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.gdb-feature
+plugin@org.eclipse.cdt.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.gdb
+plugin@org.eclipse.cdt.gdb.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.gdb.ui
 
 
 ! Platform specific
-fragment@org.eclipse.cdt.core.aix=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.aix
-fragment@org.eclipse.cdt.core.linux=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux
-fragment@org.eclipse.cdt.core.linux.ia64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux.ia64
-fragment@org.eclipse.cdt.core.linux.ppc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux.ppc
-fragment@org.eclipse.cdt.core.linux.ppc64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux.ppc64
-fragment@org.eclipse.cdt.core.linux.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux.x86
-fragment@org.eclipse.cdt.core.linux.x86_64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.linux.x86_64
-fragment@org.eclipse.cdt.core.macosx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.macosx
-fragment@org.eclipse.cdt.core.qnx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.qnx
-fragment@org.eclipse.cdt.core.solaris=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.solaris
-fragment@org.eclipse.cdt.core.win32=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.win32
+fragment@org.eclipse.cdt.core.aix=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.aix
+fragment@org.eclipse.cdt.core.linux=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux
+fragment@org.eclipse.cdt.core.linux.ia64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux.ia64
+fragment@org.eclipse.cdt.core.linux.ppc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux.ppc
+fragment@org.eclipse.cdt.core.linux.ppc64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux.ppc64
+fragment@org.eclipse.cdt.core.linux.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux.x86
+fragment@org.eclipse.cdt.core.linux.x86_64=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.linux.x86_64
+fragment@org.eclipse.cdt.core.macosx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.macosx
+fragment@org.eclipse.cdt.core.qnx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.qnx
+fragment@org.eclipse.cdt.core.solaris=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.solaris
+fragment@org.eclipse.cdt.core.win32=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.win32
 
 ! Testing feature
-plugin@org.eclipse.cdt.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core.tests
-plugin@org.eclipse.cdt.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.ui.tests
-plugin@org.eclipse.cdt.debug.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.debug.ui.tests
-plugin@org.eclipse.cdt.managedbuilder.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.core.tests
-plugin@org.eclipse.cdt.managedbuilder.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.managedbuilder.ui.tests
-plugin@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.testing
+plugin@org.eclipse.cdt.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.core.tests
+plugin@org.eclipse.cdt.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.ui.tests
+plugin@org.eclipse.cdt.debug.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.debug.ui.tests
+plugin@org.eclipse.cdt.managedbuilder.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.core.tests
+plugin@org.eclipse.cdt.managedbuilder.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.ui.tests
+plugin@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing
 plugin@org.eclipse.test=HEAD,/cvsroot/eclipse,
 fragment@org.eclipse.ant.optional.junit=HEAD,/cvsroot/eclipse,
-feature@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.testing-feature
+feature@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing-feature
 
 ! SDK Feature
-plugin@org.eclipse.cdt.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.sdk
-feature@org.eclipse.cdt.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.sdk-feature
+plugin@org.eclipse.cdt.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.sdk
+feature@org.eclipse.cdt.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.sdk-feature
 
 ! Windows Feature
-plugin@org.eclipse.cdt.msw.build=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/windows/org.eclipse.cdt.msw.build
-feature@org.eclipse.cdt.msw=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/windows/org.eclipse.cdt.msw-feature
+plugin@org.eclipse.cdt.msw.build=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=windows/org.eclipse.cdt.msw.build
+feature@org.eclipse.cdt.msw=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=windows/org.eclipse.cdt.msw-feature
 
 ! GDB Hardware Debugging Feature
-plugin@org.eclipse.cdt.debug.gdbjtag=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag
-plugin@org.eclipse.cdt.debug.gdbjtag.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.core
-plugin@org.eclipse.cdt.debug.gdbjtag.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag.ui
-feature@org.eclipse.cdt.debug.gdbjtag=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/jtag/org.eclipse.cdt.debug.gdbjtag-feature
+plugin@org.eclipse.cdt.debug.gdbjtag=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=jtag/org.eclipse.cdt.debug.gdbjtag
+plugin@org.eclipse.cdt.debug.gdbjtag.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=jtag/org.eclipse.cdt.debug.gdbjtag.core
+plugin@org.eclipse.cdt.debug.gdbjtag.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=jtag/org.eclipse.cdt.debug.gdbjtag.ui
+feature@org.eclipse.cdt.debug.gdbjtag=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=jtag/org.eclipse.cdt.debug.gdbjtag-feature
 
 ! XL compiler integration
-plugin@org.eclipse.cdt.errorparsers.xlc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.errorparsers.xlc
-plugin@org.eclipse.cdt.make.xlc.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.make.xlc.core
-plugin@org.eclipse.cdt.managedbuilder.xlc.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.core
-plugin@org.eclipse.cdt.managedbuilder.xlc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlc.ui
-feature@org.eclipse.cdt.xlc.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.feature
-feature@org.eclipse.cdt.xlc.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.xlc.sdk-feature
-plugin@org.eclipse.cdt.core.lrparser.xlc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.core.lrparser.xlc
-plugin@org.eclipse.cdt.core.lrparser.xlc.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.core.lrparser.xlc.tests
-plugin@org.eclipse.cdt.managedbuilder.xlupc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/xlc/org.eclipse.cdt.managedbuilder.xlupc.ui
+plugin@org.eclipse.cdt.errorparsers.xlc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.errorparsers.xlc
+plugin@org.eclipse.cdt.make.xlc.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.make.xlc.core
+plugin@org.eclipse.cdt.managedbuilder.xlc.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.managedbuilder.xlc.core
+plugin@org.eclipse.cdt.managedbuilder.xlc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.managedbuilder.xlc.ui
+feature@org.eclipse.cdt.xlc.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.xlc.feature
+feature@org.eclipse.cdt.xlc.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.xlc.sdk-feature
+plugin@org.eclipse.cdt.core.lrparser.xlc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.core.lrparser.xlc
+plugin@org.eclipse.cdt.core.lrparser.xlc.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.core.lrparser.xlc.tests
+plugin@org.eclipse.cdt.managedbuilder.xlupc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=xlc/org.eclipse.cdt.managedbuilder.xlupc.ui
 
 ! LR parser
-plugin@org.eclipse.cdt.core.lrparser=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser
-plugin@org.eclipse.cdt.core.lrparser.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.tests
+plugin@org.eclipse.cdt.core.lrparser=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=lrparser/org.eclipse.cdt.core.lrparser
+plugin@org.eclipse.cdt.core.lrparser.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=lrparser/org.eclipse.cdt.core.lrparser.tests
 ! newly signed LPG runtime
 plugin@net.sourceforge.lpg.lpgjavaruntime,1.1.0=GET,http://download.eclipse.org/tools/orbit/downloads/drops/R20090825191606/bundles/net.sourceforge.lpg.lpgjavaruntime_1.1.0.v200803061910.jar
-feature@org.eclipse.cdt.core.lrparser.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.feature
-feature@org.eclipse.cdt.core.lrparser.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/lrparser/org.eclipse.cdt.core.lrparser.sdk.feature
+feature@org.eclipse.cdt.core.lrparser.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=lrparser/org.eclipse.cdt.core.lrparser.feature
+feature@org.eclipse.cdt.core.lrparser.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=lrparser/org.eclipse.cdt.core.lrparser.sdk.feature
 
 ! UPC parser - also uses LPG but since we already download it above no need to download again
-plugin@org.eclipse.cdt.core.parser.upc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc
-plugin@org.eclipse.cdt.core.parser.upc.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.tests
-feature@org.eclipse.cdt.core.parser.upc.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.feature
-feature@org.eclipse.cdt.core.parser.upc.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.core.parser.upc.sdk.feature
+plugin@org.eclipse.cdt.core.parser.upc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.core.parser.upc
+plugin@org.eclipse.cdt.core.parser.upc.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.core.parser.upc.tests
+feature@org.eclipse.cdt.core.parser.upc.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.core.parser.upc.feature
+feature@org.eclipse.cdt.core.parser.upc.sdk=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.core.parser.upc.sdk.feature
 
 ! CDT Utilities
-plugin@org.eclipse.cdt.util=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/util/org.eclipse.cdt.util
-feature@org.eclipse.cdt.util=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/util/org.eclipse.cdt.util-feature
+plugin@org.eclipse.cdt.util=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=util/org.eclipse.cdt.util
+feature@org.eclipse.cdt.util=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=util/org.eclipse.cdt.util-feature
 
 ! DSF 
-plugin@org.eclipse.cdt.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.dsf
-plugin@org.eclipse.cdt.dsf.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.dsf.ui
-plugin@org.eclipse.cdt.examples.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf
-plugin@org.eclipse.cdt.examples.dsf.pda=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda
-plugin@org.eclipse.cdt.examples.dsf.pda.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf.pda.ui
-plugin@org.eclipse.cdt.tests.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.tests.dsf
-feature@org.eclipse.cdt.examples.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf/org.eclipse.cdt.examples.dsf-feature
+plugin@org.eclipse.cdt.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.dsf
+plugin@org.eclipse.cdt.dsf.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.dsf.ui
+plugin@org.eclipse.cdt.examples.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.examples.dsf
+plugin@org.eclipse.cdt.examples.dsf.pda=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.examples.dsf.pda
+plugin@org.eclipse.cdt.examples.dsf.pda.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.examples.dsf.pda.ui
+plugin@org.eclipse.cdt.tests.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.tests.dsf
+feature@org.eclipse.cdt.examples.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf/org.eclipse.cdt.examples.dsf-feature
 
 ! DSF-GDB Integration
-plugin@org.eclipse.cdt.dsf.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.dsf.gdb
-plugin@org.eclipse.cdt.dsf.gdb.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
-plugin@org.eclipse.cdt.tests.dsf.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.tests.dsf.gdb
-feature@org.eclipse.cdt.gnu.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/dsf-gdb/org.eclipse.cdt.gnu.dsf-feature
+plugin@org.eclipse.cdt.dsf.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf-gdb/org.eclipse.cdt.dsf.gdb
+plugin@org.eclipse.cdt.dsf.gdb.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf-gdb/org.eclipse.cdt.dsf.gdb.ui
+plugin@org.eclipse.cdt.tests.dsf.gdb=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf-gdb/org.eclipse.cdt.tests.dsf.gdb
+feature@org.eclipse.cdt.gnu.dsf=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=dsf-gdb/org.eclipse.cdt.gnu.dsf-feature
 
 ! CDT Memory
-plugin@org.eclipse.cdt.debug.ui.memory.traditional=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.traditional
-plugin@org.eclipse.cdt.debug.ui.memory.transport=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.transport
-plugin@org.eclipse.cdt.debug.ui.memory.search=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.search
-plugin@org.eclipse.cdt.debug.ui.memory.memorybrowser=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
-feature@org.eclipse.cdt.debug.ui.memory=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/memory/org.eclipse.cdt.debug.ui.memory-feature
+plugin@org.eclipse.cdt.debug.ui.memory.traditional=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=memory/org.eclipse.cdt.debug.ui.memory.traditional
+plugin@org.eclipse.cdt.debug.ui.memory.transport=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=memory/org.eclipse.cdt.debug.ui.memory.transport
+plugin@org.eclipse.cdt.debug.ui.memory.search=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=memory/org.eclipse.cdt.debug.ui.memory.search
+plugin@org.eclipse.cdt.debug.ui.memory.memorybrowser=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=memory/org.eclipse.cdt.debug.ui.memory.memorybrowser
+feature@org.eclipse.cdt.debug.ui.memory=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=memory/org.eclipse.cdt.debug.ui.memory-feature
 
 ! CDT RSE Remote Launch
-plugin@org.eclipse.cdt.launch.remote=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/cross/org.eclipse.cdt.launch.remote
-feature@org.eclipse.cdt.launch.remote=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/cross/org.eclipse.cdt.launch.remote-feature
+plugin@org.eclipse.cdt.launch.remote=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=cross/org.eclipse.cdt.launch.remote
+feature@org.eclipse.cdt.launch.remote=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=cross/org.eclipse.cdt.launch.remote-feature
 
 ! CDT Cross GCC 
-plugin@org.eclipse.cdt.build.crossgcc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/cross/org.eclipse.cdt.build.crossgcc
-feature@org.eclipse.cdt.build.crossgcc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/cross/org.eclipse.cdt.build.crossgcc-feature
+plugin@org.eclipse.cdt.build.crossgcc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=cross/org.eclipse.cdt.build.crossgcc
+feature@org.eclipse.cdt.build.crossgcc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=cross/org.eclipse.cdt.build.crossgcc-feature
 
 ! CDT P2 Additions
-plugin@org.eclipse.cdt.p2=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/p2/org.eclipse.cdt.p2
-feature@org.eclipse.cdt.p2=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/p2/org.eclipse.cdt.p2-feature
+plugin@org.eclipse.cdt.p2=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=p2/org.eclipse.cdt.p2
+feature@org.eclipse.cdt.p2=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=p2/org.eclipse.cdt.p2-feature
 
 ! EDC
-plugin@org.eclipse.cdt.debug.edc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc
-plugin@org.eclipse.cdt.debug.edc.linux.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.linux.x86
-plugin@org.eclipse.cdt.debug.edc.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.x86
-plugin@org.eclipse.cdt.debug.edc.tcf.extension=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.tcf.extension
-plugin@org.eclipse.cdt.debug.edc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.ui
-plugin@org.eclipse.cdt.debug.edc.windows=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.windows
-plugin@org.eclipse.cdt.debug.edc.windows.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.windows.ui
-plugin@org.eclipse.cdt.debug.edc.doc.user=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc.doc.user
-plugin@org.eclipse.cdt.scripting=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.scripting
-feature@org.eclipse.cdt.debug.edc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/edc/org.eclipse.cdt.debug.edc-feature
+plugin@org.eclipse.cdt.debug.edc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc
+plugin@org.eclipse.cdt.debug.edc.linux.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.linux.x86
+plugin@org.eclipse.cdt.debug.edc.x86=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.x86
+plugin@org.eclipse.cdt.debug.edc.tcf.extension=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.tcf.extension
+plugin@org.eclipse.cdt.debug.edc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.ui
+plugin@org.eclipse.cdt.debug.edc.windows=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.windows
+plugin@org.eclipse.cdt.debug.edc.windows.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.windows.ui
+plugin@org.eclipse.cdt.debug.edc.doc.user=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc.doc.user
+plugin@org.eclipse.cdt.scripting=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.scripting
+feature@org.eclipse.cdt.debug.edc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc-feature
 
 ! TCF Requirements for EDC
 plugin@org.eclipse.tm.tcf=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf
@@ -162,16 +162,16 @@ plugin@org.eclipse.tm.tcf.rse=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.ecl
 feature@org.eclipse.tm.tcf.feature=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=features/org.eclipse.tm.tcf.feature
 
 ! Berkeley UPC
-plugin@org.eclipse.cdt.managedbuilder.bupc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.managedbuilder.bupc.ui
-feature@org.eclipse.cdt.bupc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/upc/org.eclipse.cdt.bupc-feature
+plugin@org.eclipse.cdt.managedbuilder.bupc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.managedbuilder.bupc.ui
+feature@org.eclipse.cdt.bupc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.bupc-feature
 
 ! Codan
-plugin@org.eclipse.cdt.codan.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.core
-plugin@org.eclipse.cdt.codan.core.test=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.core.test
-plugin@org.eclipse.cdt.codan.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.ui
-plugin@org.eclipse.cdt.codan.core.cxx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.core.cxx
-plugin@org.eclipse.cdt.codan.ui.cxx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.ui.cxx
-plugin@org.eclipse.cdt.codan.checkers=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.checkers
-plugin@org.eclipse.cdt.codan.checkers.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.checkers.ui
-plugin@org.eclipse.cdt.codan.examples=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan.examples
-feature@org.eclipse.cdt.codan.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/codan/org.eclipse.cdt.codan-feature
+plugin@org.eclipse.cdt.codan.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.core
+plugin@org.eclipse.cdt.codan.core.test=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.core.test
+plugin@org.eclipse.cdt.codan.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.ui
+plugin@org.eclipse.cdt.codan.core.cxx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.core.cxx
+plugin@org.eclipse.cdt.codan.ui.cxx=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.ui.cxx
+plugin@org.eclipse.cdt.codan.checkers=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.checkers
+plugin@org.eclipse.cdt.codan.checkers.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.checkers.ui
+plugin@org.eclipse.cdt.codan.examples=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan.examples
+feature@org.eclipse.cdt.codan.feature=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=codan/org.eclipse.cdt.codan-feature

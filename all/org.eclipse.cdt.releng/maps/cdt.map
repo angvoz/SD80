@@ -1,5 +1,5 @@
 ! The master
-feature@org.eclipse.cdt.master=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/releng/org.eclipse.cdt.master
+feature@org.eclipse.cdt.master=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=releng/org.eclipse.cdt.master
 
 ! Cross platform
 plugin@org.eclipse.cdt.core=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=org.eclipse.cdt/all/org.eclipse.cdt.core

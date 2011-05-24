@@ -238,7 +238,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 						// use the refresh scope manager to refresh
 						RefreshScopeManager refreshManager = RefreshScopeManager.getInstance();
 						IWorkspaceRunnable runnable = refreshManager.getRefreshRunnable(project);
-						ResourcesPlugin.getWorkspace().run(runnable, refreshManager.getRefreshSchedulingRule(project), IWorkspace.AVOID_UPDATE, null);
+						ResourcesPlugin.getWorkspace().run(runnable, null, IWorkspace.AVOID_UPDATE, null);
 					} catch (CoreException e) {
 					}
 				} else {

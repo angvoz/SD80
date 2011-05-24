@@ -6,9 +6,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *    Rational Software - Initial API and implementation
- *    Markus Schorn (Wind River Systems)
- *    Anton Leherbauer (Wind River Systems)
+ *     Rational Software - Initial API and implementation
+ *     Markus Schorn (Wind River Systems)
+ *     Anton Leherbauer (Wind River Systems)
  *******************************************************************************/
 package org.eclipse.cdt.internal.core.model;
 
@@ -59,65 +59,56 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 	public WorkingCopy(ICElement parent, IFile file, String id, IBufferFactory bufferFactory) {
 		this(parent, file, id, bufferFactory, null);
 	}
+
 	public WorkingCopy(ICElement parent, IFile file, String id, IBufferFactory bufferFactory, IProblemRequestor requestor) {
 		super(parent, file, id);
-		this.bufferFactory = 
-			bufferFactory == null ? 
-				getBufferManager() :
-				bufferFactory;
+		this.bufferFactory = bufferFactory == null ? getBufferManager() : bufferFactory;
 		problemRequestor = requestor;
 	}
 
 	public WorkingCopy(ICElement parent, URI uri, String id, IBufferFactory bufferFactory) {
 		super(parent, uri, id);
-		this.bufferFactory = 
-			bufferFactory == null ? 
-				getBufferManager() :
-				bufferFactory;
+		this.bufferFactory = bufferFactory == null ? getBufferManager() : bufferFactory;
 	}
 
 	/**
 	 * @see org.eclipse.cdt.core.model.IWorkingCopy#commit(boolean, org.eclipse.core.runtime.IProgressMonitor)
 	 */
-	public void commit(boolean force, IProgressMonitor monitor)
-		throws CModelException {
-			ITranslationUnit original = this.getOriginalElement();
-			if (original.exists()) {
-				CommitWorkingCopyOperation op= new CommitWorkingCopyOperation(this, force);
-				op.runOperation(monitor);
-			} else {
-				String contents = this.getSource();
-				if (contents == null) return;
+	public void commit(boolean force, IProgressMonitor monitor) throws CModelException {
+		ITranslationUnit original = this.getOriginalElement();
+		if (original.exists()) {
+			CommitWorkingCopyOperation op= new CommitWorkingCopyOperation(this, force);
+			op.runOperation(monitor);
+		} else {
+			String contents = this.getSource();
+			if (contents == null) return;
+			try {
+				IFile originalRes = (IFile)original.getResource();
+				String encoding = null;
 				try {
-					IFile originalRes = (IFile)original.getResource();
-					String encoding = null;
-					try {
-						encoding = originalRes.getCharset();
-					}
-					catch (CoreException ce) {
-						// use no encoding
-					}
-					byte[] bytes = encoding == null 
-						? contents.getBytes() 
-					    : contents.getBytes(encoding);
-					ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-					if (originalRes.exists()) {
-						originalRes.setContents(
+					encoding = originalRes.getCharset();
+				} catch (CoreException e) {
+					// use no encoding
+				}
+				byte[] bytes = encoding == null ? contents.getBytes() : contents.getBytes(encoding);
+				ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+				if (originalRes.exists()) {
+					originalRes.setContents(
 							stream, 
 							force ? IResource.FORCE | IResource.KEEP_HISTORY : IResource.KEEP_HISTORY, 
-							null);
-					} else {
-						originalRes.create(
+									null);
+				} else {
+					originalRes.create(
 							stream,
 							force,
 							monitor);
-					}
-				}  catch (IOException e) {
-					throw new CModelException(e, ICModelStatusConstants.IO_EXCEPTION);
-				} catch (CoreException e) {
-					throw new CModelException(e);
 				}
-			}			
+			}  catch (IOException e) {
+				throw new CModelException(e, ICModelStatusConstants.IO_EXCEPTION);
+			} catch (CoreException e) {
+				throw new CModelException(e);
+			}
+		}			
 	}
 	
 	/**
@@ -141,7 +132,7 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 	 */
 	@Override
 	public boolean exists() {
-		// working copy always exists in the model until it is detroyed
+		// working copy always exists in the model until it is destroyed
 		return this.useCount != 0;
 	}
 
@@ -150,7 +141,6 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 	 */
 	@Override
 	public IBufferFactory getBufferFactory(){
-
 		return this.bufferFactory;
 	}
 
@@ -264,13 +254,14 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 			return false;
 		}
 		try {
-			// if resource got deleted, then #getModificationStamp() will answer IResource.NULL_STAMP, which is always different from the cached
-			// timestamp
+			// If resource got deleted, then #getModificationStamp() will answer
+			// IResource.NULL_STAMP, which is always different from the cached timestamp.
 			return ((TranslationUnitInfo) getElementInfo()).fTimestamp == ((IFile) resource).getModificationStamp();
 		} catch (CModelException e) {
 			return false;
 		}
 	}
+
 	/**
 	 * @see org.eclipse.cdt.core.model.ITranslationUnit#isWorkingCopy()
 	 */
@@ -382,7 +373,8 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 		if (isReadOnly()) {
 			throw new CModelException(new CModelStatus(ICModelStatusConstants.READ_ONLY, this));
 		}
-		// computes fine-grain deltas in case the working copy is being reconciled already (if not it would miss one iteration of deltas).
+		// computes fine-grain deltas in case the working copy is being reconciled already
+		// (if not it would miss one iteration of deltas).
 		this.reconcile();   
 	}
 
@@ -394,8 +386,7 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 		long timeStamp =
 			((IFile) original.getResource()).getModificationStamp();
 		if (timeStamp == IResource.NULL_STAMP) {
-			throw new CModelException(
-				new CModelStatus(ICModelStatusConstants.INVALID_RESOURCE));
+			throw new CModelException(new CModelStatus(ICModelStatusConstants.INVALID_RESOURCE));
 		}
 		((TranslationUnitInfo) getElementInfo()).fTimestamp = timeStamp;
 	}
@@ -405,7 +396,8 @@ public class WorkingCopy extends TranslationUnit implements IWorkingCopy {
 	 */
 	public IASTTranslationUnit reconcile(boolean computeAST, boolean forceProblemDetection, IProgressMonitor monitor)
 			throws CModelException {
-		if (this.useCount == 0) throw newNotPresentException(); // was destroyed
+		if (this.useCount == 0)
+			throw newNotPresentException(); // was destroyed
 
         ReconcileWorkingCopyOperation op = new ReconcileWorkingCopyOperation(this, computeAST, forceProblemDetection);
         op.runOperation(monitor);

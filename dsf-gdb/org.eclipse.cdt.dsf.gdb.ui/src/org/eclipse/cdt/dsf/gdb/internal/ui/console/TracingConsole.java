@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2010 Ericsson and others.
+ * Copyright (c) 2009, 2011 Ericsson and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -81,6 +81,15 @@ public class TracingConsole extends IOConsole {
         try {
 			fTracingStream.close();
 		} catch (IOException e) {
+		}
+        try {
+        	fSession.getExecutor().submit(new DsfRunnable() {
+        		public void run() {
+        			fSession.removeServiceEventListener(TracingConsole.this);
+        		}
+        	});
+		} catch (RejectedExecutionException e) {
+			// Session already disposed
 		}
 		super.dispose();
 	}

@@ -33,6 +33,7 @@ import org.eclipse.cdt.dsf.gdb.launching.InferiorRuntimeProcess;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
+import org.eclipse.cdt.dsf.mi.service.MIProcesses;
 import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.MIInferiorProcess;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIBreakInsertInfo;
@@ -67,7 +68,7 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 	private DsfServicesTracker fTracker;
 
 	// This variable will be used to store the original container context,
-	// but once the new process is start (restarted), it will contain the new
+	// but once the new process is started (restarted), it will contain the new
 	// container context.  This new container context has for parent the process
 	// context, which holds the new pid.
 	private IContainerDMContext fContainerDmc;
@@ -303,6 +304,9 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 
 		    	final Process inferior = inferiorProcess;
 				final ILaunch launch = (ILaunch)getContainerContext().getAdapter(ILaunch.class);
+				
+				// This is the groupId of the new process that will be started, even in the
+				// case of a restart.
 				final String groupId = ((IMIContainerDMContext)getContainerContext()).getGroupId();
 
 				// For multi-process, we cannot simply use the name given by the backend service
@@ -326,17 +330,25 @@ public class StartOrRestartProcessSequence_7_0 extends ReflectionSequence {
 				DebugPlugin.getDefault().asyncExec(new Runnable() {
 					public void run() {
 						String label = pathLabel;
+						
 						if (fRestart) {
 							// For a restart, remove the old inferior
 							IProcess[] launchProcesses = launch.getProcesses();
 							for (IProcess process : launchProcesses) {
-								String groupAttribute = process.getAttribute(IGdbDebugConstants.INFERIOR_GROUPID_ATTR);
-								if (groupId.equals(groupAttribute)) {
-									launch.removeProcess(process);
-									// Use the exact same label as before
-									label = process.getLabel();
-									break;
-								}
+			        			if (process instanceof InferiorRuntimeProcess) {
+			        				String groupAttribute = process.getAttribute(IGdbDebugConstants.INFERIOR_GROUPID_ATTR);
+
+			        				// if the groupAttribute is not set in the process we know we are dealing
+			        				// with single process debugging so the one process is the one we want.
+			        				// If the groupAttribute is set, then we must make sure it is the proper inferior
+			        				if (groupAttribute == null || groupAttribute.equals(MIProcesses.UNIQUE_GROUP_ID) ||
+			        						groupAttribute.equals(groupId)) {			        					
+			        					launch.removeProcess(process);
+			        					// Use the exact same label as before
+			        					label = process.getLabel();
+			        					break;
+			        				}
+			        			}
 							}
 						}
 

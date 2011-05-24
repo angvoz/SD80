@@ -1387,14 +1387,14 @@ public class CEditor extends TextEditor implements ISelectionChangedListener, IC
 
 		getDocumentProvider().connect(input);
 		try {
-			// uninstall & unregister preference store listener
+			// Uninstall & unregister preference store listener
 			getSourceViewerDecorationSupport(sourceViewer).uninstall();
 			((ISourceViewerExtension2) sourceViewer).unconfigure();
 
 			setPreferenceStore(createCombinedPreferenceStore(input));
 			updateScalabilityMode(input);
 
-			// install & register preference store listener
+			// Install & register preference store listener
 			sourceViewer.configure(getSourceViewerConfiguration());
 			getSourceViewerDecorationSupport(sourceViewer).install(getPreferenceStore());
 
@@ -1438,7 +1438,7 @@ public class CEditor extends TextEditor implements ISelectionChangedListener, IC
 		boolean wasEnabled = fEnableScalablilityMode;
 		fEnableScalablilityMode = lines > getPreferenceStore().getInt(PreferenceConstants.SCALABILITY_NUMBER_OF_LINES);
 		if (fEnableScalablilityMode && !wasEnabled) {
-			//Alert users that scalability mode should be turned on
+			// Alert users that scalability mode should be turned on
 			if (getPreferenceStore().getBoolean(PreferenceConstants.SCALABILITY_ALERT)) {
 				MessageDialogWithToggle dialog = new MessageDialogWithToggle(
 						Display.getCurrent().getActiveShell(),
@@ -3186,11 +3186,10 @@ public class CEditor extends TextEditor implements ISelectionChangedListener, IC
 	 * @since 5.0
 	 */
 	class OccurrencesAnnotationUpdaterJob extends Job {
-
 		private final IDocument fDocument;
 		private final ISelection fSelection;
 		private final ISelectionValidator fPostSelectionValidator;
-		private boolean fCanceled= false;
+		private boolean fCanceled;
 		private final OccurrenceLocation[] fLocations;
 
 		public OccurrencesAnnotationUpdaterJob(IDocument document, OccurrenceLocation[] locations, ISelection selection, ISelectionValidator validator) {
@@ -3342,7 +3341,7 @@ public class CEditor extends TextEditor implements ISelectionChangedListener, IC
 				return;
 			newInput.addDocumentListener(this);
 		}
-}
+	}
 
 	/**
 	 * Updates the occurrences annotations based
@@ -3621,7 +3620,7 @@ public class CEditor extends TextEditor implements ISelectionChangedListener, IC
 
 		if (model == null)
 			return;
-		
+
 		fOverrideIndicatorManager= new OverrideIndicatorManager(model);
 		
 		addReconcileListener(fOverrideIndicatorManager);

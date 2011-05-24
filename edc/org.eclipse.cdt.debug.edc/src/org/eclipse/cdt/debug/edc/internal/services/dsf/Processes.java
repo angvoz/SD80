@@ -56,7 +56,7 @@ public class Processes extends AbstractEDCService implements IProcesses, IEventL
 		String id = "unknown";
 
 		public ExecutionDMData(ExecutionDMC dmc) {
-			id = (String) dmc.getProperty(ProtocolConstants.PROP_OS_ID);
+			id = dmc.getProperty(ProtocolConstants.PROP_OS_ID).toString();
 			name = (String) dmc.getProperty(IEDCDMContext.PROP_NAME);
 		}
 

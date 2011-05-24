@@ -59,8 +59,8 @@ plugin@org.eclipse.cdt.debug.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/o
 plugin@org.eclipse.cdt.managedbuilder.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.core.tests
 plugin@org.eclipse.cdt.managedbuilder.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.ui.tests
 plugin@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing
-plugin@org.eclipse.test=HEAD,:pserver:anonymous@proxy.eclipse.org:80/cvsroot/eclipse,
-fragment@org.eclipse.ant.optional.junit=HEAD,:pserver:anonymous@proxy.eclipse.org:80/cvsroot/eclipse,
+plugin@org.eclipse.test=HEAD,/cvsroot/eclipse,
+fragment@org.eclipse.ant.optional.junit=HEAD,/cvsroot/eclipse,
 feature@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing-feature
 
 ! SDK Feature

@@ -72,6 +72,9 @@ public:
 	 * the process will just crash.
 	 */
 	bool ShouldDebugFirstChance(const DEBUG_EVENT& debugEvent);
+
+	bool ShouldReportException(const DEBUG_EVENT& debugEvent);
+
 	static std::string GetDebugExceptionDescription(const EXCEPTION_DEBUG_INFO& exceptionInfo);
 
 private:

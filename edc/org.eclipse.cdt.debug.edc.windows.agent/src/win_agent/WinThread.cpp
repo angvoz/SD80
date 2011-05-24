@@ -130,13 +130,27 @@ void WinThread::HandleExecutableEvent(bool isLoaded, const std::string& exePath,
 		unsigned long baseAddress, unsigned long codeSize) {
 	MarkSuspended();
 	EnsureValidContextInfo();
-	
+
+	if(parentProcess_.GetExecutables().find(exePath) != parentProcess_.GetExecutables().end())
+	{
+		Properties existingProps = parentProcess_.GetExecutables()[exePath];
+		if (existingProps[PROP_MODULE_LOADED]->getBoolValue())
+		{
+			delete existingProps[PROP_MODULE_LOADED];
+			existingProps[PROP_MODULE_LOADED] = new PropertyValue(false);
+			EventClientNotifier::SendExecutableEvent(this,
+					threadContextInfo_.Eip, existingProps);
+		}
+	}
+
 	Properties props;
 	props[PROP_FILE] = new PropertyValue(exePath);
 	props[PROP_NAME] = new PropertyValue(AgentUtils::GetFileNameFromPath(exePath));
 	props[PROP_MODULE_LOADED] = new PropertyValue(isLoaded);
 	props[PROP_IMAGE_BASE_ADDRESS] = new PropertyValue((int) baseAddress);
 	props[PROP_CODE_SIZE] = new PropertyValue((int) codeSize);
+
+	parentProcess_.GetExecutables()[exePath] = props;
 	EventClientNotifier::SendExecutableEvent(this, 
 			threadContextInfo_.Eip, props);
 }

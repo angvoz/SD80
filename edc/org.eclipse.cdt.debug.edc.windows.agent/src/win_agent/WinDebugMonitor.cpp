@@ -215,6 +215,7 @@ void WinDebugMonitor::StartProcessForDebug()
 {
 	STARTUPINFO			si;
 	memset(&si, 0, sizeof(si));
+    si.cb	       		= sizeof (si);
 	si.dwFlags	       	= STARTF_FORCEONFEEDBACK | STARTF_USESHOWWINDOW;
 	si.wShowWindow     	= SW_SHOWNORMAL;
 
@@ -617,15 +618,23 @@ bool WinDebugMonitor::ShouldDebugFirstChance(const DEBUG_EVENT& debugEvent) {
 	return false;
 }
 
+bool WinDebugMonitor::ShouldReportException(const DEBUG_EVENT& debugEvent)
+{
+	if (debugEvent.u.Exception.ExceptionRecord.ExceptionCode == EXCEPTION_MS_CPLUS)
+		return false;
+	return true;
+}
+
 void WinDebugMonitor::HandleException(DEBUG_EVENT& debugEvent)
 {
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
 	if (!thread)
 		assert(false);
-	if (thread && (handledFirstException_ || isAttach || ShouldDebugFirstChance(debugEvent)))
+	if (thread && (handledFirstException_ || isAttach || ShouldDebugFirstChance(debugEvent)) &&
+			ShouldReportException(debugEvent))
 		thread->HandleException(debugEvent);
 	else
-		ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
+		ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED);
 	handledFirstException_ = true;
 }
 

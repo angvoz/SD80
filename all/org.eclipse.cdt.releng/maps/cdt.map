@@ -59,8 +59,8 @@ plugin@org.eclipse.cdt.debug.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/o
 plugin@org.eclipse.cdt.managedbuilder.core.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.core.tests
 plugin@org.eclipse.cdt.managedbuilder.ui.tests=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.managedbuilder.ui.tests
 plugin@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing
-plugin@org.eclipse.test=HEAD,/cvsroot/eclipse,
-fragment@org.eclipse.ant.optional.junit=HEAD,/cvsroot/eclipse,
+plugin@org.eclipse.test=HEAD,:pserver:anonymous@proxy.eclipse.org:80/cvsroot/eclipse,
+fragment@org.eclipse.ant.optional.junit=HEAD,:pserver:anonymous@proxy.eclipse.org:80/cvsroot/eclipse,
 feature@org.eclipse.cdt.testing=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=all/org.eclipse.cdt.testing-feature
 
 ! SDK Feature
@@ -153,13 +153,13 @@ plugin@org.eclipse.cdt.scripting=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.ec
 feature@org.eclipse.cdt.debug.edc=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=edc/org.eclipse.cdt.debug.edc-feature
 
 ! TCF Requirements for EDC
-plugin@org.eclipse.tm.tcf=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf
-plugin@org.eclipse.tm.tcf.cdt.ui=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf.cdt.ui
-plugin@org.eclipse.tm.tcf.core=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf.core
-plugin@org.eclipse.tm.tcf.debug=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf.debug
-plugin@org.eclipse.tm.tcf.debug.ui=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf.debug.ui
-plugin@org.eclipse.tm.tcf.rse=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=plugins/org.eclipse.tm.tcf.rse
-feature@org.eclipse.tm.tcf.feature=SVN,url=svn://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=branches/0.4.0,path=features/org.eclipse.tm.tcf.feature
+plugin@org.eclipse.tm.tcf=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf
+plugin@org.eclipse.tm.tcf.cdt.ui=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf.cdt.ui
+plugin@org.eclipse.tm.tcf.core=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf.core
+plugin@org.eclipse.tm.tcf.debug=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf.debug
+plugin@org.eclipse.tm.tcf.debug.ui=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf.debug.ui
+plugin@org.eclipse.tm.tcf.rse=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=plugins/org.eclipse.tm.tcf.rse
+feature@org.eclipse.tm.tcf.feature=SVN,url=http://dev.eclipse.org/svnroot/dsdp/org.eclipse.tm.tcf,tag=trunk,path=features/org.eclipse.tm.tcf.feature
 
 ! Berkeley UPC
 plugin@org.eclipse.cdt.managedbuilder.bupc.ui=GIT,tag=@cdtTag@,repo=@cdtRepo@,path=upc/org.eclipse.cdt.managedbuilder.bupc.ui

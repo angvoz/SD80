@@ -22,6 +22,8 @@ import org.eclipse.cdt.debug.edc.MemoryUtils;
 import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
 import org.eclipse.cdt.debug.edc.internal.NumberFormatUtils;
 import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.ExecutionDMC;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.RunControl.SuspendedEvent;
 import org.eclipse.cdt.debug.edc.internal.snapshot.SnapshotUtils;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.snapshot.IAlbum;
@@ -37,6 +39,7 @@ import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.CoreException;
@@ -553,7 +556,8 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		final RegisterDMC regDMC = (RegisterDMC) regCtx;
 		IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(regDMC, IExecutionDMContext.class);
 		if (exeDMC == null || !(exeDMC instanceof IEDCDMContext)) {
-			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "No valid executionDMC for the register."));
+			throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),
+					"No valid execution context for finding the register ID"));
 		}
 
 		final String exeDMCID = ((IEDCDMContext) exeDMC).getID();
@@ -562,14 +566,23 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 		if (formatID.equals(IFormattedValues.OCTAL_FORMAT) || formatID.equals(IFormattedValues.BINARY_FORMAT) ||
 				formatID.equals(IFormattedValues.DECIMAL_FORMAT))
 		{
-			BigInteger bigRegValue = NumberFormatUtils.parseIntegerByFormat(regValue, formatID);
-			regValue = bigRegValue.toString(16);
+			BigInteger bigRegValue = null;
+			
+			try {
+				bigRegValue = NumberFormatUtils.parseIntegerByFormat(regValue, formatID);
+			} catch (NumberFormatException e) {
+				throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),
+						"Cannot change register to invalid value \"" + regValue + "\""));
+			}
+			// if bigRegValue is negative, using bigRegValue.toString(16) directly gives values such as '-af'
+			regValue = Long.toHexString(bigRegValue.longValue());
 		}
 
-		// Update cached register values
-		Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
-		if (exeDMCRegisters != null) {
-			exeDMCRegisters.put(regDMC.getID(), new BigInteger(regValue, 16));
+		// if register value string is too long, truncate to register size (2 hex chars per byte)
+		if (tcfRegistersService != null) {	// TCF IRegisters service available)
+			int regSize = regDMC.getTCFContext().getSize();
+			if (regValue.length() > regSize * 2)
+				regValue = regValue.substring(regValue.length() - regSize * 2);
 		}
 
 		if (tcfRegistersService != null) {	// TCF IRegisters service available
@@ -578,7 +591,8 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 			try {
 				bv = MemoryUtils.convertHexStringToByteArray(regValue, tcfReg.getSize(), 2);
 			} catch (NumberFormatException e) {
-				throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(), "Error writing register."));
+				throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.getUniqueIdentifier(),
+						"Cannot change register to invalid value \"" + regValue + "\""));
 			}
 			
 			final byte[] byteVal = bv;
@@ -607,6 +621,12 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 				throw new CoreException(new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, INTERNAL_ERROR,
 						"Error writing register.", e));
 			}
+		}
+
+		// Update cached register values if register write succeeds
+		Map<String, BigInteger> exeDMCRegisters = registerValueCache.get(exeDMCID);
+		if (exeDMCRegisters != null) {
+			exeDMCRegisters.put(regDMC.getID(), new BigInteger(regValue, 16));
 		}
 	}
 
@@ -734,6 +754,13 @@ public abstract class Registers extends AbstractEDCService implements IRegisters
 	 */
 	private void generateRegisterChangedEvent(IRegisterDMContext dmc) {
 		getSession().dispatchEvent(new RegisterChangedDMEvent(dmc), getProperties());
+
+		// need to notify listeners via suspended event if the PC has changed
+		RegisterDMC regdmc = (RegisterDMC) dmc;
+		if (regdmc.getName().equals(getTargetEnvironmentService().getPCRegisterID())) {
+			IExecutionDMContext exeDMC = DMContexts.getAncestorOfType(dmc, IExecutionDMContext.class);
+			getSession().dispatchEvent(new SuspendedEvent(exeDMC, StateChangeReason.USER_REQUEST, new HashMap<String, Object>()), getProperties());
+		}
 	}
 
 	/**

@@ -181,9 +181,10 @@ public abstract class Stack extends AbstractEDCService implements IStack, ICachi
 
 		public void writeRegister(int regnum, int bytes, BigInteger value) throws CoreException {
 			String id = registers.getRegisterNameFromCommonID(regnum);
-			if (id != null)
-				registers.writeRegister(executionDMC, id, value.toString(16));
-			else
+			if (id != null) {
+				// if value is negative, using value.toString(16) directly gives values such as '-af'
+				registers.writeRegister(executionDMC, id, Long.toHexString(value.longValue()));
+			} else
 				throw EDCDebugger.newCoreException(MessageFormat.format("could not find register number {0}", regnum));
 		}
     }

@@ -19,6 +19,7 @@ import org.eclipse.cdt.debug.edc.internal.symbols.ICPPBasicType;
 import org.eclipse.cdt.debug.edc.internal.symbols.IEnumeration;
 import org.eclipse.cdt.debug.edc.internal.symbols.IField;
 import org.eclipse.cdt.debug.edc.internal.symbols.IPointerType;
+import org.eclipse.cdt.debug.edc.internal.symbols.ISubroutineType;
 import org.eclipse.cdt.debug.edc.symbols.IMemoryVariableLocation;
 import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.debug.edc.symbols.TypeUtils;
@@ -104,8 +105,11 @@ public class OperatorIndirection extends CompoundInstruction {
 			push(opValue);
 
 		} else {
-			throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.OperatorIndirection_UnhandledType, 
-					unqualifiedPointedTo != null ? unqualifiedPointedTo.getName() : "null"));
+			if (unqualifiedPointedTo instanceof ISubroutineType)
+				throw EDCDebugger.newCoreException(ASTEvalMessages.OperatorIndirection_NoFunction);
+			else
+				throw EDCDebugger.newCoreException(MessageFormat.format(ASTEvalMessages.OperatorIndirection_UnhandledType, 
+						unqualifiedPointedTo != null ? unqualifiedPointedTo.getName() : "null"));
 		}
 	}
 }

@@ -355,6 +355,7 @@ public class TypeEngine {
 	 * @return new IType
 	 * @throws CoreException
 	 */
+	@SuppressWarnings("unused")
 	private IType createTypeForTypeId(IASTTypeId typeId, String typeSignature, IType type) throws CoreException {
 		IASTDeclSpecifier declSpec = typeId.getDeclSpecifier();
 		if (declSpec instanceof IASTSimpleDeclSpecifier) {

@@ -1084,6 +1084,7 @@ public class DwarfInfoReader {
 	 * @param fileList list for file entries
 	 * @return new array of ILineEntry
 	 */
+	@SuppressWarnings("unused")
 	public Collection<ILineEntry> parseLineTable(IScope scope, AttributeList attributes, List<IPath> fileList) {
 		synchronized (provider) {
 			List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
@@ -1112,7 +1113,6 @@ public class DwarfInfoReader {
 					int length = data.getInt() + 4;
 	
 					// Skip the following till "opcode_base"
-					@SuppressWarnings("unused")
 					int version = data.getShort();
 					int prologue_length = data.getInt();
 					int minimum_instruction_length = data.get() & 0xff;
@@ -1177,7 +1177,6 @@ public class DwarfInfoReader {
 					int info_line = 1;
 					int info_column = 0;
 					boolean is_stmt = default_is_stmt;
-					@SuppressWarnings("unused")
 					int info_flags = 0;
 					long info_ISA = 0;
 	

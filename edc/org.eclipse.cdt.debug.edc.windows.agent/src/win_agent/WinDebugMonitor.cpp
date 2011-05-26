@@ -663,14 +663,22 @@ void WinDebugMonitor::HandleDLLUnloadedEvent(DEBUG_EVENT& debugEvent)
 void WinDebugMonitor::HandleDebugStringEvent(DEBUG_EVENT& debugEvent)
 {
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
-	char debugStringBuffer[2048];
-	ReadProcessMemory(process->GetProcessHandle(), debugEvent.u.DebugString.lpDebugStringData, debugStringBuffer,
-		sizeof(debugStringBuffer),NULL);
 
-	// write console data, if console
-	LoggingService::WriteLoggingMessage(channel, debugStringBuffer, LoggingService::GetWindowsConsoleID());
+	if (debugEvent.u.DebugString.fUnicode == 0)
+	{
+		int debugStringLength = debugEvent.u.DebugString.nDebugStringLength;
+		char* debugStringBuffer = new char[debugStringLength + 1];
+		ReadProcessMemory(process->GetProcessHandle(), debugEvent.u.DebugString.lpDebugStringData, debugStringBuffer,
+				debugStringLength,NULL);
+		debugStringBuffer[debugStringLength] = 0;
 
-	LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", debugStringBuffer);
+		// write console data, if console
+		LoggingService::WriteLoggingMessage(channel, debugStringBuffer, LoggingService::GetWindowsConsoleID());
+
+		delete[] debugStringBuffer;
+
+		LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", debugStringBuffer);
+	}
 
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
 }

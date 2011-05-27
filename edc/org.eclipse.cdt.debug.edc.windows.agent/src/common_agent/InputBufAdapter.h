@@ -24,7 +24,7 @@ public:
     
     InputBuf* getInputBuf() { return theBuf; }
 
-    virtual void post_read(InputBuf *, unsigned char *, int) = 0;
+    virtual void post_read(InputBuf *, unsigned char *, size_t) = 0;
     virtual void wait_read(InputBuf *) = 0;
     virtual void trigger_message(InputBuf *) = 0;
     
@@ -34,7 +34,7 @@ private:
     static std::map<InputBuf*, TCFInputBufAdpter*> adapterMap;
     static TCFInputBufAdpter* findInputStream(InputBuf* stream);
     
-    static void post_read_impl(InputBuf *, unsigned char *, int);
+    static void post_read_impl(InputBuf *, unsigned char *, size_t);
     static void wait_read_impl(InputBuf *);
     static void trigger_message_impl(InputBuf *);
     

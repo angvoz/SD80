@@ -39,7 +39,7 @@ TCFInputBufAdpter::~TCFInputBufAdpter() {
     adapterMap.erase(theBuf);
 }
 
-void  TCFInputBufAdpter::post_read_impl(InputBuf * ibuf,unsigned char *buf, int size) {
+void  TCFInputBufAdpter::post_read_impl(InputBuf * ibuf,unsigned char *buf, size_t size) {
       TCFInputBufAdpter* tcfInputBuf = findInputStream(ibuf);
       tcfInputBuf->post_read(ibuf,buf,size);
 }

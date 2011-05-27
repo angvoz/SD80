@@ -32,11 +32,13 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
+import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandParser;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
@@ -83,6 +85,34 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ICConfigurationDescription[] cfgDescriptions = projectDescription.getConfigurations();
 		return cfgDescriptions;
 	}
+	
+	/**
+	 * Sets build working directory for DefaultSettingConfiguration being tested.
+	 */
+	private void setBuilderCWD(IProject project, IPath buildCWD) throws CoreException {
+		CProjectDescriptionManager manager = CProjectDescriptionManager.getInstance();
+		{
+			ICProjectDescription prjDescription = manager.getProjectDescription(project, true);
+			assertNotNull(prjDescription);
+			ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
+			assertNotNull(cfgDescription);
+
+			cfgDescription.getBuildSetting().setBuilderCWD(buildCWD);
+			manager.setProjectDescription(project, prjDescription);
+			// doublecheck builderCWD
+			IPath actualBuildCWD = cfgDescription.getBuildSetting().getBuilderCWD();
+			assertEquals(buildCWD, actualBuildCWD);
+		}
+		{
+			// triplecheck builderCWD for different project/configuration descriptions
+			ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
+			assertNotNull(prjDescription);
+			ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
+			assertNotNull(cfgDescription);
+
+		}
+	}
+
 
 	public void testAbstractBuildCommandParser_CloneAndEquals() throws Exception {
 		// create instance to compare to
@@ -861,7 +891,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
-	public void testCIncludePathEntry_ExpandRelativePath() throws Exception {
+	public void testPathEntry_ExpandRelativePath() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -901,7 +931,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
-	public void testCIncludePathEntry_DoNotExpandRelativePath() throws Exception {
+	public void testPathEntry_DoNotExpandRelativePath() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -937,7 +967,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
-	public void testCIncludePathEntry_DuplicatePath() throws Exception {
+	public void testPathEntry_DuplicatePath() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -971,7 +1001,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
-	public void testCIncludePathEntry_FollowCWD() throws Exception {
+	public void testPathEntry_FollowCWD() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1015,7 +1045,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
-	public void testCIncludePathEntry_NonExistentCWD_Workspace() throws Exception {
+	public void testPathEntry_NonExistentCWD_Workspace() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1054,7 +1084,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
-	public void testCIncludePathEntry_NonExistentCWD_Filesystem() throws Exception {
+	public void testPathEntry_NonExistentCWD_Filesystem() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1094,7 +1124,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 	
 	/**
 	 */
-	public void testCIncludePathEntry_MappedRemoteFolder() throws Exception {
+	public void testPathEntry_MappedRemoteFolder() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1138,6 +1168,52 @@ public class GCCBuildCommandParserTest extends TestCase {
 		}
 	}
 
+	/**
+	 */
+	public void testPathEntry_BuildDirDefinedByConfiguration() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		// Create resources trying to confuse the parser
+		IFile fileInProjectRoot=ResourceHelper.createFile(project, "file.cpp");
+		IFolder includeDirInProjectRoot=ResourceHelper.createFolder(project, "include");
+		// Create resources meant to be found
+		IFolder buildDir=ResourceHelper.createFolder(project, "BuildDir");
+		IFile file=ResourceHelper.createFile(project, "BuildDir/file.cpp");
+		IFolder includeDir=ResourceHelper.createFolder(project, "BuildDir/include");
+		// Change build dir
+		setBuilderCWD(project, buildDir.getLocation());
+		
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		
+		// create ErrorParserManager with build dir taken from the configuration
+		URI cfgBuildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(cfgDescription.getBuildSetting().getBuilderCWD());
+		ErrorParserManager epm = new ErrorParserManager(project, cfgBuildDirURI, null, null);
+		
+		// parse fake line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I."
+				+ " -Iinclude"
+				+ " file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(buildDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+			assertEquals(new CIncludePathEntry(includeDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
+		}
+	}
+	
 	/**
 	 */
 	public void testBoostBjam() throws Exception {

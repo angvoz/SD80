@@ -448,9 +448,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				final DataRequestMonitor<Boolean> preprocessDrm = new DataRequestMonitor<Boolean>(getExecutor(), null) {
 					@Override
 					protected void handleCompleted() {
-						boolean honorSuspend = getData();
+						Boolean honorSuspend = getData();
 						
-						if (honorSuspend) { // do suspend
+						if (honorSuspend!=null && honorSuspend) { // do suspend
 
 							// All the following must be done in DSF dispatch
 							// thread to ensure data integrity.

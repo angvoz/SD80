@@ -41,6 +41,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <assert.h>
+#include <string.h>
 #include <framework/tcf.h>
 #include <framework/myalloc.h>
 #include <framework/events.h>
@@ -103,11 +104,11 @@ static void app_strz(const char * str) {
     app_char(0);
 }
 
-static int get_slave_addr(char * buf, int * pos, struct sockaddr_in * addr, time_t * timestamp) {
+static int get_slave_addr(char * buf, ssize_t * pos, struct sockaddr_in * addr, uint64_t * timestamp) {
     char * port = buf + *pos;
     char * stmp = buf + *pos;
     char * host = buf + *pos;
-    int len = strlen(buf + *pos);
+    size_t len = strlen(buf + *pos);
     uint64_t ts = 0;
     int n = 0;
 
@@ -129,7 +130,7 @@ static int get_slave_addr(char * buf, int * pos, struct sockaddr_in * addr, time
     while (*stmp >= '0' && *stmp <= '9') {
         ts = (ts * 10) + (*stmp++ - '0');
     }
-    *timestamp = (time_t)(ts / 1000);
+    *timestamp = ts;
     return 1;
 }
 
@@ -291,7 +292,8 @@ static int send_packet(ip_ifc_info * ifc, struct sockaddr_in * addr) {
         addr = &buf;
         addr->sin_family = AF_INET;
         addr->sin_port = htons(DISCOVERY_TCF_PORT);
-        addr->sin_addr.s_addr = ifc->addr | ~ifc->mask;
+        addr->sin_addr.s_addr = ifc->addr;
+        if (*(uint8_t *)&ifc->addr != 127) addr->sin_addr.s_addr |= ~ifc->mask;
     }
 
     /* Don't send if address does not belong to subnet of the interface */
@@ -358,15 +360,19 @@ static int send_packet(ip_ifc_info * ifc, struct sockaddr_in * addr) {
 static int udp_send_peer_info(PeerServer * ps, void * arg) {
     struct sockaddr_in * addr = (struct sockaddr_in *)arg;
     const char * host = NULL;
+    const char * prot = NULL;
     struct in_addr peer_addr;
     int n;
 
     if ((ps->flags & PS_FLAG_PRIVATE) != 0) return 0;
     if ((ps->flags & PS_FLAG_DISCOVERABLE) == 0) return 0;
 
-    host = peer_server_getprop(ps, "Host", NULL);
-    if (host == NULL || inet_pton(AF_INET, host, &peer_addr) <= 0) return 0;
-    if (peer_server_getprop(ps, "Port", NULL) == NULL) return 0;
+    memset(&peer_addr, 0, sizeof(peer_addr));
+    prot = peer_server_getprop(ps, "TransportName", NULL);
+    if (prot != NULL && (strcmp(prot, "TCP") == 0 || strcmp(prot, "SSL") == 0)) {
+        host = peer_server_getprop(ps, "Host", NULL);
+        if (host == NULL || inet_pton(AF_INET, host, &peer_addr) <= 0) return 0;
+    }
 
     send_size = 8;
 
@@ -376,11 +382,13 @@ static int udp_send_peer_info(PeerServer * ps, void * arg) {
         if ((ps->flags & PS_FLAG_LOCAL) == 0) {
             /* Info about non-local peers is sent only by master */
             if (udp_server_port != DISCOVERY_TCF_PORT) return 0;
+            if (host == NULL) return 0;
             if (ifc->addr != htonl(INADDR_LOOPBACK) && ifc->addr != peer_addr.s_addr) continue;
         }
 
-        assert(peer_addr.s_addr != INADDR_ANY);
         if (ifc->addr != htonl(INADDR_LOOPBACK)) {
+            if (host == NULL) continue;
+            assert(peer_addr.s_addr != INADDR_ANY);
             if ((ifc->addr & ifc->mask) != (peer_addr.s_addr & ifc->mask)) {
                 /* Peer address does not belong to subnet of this interface */
                 continue;
@@ -445,6 +453,9 @@ static void udp_send_req_slaves(ip_ifc_info * ifc, struct sockaddr_in * addr) {
 static void udp_send_ack_slaves_one(SlaveInfo * s) {
     ip_ifc_info * ifc;
     time_t timenow = time(NULL);
+    int ttl = (int)(s->last_packet_time + PEER_DATA_RETENTION_PERIOD - timenow) * 1000;
+
+    if (ttl <= 0) return;
 
     for (ifc = ifc_list; ifc < &ifc_list[ifc_cnt]; ifc++) {
         int n = 0;
@@ -453,8 +464,7 @@ static void udp_send_ack_slaves_one(SlaveInfo * s) {
 
         send_size = 8;
         send_buf[4] = UDP_ACK_SLAVES;
-        snprintf(str, sizeof(str), "%" PRId64 ":%u:%s", (int64_t)s->last_packet_time * 1000,
-            ntohs(s->addr.sin_port), inet_ntoa(s->addr.sin_addr));
+        snprintf(str, sizeof(str), "%u:%u:%s", ttl, ntohs(s->addr.sin_port), inet_ntoa(s->addr.sin_addr));
         app_strz(str);
 
         while (n < slave_cnt) {
@@ -480,7 +490,8 @@ static void udp_send_ack_slaves_all(struct sockaddr_in * addr, time_t timenow) {
         while (n < slave_cnt) {
             char str[256];
             SlaveInfo * s = slave_info + n++;
-            if (s->last_packet_time + PEER_DATA_RETENTION_PERIOD < timenow) continue;
+            int ttl = (int)(s->last_packet_time + PEER_DATA_RETENTION_PERIOD - timenow) * 1000;
+            if (ttl <= 0) continue;
             if (addr->sin_addr.s_addr == s->addr.sin_addr.s_addr && addr->sin_port == s->addr.sin_port) continue;
             if (ifc->addr != htonl(INADDR_LOOPBACK)) {
                 if ((ifc->addr & ifc->mask) != (s->addr.sin_addr.s_addr & ifc->mask)) {
@@ -488,8 +499,7 @@ static void udp_send_ack_slaves_all(struct sockaddr_in * addr, time_t timenow) {
                     continue;
                 }
             }
-            snprintf(str, sizeof(str), "%"PRId64":%u:%s", (int64_t)s->last_packet_time * 1000,
-                ntohs(s->addr.sin_port), inet_ntoa(s->addr.sin_addr));
+            snprintf(str, sizeof(str), "%u:%u:%s", ttl, ntohs(s->addr.sin_port), inet_ntoa(s->addr.sin_addr));
             if (send_size + strlen(str) >= PREF_PACKET_SIZE) {
                 send_packet(ifc, addr);
                 send_size = 8;
@@ -649,22 +659,38 @@ static void udp_receive_req_slaves(SlaveInfo * s, time_t timenow) {
 }
 
 static void udp_receive_ack_slaves(time_t timenow) {
-    int pos = 8;
-    int len = recvreq.u.sio.rval;
+    ssize_t pos = 8;
+    ssize_t len = recvreq.u.sio.rval;
     while (pos < len) {
         struct sockaddr_in addr;
-        time_t timestamp;
+        uint64_t timestamp;
         if (get_slave_addr(recv_buf, &pos, &addr, &timestamp)) {
-            trace(LOG_DISCOVERY, "ACK_SLAVES %"PRId64":%u:%s from %s:%d",
-                (int64_t)timestamp * 1000, ntohs(addr.sin_port), inet_ntoa(addr.sin_addr),
-                inet_ntoa(recvreq_addr.sin_addr), ntohs(recvreq_addr.sin_port));
-            if (timestamp < timenow - 600 || timestamp > timenow + 600) {
-                trace(LOG_ALWAYS, "Discovery: invalid slave info timestamp %"PRId64" from %s:%d",
-                    (int64_t)timestamp * 1000, inet_ntoa(recvreq_addr.sin_addr), ntohs(recvreq_addr.sin_port));
+            time_t delta = 60 * 10; /* 10 minutes */
+            time_t timeval = 0;
+            if (timestamp < 3600000) {
+                /* Timestamp is "time to live" in milliseconds */
+                timeval = timenow + (time_t)(timestamp / 1000) - PEER_DATA_RETENTION_PERIOD;
+            }
+            else if (timestamp < (uint64_t)timenow + 50000000) {
+                /* Timestamp is in seconds */
+                timeval = (time_t)timestamp;
             }
             else {
-                add_slave(&addr, timestamp);
+                /* Timestamp is in milliseconds */
+                timeval = (time_t)(timestamp / 1000);
             }
+            if (log_mode & LOG_DISCOVERY) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%s:%d", inet_ntoa(recvreq_addr.sin_addr), ntohs(recvreq_addr.sin_port));
+                trace(LOG_DISCOVERY, "ACK_SLAVES %"PRId64":%u:%s from %s",
+                    timestamp, ntohs(addr.sin_port), inet_ntoa(addr.sin_addr), buf);
+            }
+            if (timeval < timenow - delta || timeval > timenow + delta) {
+                trace(LOG_DISCOVERY, "Discovery: invalid slave info timestamp %"PRId64" from %s:%d",
+                    timestamp, inet_ntoa(recvreq_addr.sin_addr), ntohs(recvreq_addr.sin_port));
+                timeval = timenow - PEER_DATA_RETENTION_PERIOD / 2;
+            }
+            add_slave(&addr, timeval);
         }
     }
 }

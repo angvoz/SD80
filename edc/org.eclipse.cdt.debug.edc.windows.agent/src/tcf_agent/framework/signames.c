@@ -25,8 +25,8 @@
 
 typedef struct ExceptionName {
     DWORD code;
-    char * name;
-    char * desc;
+    const char * name;
+    const char * desc;
 } ExceptionName;
 
 static ExceptionName exception_names[] = {
@@ -93,58 +93,89 @@ int get_signal_from_code(unsigned code) {
 #else
 
 /*
- * POSIX signal names
+ * POSIX signals info
  */
 
-#define CASE(var) case var: return ""#var;
-const char * signal_name(int signal) {
-    switch (signal) {
-    CASE(SIGHUP)
-    CASE(SIGINT)
-    CASE(SIGQUIT)
-    CASE(SIGILL)
-    CASE(SIGTRAP)
-    CASE(SIGABRT)
-    CASE(SIGBUS)
-    CASE(SIGFPE)
-    CASE(SIGKILL)
-    CASE(SIGUSR1)
-    CASE(SIGSEGV)
-    CASE(SIGUSR2)
-    CASE(SIGPIPE)
-    CASE(SIGALRM)
-    CASE(SIGTERM)
+typedef struct SignalInfo {
+    int signal;
+    const char * name;
+    const char * desc;
+} SignalInfo;
+
+#define SigDesc(sig, desc) { sig, ""#sig, desc },
+static SignalInfo info[] = {
+    SigDesc(SIGHUP,    "Hangup")
+    SigDesc(SIGINT,    "Interrupt")
+    SigDesc(SIGQUIT,   "Quit and dump core")
+    SigDesc(SIGILL,    "Illegal instruction")
+    SigDesc(SIGTRAP,   "Trace/breakpoint trap")
+    SigDesc(SIGABRT,   "Process aborted")
+    SigDesc(SIGBUS,    "Bus error")
+    SigDesc(SIGFPE,    "Floating point exception")
+    SigDesc(SIGKILL,   "Request to kill")
+    SigDesc(SIGUSR1,   "User-defined signal 1")
+    SigDesc(SIGSEGV,   "Segmentation violation")
+    SigDesc(SIGUSR2,   "User-defined signal 2")
+    SigDesc(SIGPIPE,   "Write to pipe with no one reading")
+    SigDesc(SIGALRM,   "Signal raised by alarm")
+    SigDesc(SIGTERM,   "Request to terminate")
 #ifdef SIGSTKFLT
-    CASE(SIGSTKFLT)
+    SigDesc(SIGSTKFLT, "Stack fault")
 #endif
-    CASE(SIGCHLD)
-    CASE(SIGCONT)
-    CASE(SIGSTOP)
-    CASE(SIGTSTP)
-    CASE(SIGTTIN)
-    CASE(SIGTTOU)
-    CASE(SIGURG)
-    CASE(SIGXCPU)
-    CASE(SIGXFSZ)
-    CASE(SIGVTALRM)
-    CASE(SIGPROF)
+    SigDesc(SIGCHLD,   "Child process terminated or stopped")
+    SigDesc(SIGCONT,   "Continue if stopped")
+    SigDesc(SIGSTOP,   "Stop executing temporarily")
+    SigDesc(SIGTSTP,   "Terminal stop signal")
+    SigDesc(SIGTTIN,   "Background process attempting to read from tty")
+    SigDesc(SIGTTOU,   "Background process attempting to write to tty")
+    SigDesc(SIGURG,    "Urgent data available on socket")
+    SigDesc(SIGXCPU,   "CPU time limit exceeded")
+    SigDesc(SIGXFSZ,   "File size limit exceeded")
+    SigDesc(SIGVTALRM, "Virtual time timer expired")
+    SigDesc(SIGPROF,   "Profiling timer expired")
 #ifdef SIGWINCH
-    CASE(SIGWINCH)
+    SigDesc(SIGWINCH,  "Window resize signal")
 #endif
 #ifdef SIGIO
-    CASE(SIGIO)
+    SigDesc(SIGIO,     "Asynchronous I/O event")
+#elif defined(SIGPOLL)
+    SigDesc(SIGPOLL,   "Asynchronous I/O event")
+#endif
+#ifdef SIGINFO
+    SigDesc(SIGINFO,   "Information request")
 #endif
 #ifdef SIGPWR
-    CASE(SIGPWR)
+    SigDesc(SIGPWR,    "Power failure")
 #endif
-    CASE(SIGSYS)
+    SigDesc(SIGSYS,    "Bad syscall")
+};
+#undef SigDesc
+
+#define INFO_CNT ((int)(sizeof(info) / sizeof(SignalInfo)))
+
+static SignalInfo * get_info(int signal) {
+    static SignalInfo * index[32];
+    static int index_ok = 0;
+    if (signal < 0 || signal > 31) return NULL;
+    if (!index_ok) {
+        int i;
+        for (i = 0; i < INFO_CNT; i++) {
+            index[info[i].signal] = &info[i];
+        }
+        index_ok = 1;
     }
+    return index[signal];
+}
+
+const char * signal_name(int signal) {
+    SignalInfo * i = get_info(signal);
+    if (i != NULL) return i->name;
     return NULL;
 }
-#undef CASE
 
 const char * signal_description(int signal) {
-    /* TODO: signal description */
+    SignalInfo * i = get_info(signal);
+    if (i != NULL) return i->desc;
     return NULL;
 }
 

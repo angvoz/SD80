@@ -97,6 +97,9 @@ int main(int argc, char ** argv) {
             case 'l':
             case 'L':
             case 's':
+#if ENABLE_Plugins
+            case 'P':
+#endif
                 if (*s == '\0') {
                     if (++ind >= argc) {
                         fprintf(stderr, "%s: error: no argument given to option '%c'\n", progname, c);
@@ -116,6 +119,12 @@ int main(int argc, char ** argv) {
                 case 's':
                     url = s;
                     break;
+
+#if ENABLE_Plugins
+                case 'P':
+                    plugins_path = s;
+                    break;
+#endif
 
                 default:
                     fprintf(stderr, "%s: error: illegal option '%c'\n", progname, c);
@@ -147,7 +156,10 @@ int main(int argc, char ** argv) {
 #endif
 
     ini_services(proto, bcg);
-    ini_server(url, proto, bcg);
+    if (ini_server(url, proto, bcg) < 0) {
+        fprintf(stderr, "Cannot create TCF server: %s\n", errno_to_str(errno));
+        exit(1);
+    }
     discovery_start();
 
     /* Process events - must run on the initial thread since ptrace()

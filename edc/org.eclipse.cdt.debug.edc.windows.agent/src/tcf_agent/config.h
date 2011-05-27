@@ -105,6 +105,9 @@
 #if !defined(SERVICE_PathMap)
 #define SERVICE_PathMap         ENABLE_ELF
 #endif
+#if !defined(SERVICE_Terminals)
+#define SERVICE_Terminals       TARGET_UNIX
+#endif
 
 #if !defined(ENABLE_Plugins)
 #  if TARGET_UNIX && defined(PATH_Plugins)
@@ -190,17 +193,34 @@
 #endif
 
 #if !defined(ENABLE_RCBP_TEST)
-#  define ENABLE_RCBP_TEST      (!ENABLE_ContextProxy && (SERVICE_RunControl && SERVICE_Breakpoints))
+#  if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+/* TODO: debug services are not fully implemented on BSD */
+#    define ENABLE_RCBP_TEST    0
+#  else
+#    define ENABLE_RCBP_TEST    (!ENABLE_ContextProxy && (SERVICE_RunControl && SERVICE_Breakpoints))
+#  endif
 #endif
 
 #if !defined(ENABLE_AIO)
-/* Linux implementation of POSIX AIO found to be inefficient */
-/* Symbian impl (OpenC) not desired either */
-#  if !defined(__linux__) && defined(_POSIX_ASYNCHRONOUS_IO) && !TARGET_SYMBIAN
-#    define ENABLE_AIO          1
-#  else
+#  if !defined(_POSIX_ASYNCHRONOUS_IO)
 #    define ENABLE_AIO          0
+#  elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
+/* On BSD AIO sends signal SIGSYS - bad system call */
+#    define ENABLE_AIO          0
+#  elif defined(__linux__)
+/* Linux implementation of POSIX AIO found to be inefficient */
+#    define ENABLE_AIO          0
+#  elif TARGET_SYMBIAN
+/* Symbian impl (OpenC) not desired either */
+#    define ENABLE_AIO          0
+#  else
+#    define ENABLE_AIO          1
 #  endif
+#endif
+
+#if !defined(ENABLE_STREAM_MACROS)
+/* Enabling stream macros increases code size about 5%, and increases speed about 7% */
+#  define ENABLE_STREAM_MACROS  0
 #endif
 
 #if !defined(ENABLE_LUA)
@@ -209,6 +229,15 @@
 #  else
 #    define ENABLE_LUA          0
 #  endif
+#endif
+
+#if !defined(ENABLE_Unix_Domain)
+/* Using UNIX:/path/to/socket for local TCP communication */
+#  define ENABLE_Unix_Domain    (TARGET_UNIX || TARGET_SYMBIAN)
+#endif
+
+#if !defined(ENABLE_ContextStateProperties)
+#  define ENABLE_ContextStateProperties 0
 #endif
 
 #endif /* D_config */

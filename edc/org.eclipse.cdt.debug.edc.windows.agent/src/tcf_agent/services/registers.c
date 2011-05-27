@@ -37,11 +37,30 @@ static const char * REGISTERS = "Registers";
 
 static TCFBroadcastGroup * broadcast_group = NULL;
 
+typedef struct Listener {
+    RegistersEventListener * func;
+    void * args;
+} Listener;
+
+static Listener * listeners = NULL;
+static unsigned listener_cnt = 0;
+static unsigned listener_max = 0;
+
 static uint8_t * bbf = NULL;
 static unsigned bbf_pos = 0;
 static unsigned bbf_len = 0;
 
-static void write_context(OutputStream * out, char * id, Context * ctx, int frame, RegisterDefinition * reg_def) {
+static void write_boolean_member(OutputStream * out, const char * name, int val) {
+    /* For this service FALSE is same as absence of the member */
+    if (!val) return;
+    write_stream(out, ',');
+    json_write_string(out, name);
+    write_stream(out, ':');
+    json_write_boolean(out, 1);
+}
+
+static void write_context(OutputStream * out, char * id,
+        Context * ctx, int frame, RegisterDefinition * reg_def) {
     assert(!ctx->exited);
 
     write_stream(out, '{');
@@ -53,12 +72,20 @@ static void write_context(OutputStream * out, char * id, Context * ctx, int fram
     write_stream(out, ',');
     json_write_string(out, "ParentID");
     write_stream(out, ':');
-    if (frame < 0 || is_top_frame(ctx, frame)) {
+    if (reg_def->parent != NULL) {
+        json_write_string(out, register2id(ctx, frame, reg_def->parent));
+    }
+    else if (frame < 0 || is_top_frame(ctx, frame)) {
         json_write_string(out, ctx->id);
     }
     else {
         json_write_string(out, frame2id(ctx, frame));
     }
+
+    write_stream(out, ',');
+    json_write_string(out, "ProcessID");
+    write_stream(out, ':');
+    json_write_string(out, context_get_group(ctx, CONTEXT_GROUP_PROCESS)->id);
 
     write_stream(out, ',');
     json_write_string(out, "Name");
@@ -69,23 +96,6 @@ static void write_context(OutputStream * out, char * id, Context * ctx, int fram
     json_write_string(out, "Size");
     write_stream(out, ':');
     json_write_long(out, reg_def->size);
-
-    write_stream(out, ',');
-    json_write_string(out, "Readable");
-    write_stream(out, ':');
-    json_write_boolean(out, 1);
-
-    write_stream(out, ',');
-    json_write_string(out, "Writeable");
-    write_stream(out, ':');
-    json_write_boolean(out, 1);
-
-    if (reg_def == get_PC_definition(ctx)) {
-        write_stream(out, ',');
-        json_write_string(out, "Role");
-        write_stream(out, ':');
-        json_write_string(out, "PC");
-    }
 
     if (reg_def->dwarf_id >= 0) {
         write_stream(out, ',');
@@ -101,22 +111,92 @@ static void write_context(OutputStream * out, char * id, Context * ctx, int fram
         json_write_long(out, reg_def->eh_frame_id);
     }
 
-    if (reg_def->traceable) {
+    write_boolean_member(out, "BigEndian", reg_def->big_endian);
+    write_boolean_member(out, "Float", reg_def->fp_value);
+    write_boolean_member(out, "Readable", !reg_def->no_read);
+    write_boolean_member(out, "Writeable", !reg_def->no_write);
+    write_boolean_member(out, "ReadOnce", reg_def->read_once);
+    write_boolean_member(out, "WriteOnce", reg_def->write_once);
+    write_boolean_member(out, "Volatile", reg_def->volatile_value);
+    write_boolean_member(out, "SideEffects", reg_def->side_effects);
+    write_boolean_member(out, "LeftToRight", reg_def->left_to_right);
+
+    if (reg_def->first_bit > 0) {
         write_stream(out, ',');
-        json_write_string(out, "Traceable");
+        json_write_string(out, "FirstBit");
         write_stream(out, ':');
-        json_write_boolean(out, reg_def->traceable);
+        json_write_long(out, reg_def->first_bit);
     }
 
-    write_stream(out, ',');
-    json_write_string(out, "ProcessID");
-    write_stream(out, ':');
-    json_write_string(out, ctx->mem->id);
+    if (reg_def->bits != NULL) {
+        int i = 0;
+        write_stream(out, ',');
+        json_write_string(out, "Bits");
+        write_stream(out, ':');
+        write_stream(out, '[');
+        while (reg_def->bits[i] >= 0) {
+            if (i > 0) write_stream(out, ',');
+            json_write_long(out, reg_def->bits[i++]);
+        }
+        write_stream(out, ']');
+    }
 
-    write_stream(out, ',');
-    json_write_string(out, "BigEndian");
-    write_stream(out, ':');
-    json_write_boolean(out, reg_def->big_endian);
+    if (reg_def->values != NULL) {
+        int i = 0;
+        write_stream(out, ',');
+        json_write_string(out, "Values");
+        write_stream(out, ':');
+        write_stream(out, '[');
+        while (reg_def->values[i] != NULL) {
+            NamedRegisterValue * v = reg_def->values[i++];
+            if (i > 0) write_stream(out, ',');
+            write_stream(out, '(');
+            json_write_string(out, "Value");
+            write_stream(out, ':');
+            json_write_binary(out, v->value, reg_def->size);
+            if (v->name != NULL) {
+                write_stream(out, ',');
+                json_write_string(out, "Name");
+                write_stream(out, ':');
+                json_write_string(out, v->name);
+            }
+            if (v->description != NULL) {
+                write_stream(out, ',');
+                json_write_string(out, "Description");
+                write_stream(out, ':');
+                json_write_string(out, v->description);
+            }
+            write_stream(out, '}');
+        }
+        write_stream(out, ']');
+    }
+
+    if (reg_def->memory_address > 0) {
+        write_stream(out, ',');
+        json_write_string(out, "MemoryAddress");
+        write_stream(out, ':');
+        json_write_uint64(out, reg_def->memory_address);
+    }
+
+    if (reg_def->memory_context != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, "MemoryContext");
+        write_stream(out, ':');
+        json_write_string(out, reg_def->memory_context);
+    }
+
+    if (reg_def->role != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, "Role");
+        write_stream(out, ':');
+        json_write_string(out, reg_def->role);
+    }
+    else if (reg_def == get_PC_definition(ctx)) {
+        write_stream(out, ',');
+        json_write_string(out, "Role");
+        write_stream(out, ':');
+        json_write_string(out, "PC");
+    }
 
     write_stream(out, '}');
     write_stream(out, 0);
@@ -177,10 +257,14 @@ static void command_get_children_cache_client(void * x) {
     int frame = STACK_NO_FRAME;
     StackFrame * frame_info = NULL;
     RegisterDefinition * defs = NULL;
+    RegisterDefinition * parent = NULL;
     Trap trap;
 
     if (set_trap(&trap)) {
-        if (id2frame(args->id, &ctx, &frame) == 0) {
+        if (id2register(args->id, &ctx, &frame, &parent) == 0) {
+            if (frame != STACK_TOP_FRAME && get_frame_info(ctx, frame, &frame_info) < 0) exception(errno);
+        }
+        else if (id2frame(args->id, &ctx, &frame) == 0) {
             if (get_frame_info(ctx, frame, &frame_info) < 0) exception(errno);
         }
         else {
@@ -203,7 +287,9 @@ static void command_get_children_cache_client(void * x) {
         int cnt = 0;
         RegisterDefinition * reg_def;
         for (reg_def = defs; reg_def->name != NULL; reg_def++) {
-            if (frame == STACK_TOP_FRAME || read_reg_value(frame_info, reg_def, NULL) == 0) {
+            if (reg_def->parent != parent) continue;
+            if (frame == STACK_TOP_FRAME || frame_info->is_top_frame ||
+                    reg_def->size == 0 || read_reg_value(frame_info, reg_def, NULL) == 0) {
                 if (cnt > 0) write_stream(&c->out, ',');
                 json_write_string(&c->out, register2id(ctx, frame, reg_def));
                 cnt++;
@@ -227,8 +313,21 @@ static void command_get_children(char * token, Channel * c) {
     cache_enter(command_get_children_cache_client, c, &args, sizeof(args));
 }
 
-static void send_event_register_changed(char * id) {
+void send_event_register_changed(const char * id) {
+    unsigned i;
+    Context * ctx = NULL;
+    int frame = STACK_NO_FRAME;
+    RegisterDefinition * def = NULL;
     OutputStream * out = &broadcast_group->out;
+
+    id2register(id, &ctx, &frame, &def);
+
+    for (i = 0; i < listener_cnt; i++) {
+        Listener * l = listeners + i;
+        if (l->func->register_changed == NULL) continue;
+        l->func->register_changed(ctx, frame, def, l->args);
+    }
+
     write_stringz(out, "E");
     write_stringz(out, REGISTERS);
     write_stringz(out, "registerChanged");
@@ -302,7 +401,7 @@ static void command_get(char * token, Channel * c) {
 typedef struct SetArgs {
     char token[256];
     char id[256];
-    int data_len;
+    size_t data_len;
     uint8_t * data;
 } SetArgs;
 
@@ -471,7 +570,7 @@ typedef struct SetmArgs {
     char token[256];
     unsigned locs_cnt;
     Location * locs;
-    int data_len;
+    size_t data_len;
     uint8_t * data;
 } SetmArgs;
 
@@ -540,6 +639,16 @@ static void command_search(char * token, Channel * c) {
     write_stream(&c->out, MARKER_EOM);
 }
 
+void add_registers_event_listener(RegistersEventListener * listener, void * args) {
+    if (listener_cnt >= listener_max) {
+        listener_max += 8;
+        listeners = (Listener *)loc_realloc(listeners, listener_max * sizeof(Listener));
+    }
+    listeners[listener_cnt].func = listener;
+    listeners[listener_cnt].args = args;
+    listener_cnt++;
+}
+
 void ini_registers_service(Protocol * proto, TCFBroadcastGroup * bcg) {
     broadcast_group = bcg;
     add_command_handler(proto, REGISTERS, "getContext", command_get_context);
@@ -552,5 +661,3 @@ void ini_registers_service(Protocol * proto, TCFBroadcastGroup * bcg) {
 }
 
 #endif /* SERVICE_Registers */
-
-

@@ -29,7 +29,9 @@
 #if defined(WIN32) || defined(__CYGWIN__)
 /* MS Windows NT/XP */
 
-#define _WIN32_WINNT 0x0501
+#ifndef _WIN32_WINNT
+#  define _WIN32_WINNT 0x0501
+#endif
 
 #if defined(__CYGWIN__)
 #  define _WIN32_IE 0x0501
@@ -41,6 +43,7 @@
 #  pragma warning(disable:4127) /* conditional expression is constant */
 #  pragma warning(disable:4152) /* nonstandard extension, function/data pointer conversion in expression */
 #  pragma warning(disable:4100) /* unreferenced formal parameter */
+#  pragma warning(disable:4611) /* interaction between '_setjmp' and C++ object destruction is non-portable */
 #  pragma warning(disable:4996) /* 'strcpy': This function or variable may be unsafe */
 #  ifdef UNICODE
 /* TCF code uses UTF-8 multibyte character encoding */
@@ -103,15 +106,22 @@ extern int __stdcall getaddrinfo(const char *, const char *,
 #else /* not __CYGWIN__ */
 
 #include <direct.h>
+#include <errno.h>
 
+#if !defined(HAVE_STRUCT_TIMESPEC) && !defined(_TIMESPEC_DEFINED)
 struct timespec {
     time_t  tv_sec;         /* seconds */
     long    tv_nsec;        /* nanoseconds */
 };
+#define HAVE_STRUCT_TIMESPEC
+#define _TIMESPEC_DEFINED
+#endif
 
 #define SIGKILL 1
 
-#define ETIMEDOUT 100
+#ifndef ETIMEDOUT
+#define ETIMEDOUT 10060 /* Value from winsock.h. */
+#endif
 
 #if defined(__MINGW32__)
 typedef unsigned int useconds_t;
@@ -144,7 +154,7 @@ extern int geteuid(void);
 extern int getgid(void);
 extern int getegid(void);
 
-extern ssize_t pread(int fd, const void * buf, size_t size, off_t offset);
+extern ssize_t pread(int fd, void * buf, size_t size, off_t offset);
 extern ssize_t pwrite(int fd, const void * buf, size_t size, off_t offset);
 
 /* UTF-8 support */
@@ -217,37 +227,11 @@ extern const char * loc_gai_strerror(int ecode);
 extern const char * inet_ntop(int af, const void * src, char * dst, socklen_t size);
 extern int inet_pton(int af, const char * src, void * dst);
 
-/*
- * PThreads emulation.
- */
-#if defined(__CYGWIN__)
-#  include <cygwin/types.h>
+#ifdef DISABLE_PTHREADS_WIN32
+#  include <pthread.h>
 #else
-typedef void * pthread_t;
-typedef void * pthread_attr_t;
-typedef void * pthread_mutex_t;
-typedef void * pthread_cond_t;
-typedef void * pthread_mutexattr_t;
-typedef void * pthread_condattr_t;
+#  include <system/Windows/pthreads-win32.h>
 #endif
-
-extern int pthread_attr_init(pthread_attr_t * attr);
-extern int pthread_mutex_init(pthread_mutex_t * mutex, const pthread_mutexattr_t * attr);
-extern int pthread_cond_init(pthread_cond_t * cond, const pthread_condattr_t * attr);
-extern int pthread_cond_destroy(pthread_cond_t * cond);
-
-extern int pthread_cond_signal(pthread_cond_t * cond);
-extern int pthread_cond_broadcast(pthread_cond_t * cond);
-extern int pthread_cond_wait(pthread_cond_t * cond, pthread_mutex_t * mutex);
-extern int pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
-                                  const struct timespec * abstime);
-extern int pthread_mutex_lock(pthread_mutex_t * mutex);
-extern int pthread_mutex_unlock(pthread_mutex_t * mutex);
-extern pthread_t pthread_self(void);
-extern int pthread_create(pthread_t * thread, const pthread_attr_t * attr,
-                          void * (*start_routine)(void *), void * arg);
-extern int pthread_join(pthread_t thread, void **value_ptr);
-extern int pthread_equal(pthread_t thread1, pthread_t thread2);
 
 /*
  * Windows socket functions don't set errno as expected.
@@ -322,6 +306,11 @@ typedef unsigned long uintptr_t;
 typedef unsigned long useconds_t;
 
 #define FILE_PATH_SIZE PATH_MAX
+
+#ifndef MEM_USAGE_FACTOR
+#  define MEM_USAGE_FACTOR 2
+#endif
+
 #define O_BINARY 0
 #define O_LARGEFILE 0
 #define lstat stat
@@ -331,7 +320,7 @@ typedef unsigned long useconds_t;
 
 extern int truncate(char * path, int64_t size);
 extern char * canonicalize_file_name(const char * path);
-extern ssize_t pread(int fd, const void * buf, size_t size, off_t offset);
+extern ssize_t pread(int fd, void * buf, size_t size, off_t offset);
 extern ssize_t pwrite(int fd, const void * buf, size_t size, off_t offset);
 
 extern void usleep(useconds_t useconds);
@@ -354,6 +343,7 @@ extern const char * loc_gai_strerror(int ecode);
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/un.h>
 #include <socket.h>
 #include <in.h>
 #include <netdb.h>
@@ -379,6 +369,10 @@ extern const char * loc_gai_strerror(int ecode);
 #define MAX_PATH _POSIX_PATH_MAX
 #define FILE_PATH_SIZE _POSIX_PATH_MAX
 
+#ifndef MEM_USAGE_FACTOR
+#  define MEM_USAGE_FACTOR 2
+#endif
+
 #define closesocket close
 #define SIGKILL 1
 
@@ -387,7 +381,7 @@ extern const char * loc_gai_strerror(int ecode);
 extern const char * loc_gai_strerror(int ecode);
 extern int truncate(const char * path, int64_t size);
 
-extern ssize_t pread(int fd, const void * buf, size_t size, off_t offset);
+extern ssize_t pread(int fd, void * buf, size_t size, off_t offset);
 extern ssize_t pwrite(int fd, const void * buf, size_t size, off_t offset);
 
 #define loc_freeaddrinfo freeaddrinfo
@@ -416,6 +410,7 @@ extern struct ip_ifc_info * get_ip_ifc(void);
 #include <pthread.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
@@ -435,9 +430,9 @@ extern struct ip_ifc_info * get_ip_ifc(void);
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 
 #  define O_LARGEFILE 0
-#  define canonicalize_file_name(path) realpath(path, NULL)
 #  define SA_LEN(addr) ((addr)->sa_len)
 extern char ** environ;
+extern char * canonicalize_file_name(const char * path);
 
 #else /* not BSD */
 
@@ -469,6 +464,10 @@ extern int tkill(pid_t pid, int signal);
 #  define SCNx64 "llx"
 #endif
 
+#ifndef MEM_USAGE_FACTOR
+#  define MEM_USAGE_FACTOR 32
+#endif
+
 #if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__APPLE__) && !defined(__VXWORKS__)
 extern size_t strlcpy(char * dst, const char * src, size_t size);
 extern size_t strlcat(char * dst, const char * src, size_t size);
@@ -476,11 +475,20 @@ extern size_t strlcat(char * dst, const char * src, size_t size);
 
 extern pthread_attr_t pthread_create_attr;
 
+#if defined(__i386__) || defined(__x86_64__)
+#  define big_endian_host() (0)
+#else
+   extern int big_endian_host(void);
+#endif
+
 /* Return Operating System name */
-extern char * get_os_name(void);
+extern const char * get_os_name(void);
 
 /* Get user home directory path */
-extern char * get_user_home(void);
+extern const char * get_user_home(void);
+
+/* Create new UUID - Universally Unique IDentifier */
+extern const char * create_uuid(void);
 
 /* Switch to running in the background, rather than under the direct control of a user */
 extern void become_daemon(void);

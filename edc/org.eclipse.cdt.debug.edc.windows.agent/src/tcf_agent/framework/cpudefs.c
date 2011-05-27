@@ -33,8 +33,12 @@
 
 int read_reg_value(StackFrame * frame, RegisterDefinition * reg_def, uint64_t * value) {
     uint8_t buf[8];
-    if (reg_def == NULL || frame == NULL) {
-        errno = ERR_INV_CONTEXT;
+    if (reg_def == NULL) {
+        set_errno(ERR_INV_CONTEXT, "Invalid register");
+        return -1;
+    }
+    if (frame == NULL) {
+        set_errno(ERR_INV_CONTEXT, "Invalid stack frame");
         return -1;
     }
     if (reg_def->size > sizeof(buf)) {
@@ -57,8 +61,12 @@ int read_reg_value(StackFrame * frame, RegisterDefinition * reg_def, uint64_t * 
 int write_reg_value(StackFrame * frame, RegisterDefinition * reg_def, uint64_t value) {
     size_t i;
     uint8_t buf[8];
-    if (reg_def == NULL || frame == NULL) {
-        errno = ERR_INV_CONTEXT;
+    if (reg_def == NULL) {
+        set_errno(ERR_INV_CONTEXT, "Invalid register");
+        return -1;
+    }
+    if (frame == NULL) {
+        set_errno(ERR_INV_CONTEXT, "Invalid stack frame");
         return -1;
     }
     if (reg_def->size > sizeof(buf)) {
@@ -130,7 +138,7 @@ int id2frame(const char * id, Context ** ctx, int * frame) {
     return 0;
 }
 
-char * frame2id(Context * ctx, int frame) {
+const char * frame2id(Context * ctx, int frame) {
     static char id[256];
 
     assert(frame >= 0);
@@ -142,7 +150,7 @@ char * frame2id(Context * ctx, int frame) {
     return id;
 }
 
-char * register2id(Context * ctx, int frame, RegisterDefinition * reg) {
+const char * register2id(Context * ctx, int frame, RegisterDefinition * reg) {
     static char id[256];
     RegisterDefinition * defs = get_reg_definitions(ctx);
     if (frame < 0) {
@@ -249,13 +257,28 @@ uint64_t evaluate_stack_trace_commands(Context * ctx, StackFrame * frame, StackT
             stk[stk_pos - 2] = stk[stk_pos - 2] + stk[stk_pos - 1];
             stk_pos--;
             break;
+        case SFT_CMD_SUB:
+            if (stk_pos < 2) stack_trace_error();
+            stk[stk_pos - 2] = stk[stk_pos - 2] - stk[stk_pos - 1];
+            stk_pos--;
+            break;
+        case SFT_CMD_AND:
+            if (stk_pos < 2) stack_trace_error();
+            stk[stk_pos - 2] = stk[stk_pos - 2] & stk[stk_pos - 1];
+            stk_pos--;
+            break;
+        case SFT_CMD_OR:
+            if (stk_pos < 2) stack_trace_error();
+            stk[stk_pos - 2] = stk[stk_pos - 2] | stk[stk_pos - 1];
+            stk_pos--;
+            break;
         default:
             stack_trace_error();
             break;
         }
     }
-    if (stk_pos != 1) stack_trace_error();
-    return stk[0];
+    if (stk_pos == 0) stack_trace_error();
+    return stk[stk_pos - 1];
 }
 
 #endif /* ENABLE_DebugContext */

@@ -29,7 +29,7 @@ extern HANDLE get_context_module_handle(Context * ctx);
 extern DWORD64 get_context_base_address(Context * ctx);
 extern DWORD64 get_context_module_address(Context * ctx);
 
-extern int is_context_module_loaded(Context * ctx);
-extern int is_context_module_unloaded(Context * ctx);
+typedef int ContextExceptionHandler(Context *, EXCEPTION_DEBUG_INFO *);
+extern void add_context_exception_handler(ContextExceptionHandler * h);
 
 #endif /* D_context_win32 */

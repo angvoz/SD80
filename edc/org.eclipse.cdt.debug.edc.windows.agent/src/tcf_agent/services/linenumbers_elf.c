@@ -40,97 +40,119 @@
 #include <services/dwarfcache.h>
 #include <services/stacktrace.h>
 
-static CompUnit * find_unit(Context * ctx, DWARFCache * cache, ContextAddress addr0, ContextAddress addr1, ContextAddress * addr_next) {
-    U4_T i;
-    ContextAddress addr_min = 0;
-    CompUnit * unit = NULL;
-    /* TODO: faster unit search */
-    for (i = 0; i < cache->mCompUnitsCnt; i++) {
-        CompUnit * u = cache->mCompUnits[i];
-        ContextAddress base = elf_map_to_run_time_address(ctx, cache->mFile, u->mTextSection, u->mLowPC);
-        ContextAddress size = u->mHighPC - u->mLowPC;
-        if (base == 0 || size == 0) continue;
-        if (u->mDebugRangesOffs != ~(U8_T)0 && cache->mDebugRanges != NULL) {
-            if (elf_load(cache->mDebugRanges)) exception(errno);
-            dio_EnterSection(&u->mDesc, cache->mDebugRanges, u->mDebugRangesOffs);
-            for (;;) {
-                ELF_Section * s = NULL;
-                U8_T x = dio_ReadAddress(&s);
-                U8_T y = dio_ReadAddress(&s);
-                if (x == 0 && y == 0) break;
-                if (s != u->mTextSection) exception(ERR_INV_DWARF);
-                if (x == ((U8_T)1 << u->mDesc.mAddressSize * 8) - 1) {
-                    base = (ContextAddress)y;
-                }
-                else {
-                    x = base + x;
-                    y = base + y;
-                    if (addr0 < y && addr1 > x) {
-                        if (unit == NULL || addr_min > x) {
-                            unit = u;
-                            addr_min = (ContextAddress)x;
-                            *addr_next = (ContextAddress)y;
-                        }
-                    }
-                }
-            }
-            dio_ExitSection();
-        }
-        else if (addr0 < base + size && addr1 > base) {
-            if (unit == NULL || addr_min > base) {
-                unit = u;
-                addr_min = base;
-                *addr_next = base + size;
-            }
-        }
+static int is_absolute_path(char * fnm) {
+    if (fnm[0] == '/') return 1;
+    if (fnm[0] == '\\') return 1;
+    if (fnm[0] != 0 && fnm[1] == ':') {
+        if (fnm[2] == '/') return 1;
+        if (fnm[2] == '\\') return 1;
     }
-    return unit;
-}
-
-static void load_line_numbers_in_range(Context * ctx, DWARFCache * cache, ContextAddress addr0, ContextAddress addr1) {
-    while (addr0 < addr1) {
-        ContextAddress next = 0;
-        CompUnit * unit = find_unit(ctx, cache, addr0, addr1, &next);
-        if (unit == NULL) break;
-        load_line_numbers(cache, unit);
-        addr0 = next;
-    }
-}
-
-static int cmp_file(char * file, char * dir, char * name) {
-    int i;
-    if (file == NULL) return 0;
-    if (name == NULL) return 0;
-    if (strcmp(file, name) == 0) return 1;
-    i = strlen(name);
-    while (i > 0 && name[i - 1] != '/' && name[i - 1] != '\\') i--;
-    if (strcmp(file, name + i) == 0) return 1;
-    if (dir == NULL) return 0;
-    i = strlen(dir);
-    if (strncmp(dir, file, i) == 0 && (file[i] == '/' || file[i] == '\\') &&
-            strcmp(file + i + 1, name) == 0) return 1;
     return 0;
 }
 
-static void call_client(CompUnit * unit, LineNumbersState * state, LineNumbersState * next,
-                        ContextAddress state_addr, ContextAddress next_addr,
-                        LineNumbersCallBack * client, void * args) {
+static void canonic_path(char * fnm, char * buf, size_t buf_size) {
+    unsigned i = 0;
+    while (i < buf_size - 1) {
+        char ch = *fnm++;
+        if (ch == 0) break;
+        if (ch == '\\') ch = '/';
+        if (ch == '/' && i >= 2 && buf[i - 1] == '/') continue;
+        if (ch == '.' && (i == 0 || buf[i - 1] == '/')) {
+            if (*fnm == '/' || *fnm == '\\') {
+                fnm++;
+                continue;
+            }
+            if (i > 0 && *fnm == '.' && (fnm[1] == '/' || fnm[1] == '\\')) {
+                unsigned j = i - 1;
+                if (j > 0 && buf[j - 1] != '/') {
+                    while (j > 0 && buf[j - 1] != '/') j--;
+                    i = j;
+                    fnm += 2;
+                    continue;
+                }
+            }
+        }
+        buf[i++] = ch;
+    }
+    buf[i++] = 0;
+}
+
+static int compare_path(char * file, char * pwd, char * dir, char * name) {
+    int i, j;
+    char buf[FILE_PATH_SIZE];
+
+    if (file == NULL) return 0;
+    if (name == NULL) return 0;
+
+    if (is_absolute_path(name)) {
+        canonic_path(name, buf, sizeof(buf));
+    }
+    else if (dir != NULL && is_absolute_path(dir)) {
+        snprintf(buf, sizeof(buf), "%s/%s", dir, name);
+        canonic_path(buf, buf, sizeof(buf));
+    }
+    else if (dir != NULL && pwd != NULL) {
+        snprintf(buf, sizeof(buf), "%s/%s/%s", pwd, dir, name);
+        canonic_path(buf, buf, sizeof(buf));
+    }
+    else if (pwd != NULL) {
+        snprintf(buf, sizeof(buf), "%s/%s", pwd, name);
+        canonic_path(buf, buf, sizeof(buf));
+    }
+    else {
+        canonic_path(name, buf, sizeof(buf));
+    }
+
+    i = strlen(file);
+    j = strlen(buf);
+    return i <= j && strcmp(file, buf + j - i) == 0;
+}
+
+static LineNumbersState * get_next_in_text(CompUnit * unit, LineNumbersState * state) {
+    LineNumbersState * next = unit->mStates + state->mNext;
+    if (state->mNext == 0) return NULL;
+    while (next->mLine == state->mLine && next->mColumn == state->mColumn) {
+        if (next->mNext == 0) return NULL;
+        next = unit->mStates + next->mNext;
+    }
+    if (state->mFile != next->mFile) return NULL;
+    return next;
+}
+
+static void call_client(CompUnit * unit, LineNumbersState * state,
+                        ContextAddress state_addr, LineNumbersCallBack * client, void * args) {
     CodeArea area;
-    FileInfo * state_file = NULL;
+    LineNumbersState * next = get_next_in_text(unit, state);
+    FileInfo * file_info = unit->mFiles + state->mFile;
+
+    if (state->mAddress >= (state + 1)->mAddress) return;
     memset(&area, 0, sizeof(area));
     area.start_line = state->mLine;
     area.start_column = state->mColumn;
-    area.end_line = next->mLine;
-    area.end_column = next->mColumn;
-    if (state->mFile >= 1 && state->mFile <= unit->mFilesCnt) {
-        state_file = unit->mFiles + (state->mFile - 1);
+    area.end_line = next ? next->mLine : state->mLine;
+    area.end_column = next ? next->mColumn : 0;
+
+    area.directory = unit->mDir;
+    if (state->mFileName != NULL) {
+        area.file = state->mFileName;
     }
-    if (state_file != NULL) {
-        area.file = state_file->mName;
-        area.directory = state_file->mDir;
+    else if (is_absolute_path(file_info->mName) || file_info->mDir == NULL) {
+        area.file = file_info->mName;
     }
+    else if (is_absolute_path(file_info->mDir)) {
+        area.directory = file_info->mDir;
+        area.file = file_info->mName;
+    }
+    else {
+        char buf[FILE_PATH_SIZE];
+        snprintf(buf, sizeof(buf), "%s/%s", file_info->mDir, file_info->mName);
+        area.file = state->mFileName = loc_strdup(buf);
+    }
+
+    area.file_mtime = file_info->mModTime;
+    area.file_size = file_info->mSize;
     area.start_address = state_addr;
-    area.end_address = next_addr;
+    area.end_address = (state + 1)->mAddress - state->mAddress + state_addr;
     area.isa = state->mISA;
     area.is_statement = (state->mFlags & LINE_IsStmt) != 0;
     area.basic_block = (state->mFlags & LINE_BasicBlock) != 0;
@@ -139,75 +161,90 @@ static void call_client(CompUnit * unit, LineNumbersState * state, LineNumbersSt
     client(&area, args);
 }
 
+static void unit_line_to_address(Context * ctx, CompUnit * unit, unsigned file, unsigned line, unsigned column,
+                                 LineNumbersCallBack * client, void * args) {
+    if (unit->mStatesCnt >= 2) {
+        unsigned l = 0;
+        unsigned h = unit->mStatesCnt - 1;
+        while (l < h) {
+            unsigned k = (h + l) / 2;
+            LineNumbersState * state = unit->mStatesIndex[k];
+            if (state->mFile < file) {
+                l = k + 1;
+            }
+            else if (state->mFile > file || state->mLine > line) {
+                h = k;
+            }
+            else {
+                LineNumbersState * next = get_next_in_text(unit, state);
+                if (next != NULL && next->mLine <= line) {
+                    l = k + 1;
+                }
+                else {
+                    unsigned i = k;
+                    while (i > 0) {
+                        LineNumbersState * prev = unit->mStatesIndex[i - 1];
+                        if (prev->mFile != state->mFile) break;
+                        if (prev->mLine != state->mLine) break;
+                        if (prev->mColumn != state->mColumn) break;
+                        state = prev;
+                        i--;
+                    }
+                    for (;;) {
+                        ContextAddress addr = elf_map_to_run_time_address(ctx, unit->mFile, unit->mTextSection, state->mAddress);
+                        if (addr != 0) call_client(unit, state, addr, client, args);
+                        if (i == k) break;
+                        state = unit->mStatesIndex[++i];
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
 int line_to_address(Context * ctx, char * file_name, int line, int column, LineNumbersCallBack * client, void * args) {
     int err = 0;
 
     if (ctx == NULL) err = ERR_INV_CONTEXT;
     else if (ctx->exited) err = ERR_ALREADY_EXITED;
-    else ctx = ctx->mem;
 
     if (err == 0) {
         ELF_File * file = elf_list_first(ctx, 0, ~(ContextAddress)0);
         if (file == NULL) err = errno;
-        while (file != NULL) {
-            Trap trap;
-            if (set_trap(&trap)) {
-                U4_T i;
-                DWARFCache * cache = get_dwarf_cache(file);
-                for (i = 0; i < cache->mCompUnitsCnt; i++) {
-                    CompUnit * unit = cache->mCompUnits[i];
-                    int equ = 0;
-                    assert(unit->mFile == file);
-                    if (unit->mDir != NULL && unit->mName != NULL) {
-                        equ = cmp_file(file_name, unit->mDir, unit->mName);
-                    }
-                    if (!equ) {
-                        U4_T j;
+        if (err == 0) {
+            unsigned h;
+            char fnm[FILE_PATH_SIZE];
+            canonic_path(file_name, fnm, sizeof(fnm));
+            h = calc_file_name_hash(fnm);
+            while (file != NULL) {
+                Trap trap;
+                /* TODO: support for separate debug info files */
+                if (set_trap(&trap)) {
+                    DWARFCache * cache = get_dwarf_cache(file);
+                    ObjectInfo * info = cache->mCompUnits;
+                    while (info != NULL) {
+                        unsigned j;
+                        CompUnit * unit = info->mCompUnit;
+                        assert(unit->mFile == file);
+                        load_line_numbers(unit);
                         for (j = 0; j < unit->mFilesCnt; j++) {
                             FileInfo * f = unit->mFiles + j;
-                            if (f->mDir != NULL && f->mName != NULL) {
-                                equ = cmp_file(file_name, f->mDir, f->mName);
-                                if (equ) break;
-                            }
+                            if (f->mNameHash != h) continue;
+                            if (!compare_path(fnm, unit->mDir, f->mDir, f->mName)) continue;
+                            unit_line_to_address(ctx, unit, j, line, column, client, args);
                         }
+                        info = info->mSibling;
                     }
-                    if (equ) {
-                        load_line_numbers(cache, unit);
-                        if (unit->mStatesCnt >= 2) {
-                            U4_T j;
-                            for (j = 0; j < unit->mStatesCnt - 1; j++) {
-                                LineNumbersState * state = unit->mStates + j;
-                                LineNumbersState * next = unit->mStates + j + 1;
-                                char * state_dir = unit->mDir;
-                                char * state_file = unit->mName;
-                                ContextAddress addr = 0;
-                                ContextAddress next_addr = 0;
-                                if (state->mFlags & LINE_EndSequence) continue;
-                                if ((unsigned)line < state->mLine) continue;
-                                if ((unsigned)line >= next->mLine) continue;
-                                if (state->mFile >= 1 && state->mFile <= unit->mFilesCnt) {
-                                    FileInfo * f = unit->mFiles + (state->mFile - 1);
-                                    state_dir = f->mDir;
-                                    state_file = f->mName;
-                                }
-                                if (!cmp_file(file_name, state_dir, state_file)) continue;
-                                addr = elf_map_to_run_time_address(ctx, file, unit->mTextSection, state->mAddress);
-                                if (addr == 0) continue;
-                                next_addr = elf_map_to_run_time_address(ctx, file, unit->mTextSection, next->mAddress);
-                                if (next_addr == 0) continue;
-                                call_client(unit, state, next, addr, next_addr, client, args);
-                            }
-                        }
-                    }
+                    clear_trap(&trap);
                 }
-                clear_trap(&trap);
+                else {
+                    err = trap.error;
+                    break;
+                }
+                file = elf_list_next(ctx);
+                if (file == NULL) err = errno;
             }
-            else {
-                err = trap.error;
-                break;
-            }
-            file = elf_list_next(ctx);
-            if (file == NULL) err = errno;
         }
         elf_list_done(ctx);
     }
@@ -220,55 +257,66 @@ int line_to_address(Context * ctx, char * file_name, int line, int column, LineN
 }
 
 int address_to_line(Context * ctx, ContextAddress addr0, ContextAddress addr1, LineNumbersCallBack * client, void * args) {
-    int err = 0;
+    Trap trap;
 
-    if (ctx == NULL) err = ERR_INV_CONTEXT;
-    else if (ctx->exited) err = ERR_ALREADY_EXITED;
-    else ctx = ctx->mem;
-
-    if (err == 0) {
-        ELF_File * file = elf_list_first(ctx, addr0, addr1);
-        if (file == NULL) err = errno;
-        while (file != NULL) {
-            Trap trap;
-            if (set_trap(&trap)) {
-                DWARFCache * cache = get_dwarf_cache(file);
-                load_line_numbers_in_range(ctx, cache, addr0, addr1);
-                while (err == 0 && addr0 < addr1) {
-                    ContextAddress next_unit_addr = 0;
-                    CompUnit * unit = find_unit(ctx, cache, addr0, addr1, &next_unit_addr);
-                    if (unit == NULL) break;
-                    if (unit->mStatesCnt >= 2) {
-                        U4_T i;
-                        for (i = 0; i < unit->mStatesCnt - 1; i++) {
-                            LineNumbersState * state = unit->mStates + i;
-                            LineNumbersState * next = unit->mStates + i + 1;
-                            if ((state->mFlags & LINE_EndSequence) == 0) {
-                                ContextAddress state_addr = elf_map_to_run_time_address(ctx, unit->mFile, unit->mTextSection, state->mAddress);
-                                ContextAddress next_addr = elf_map_to_run_time_address(ctx, unit->mFile, unit->mTextSection, next->mAddress);
-                                if (next_addr > addr0 && state_addr < addr1) call_client(unit, state, next, state_addr, next_addr, client, args);
-                            }
-                        }
-                    }
-                    addr0 = next_unit_addr;
+    if (!set_trap(&trap)) return -1;
+    if (ctx == NULL) exception(ERR_INV_CONTEXT);
+    if (ctx->exited) exception(ERR_ALREADY_EXITED);
+    while (addr0 < addr1) {
+        ContextAddress range_rt_addr = 0;
+        UnitAddressRange * range = elf_find_unit(ctx, addr0, addr1, &range_rt_addr);
+        if (range == NULL) break;
+        assert(range_rt_addr != 0);
+        load_line_numbers(range->mUnit);
+        if (range->mUnit->mStatesCnt >= 2) {
+            CompUnit * unit = range->mUnit;
+            unsigned l = 0;
+            unsigned h = unit->mStatesCnt - 1;
+            ContextAddress addr_min = addr0 - range_rt_addr + range->mAddr;
+            ContextAddress addr_max = addr1 - range_rt_addr + range->mAddr;
+            if (addr_min < range->mAddr) addr_min = range->mAddr;
+            if (addr_max > range->mAddr + range->mSize) addr_max = range->mAddr + range->mSize;
+            while (l < h) {
+                unsigned k = (h + l) / 2;
+                LineNumbersState * state = unit->mStates + k;
+                if (state->mAddress >= addr_max) {
+                    h = k;
                 }
-                clear_trap(&trap);
+                else {
+                    LineNumbersState * next = state + 1;
+                    assert(next->mAddress >= state->mAddress);
+                    if (next->mAddress <= addr_min) {
+                        l = k + 1;
+                    }
+                    else {
+                        while (k > 0) {
+                            LineNumbersState * prev = unit->mStates + k - 1;
+                            if (state->mAddress <= addr_min) break;
+                            if (prev->mAddress >= addr_max) break;
+                            next = state;
+                            state = prev;
+                            k--;
+                        }
+                        for (;;) {
+                            call_client(unit, state, state->mAddress - range->mAddr + range_rt_addr, client, args);
+                            k++;
+                            if (k >= unit->mStatesCnt - 1) break;
+                            state = unit->mStates + k;
+                            if (state->mAddress >= addr_max) break;
+                            next = state + 1;
+                        }
+                        break;
+                    }
+                }
             }
-            else {
-                err = trap.error;
-                break;
-            }
-            file = elf_list_next(ctx);
-            if (file == NULL) err = errno;
         }
-        elf_list_done(ctx);
+        addr0 = range_rt_addr + range->mSize;
     }
-
-    if (err != 0) {
-        errno = err;
-        return -1;
-    }
+    clear_trap(&trap);
     return 0;
+}
+
+void ini_line_numbers_lib(void) {
 }
 
 #endif /* SERVICE_LineNumbers && !ENABLE_LineNumbersProxy && ENABLE_ELF */

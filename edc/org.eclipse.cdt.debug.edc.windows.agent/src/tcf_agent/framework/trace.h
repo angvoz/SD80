@@ -36,6 +36,8 @@
 #define LOG_TCFLOG      0x400
 #define LOG_ELF         0x800
 #define LOG_LUA         0x1000
+#define LOG_STACK       0x2000
+#define LOG_PLUGIN      0x4000
 
 extern int log_mode;
 
@@ -49,7 +51,7 @@ extern int print_trace(int mode, const char * fmt, ...);
 
 extern FILE * log_file;
 
-#define trace if (log_file) print_trace
+#define trace log_file == NULL ? 0 : print_trace
 
 #else /* not ENABLE_Trace */
 

@@ -36,7 +36,7 @@
 #include <framework/plugins.h>
 #include <main/cmdline.h>
 
-struct cmd {
+struct CmdDesc {
     char * cmd;
     char * help;
     int (*hnd)(char *);
@@ -45,14 +45,18 @@ struct cmd {
 static Channel * chan;
 static Protocol * proto;
 static FILE * infile;
-static int interactive_flag;
+static int mode_flag;
+static int keep_alive_flag = 0;
 static int cmdline_suspended;
 static int cmdline_pending;
+static int last_error = 0;
+static char * host_name = NULL;
+static char * single_command = NULL;
 static char * cmdline_string;
 static pthread_mutex_t cmdline_mutex;
 static pthread_cond_t cmdline_signal;
-static pthread_t interactive_thread;
-static struct cmd * cmds = NULL;
+static pthread_t command_thread;
+static struct CmdDesc * cmds = NULL;
 static size_t cmd_count = 0;
 
 typedef void (*PluginCallBack)(Channel *);
@@ -61,6 +65,8 @@ static PluginCallBack * connect_hnds = NULL;
 static size_t connect_hnd_count = 0;
 static PluginCallBack * disconnect_hnds = NULL;
 static size_t disconnect_hnd_count = 0;
+
+static void cmd_done(int error);
 
 static void destroy_cmdline_handler() {
     size_t i;
@@ -71,14 +77,20 @@ static void destroy_cmdline_handler() {
     loc_free(cmds);
     loc_free(connect_hnds);
     loc_free(disconnect_hnds);
+    if (host_name) loc_free(host_name);
+    if (single_command) loc_free(single_command);
+}
+
+static void channel_connected(Channel * c) {
+    /* We are now connected, so there is no error (0)*/
+    if (c == chan) cmd_done(0);
 }
 
 static void channel_disconnected(Channel * c) {
     size_t i = 0;
     if (chan == c) chan = NULL;
     protocol_release(c->protocol);
-    for (; i < disconnect_hnd_count; ++i)
-        disconnect_hnds[i](c);
+    for (i = 0; i < disconnect_hnd_count; ++i) disconnect_hnds[i](c);
 }
 
 static int cmd_exit(char * s) {
@@ -86,14 +98,12 @@ static int cmd_exit(char * s) {
     exit(0);
 }
 
-static void cmd_done(void);
-
 static void display_tcf_reply(Channel * c, void * client_data, int error) {
     int i;
 
     if (error) {
         printf("Reply error %d: %s\n", error, errno_to_str(error));
-        cmd_done();
+        cmd_done(error);
         return;
     }
     for (;;) {
@@ -108,7 +118,7 @@ static void display_tcf_reply(Channel * c, void * client_data, int error) {
      * and receive the message when it's displayed */
     fflush(0);
 
-    cmd_done();
+    cmd_done(error);
 }
 
 #define maxargs 20
@@ -121,7 +131,7 @@ static int cmd_tcf(char *s) {
 
     if (c == NULL) {
         printf("Error: Channel not connected, use 'connect' command\n");
-        return 0;
+        return -1;
     }
     ind = 0;
     args[ind] = strtok(s, " \t");
@@ -130,7 +140,7 @@ static int cmd_tcf(char *s) {
     }
     if (args[0] == NULL || args[1] == NULL) {
         printf("Error: Expected at least service and command name arguments\n");
-        return 0;
+        return -1;
     }
     protocol_send_command(c, args[0], args[1], display_tcf_reply, c);
     for (i = 2; i < ind; i++) {
@@ -193,7 +203,7 @@ static int cmd_peerinfo(char * s) {
     ps = peer_server_find(s);
     if (ps == NULL) {
         fprintf(stderr, "Error: Cannot find id: %s\n", s);
-        return 0;
+        return -1;
     }
     printf("  ID: %s\n", ps->id);
     for (i = 0; i < ps->ind; i++) {
@@ -204,24 +214,24 @@ static int cmd_peerinfo(char * s) {
     return 0;
 }
 
-static void connect_done(void * args, int error, Channel * c) {
+static void connect_callback(void * args, int error, Channel * c) {
     PeerServer * ps = (PeerServer *)args;
 
     if (error) {
         fprintf(stderr, "Error: Cannot connect: %s\n", errno_to_str(error));
+        cmd_done(error);
     }
     else {
         size_t i = 0;
+        c->connected = channel_connected;
         c->disconnected = channel_disconnected;
         c->protocol = proto;
         protocol_reference(proto);
         channel_start(c);
         chan = c;
-        for (; i < connect_hnd_count; ++i)
-            connect_hnds[i](c);
+        for (i = 0; i < connect_hnd_count; ++i) connect_hnds[i](c);
     }
     peer_server_free(ps);
-    cmd_done();
 }
 
 static int cmd_connect(char * s) {
@@ -230,17 +240,18 @@ static int cmd_connect(char * s) {
     ps = channel_peer_from_url(s);
     if (ps == NULL) {
         fprintf(stderr, "Error: Cannot parse peer identifer: %s\n", s);
-        return 0;
+        return -1;
     }
 
-    channel_connect(ps, connect_done, ps);
+    channel_connect(ps, connect_callback, ps);
     return 1;
 }
 
 static void event_cmd_line(void * arg) {
     char * s = (char *)arg;
-    int len;
+    size_t len;
     int delayed = 0;
+    int error = 0;
     size_t cp;
 
     if (cmdline_suspended) {
@@ -248,14 +259,15 @@ static void event_cmd_line(void * arg) {
         return;
     }
 
-    while (*s && isspace(*s)) s++;
+    while (*s && isspace((int)*s)) s++;
     if (*s) {
         for (cp = 0; cp < cmd_count; ++cp) {
             len = strlen(cmds[cp].cmd);
-            if (strncmp(s, cmds[cp].cmd, len) == 0 && (s[len] == 0 || isspace(s[len]))) {
+            if (strncmp(s, cmds[cp].cmd, len) == 0 && (s[len] == 0 || isspace((int)s[len]))) {
                 s += len;
-                while (*s && isspace(*s)) s++;
+                while (*s && isspace((int)*s)) s++;
                 delayed = cmds[cp].hnd(s);
+                if (delayed != 1 || delayed != 0) error = delayed;
                 break;
             }
         }
@@ -265,10 +277,11 @@ static void event_cmd_line(void * arg) {
             for (cp = 0; cp < cmd_count; ++cp) {
                 fprintf(stderr, "  %-10s - %s\n", cmds[cp].cmd, cmds[cp].help);
             }
+            error = 1;
         }
     }
     loc_free(arg);
-    if (!delayed) cmd_done();
+    if (delayed != 1) cmd_done(error);
 }
 
 void cmdline_suspend(void) {
@@ -293,13 +306,14 @@ static void cmd_done_event(void * arg) {
     check_error(pthread_mutex_unlock(&cmdline_mutex));
 }
 
-static void cmd_done(void) {
+static void cmd_done(int error) {
+    last_error = error;
     post_event(cmd_done_event, NULL);
 }
 
 static void * interactive_handler(void * x) {
     int done = 0;
-    int len;
+    size_t len;
     char buf[1000];
 
     check_error(pthread_mutex_lock(&cmdline_mutex));
@@ -308,7 +322,7 @@ static void * interactive_handler(void * x) {
             check_error(pthread_cond_wait(&cmdline_signal, &cmdline_mutex));
             continue;
         }
-        if (interactive_flag) {
+        if (mode_flag == 1) {
             printf("> ");
             fflush(stdout);
         }
@@ -327,12 +341,55 @@ static void * interactive_handler(void * x) {
     return NULL;
 }
 
+static void * single_command_handler(void * x) {
+    const char * connect_string = "connect ";
+
+    check_error(pthread_mutex_lock(&cmdline_mutex));
+
+    post_event(event_cmd_line, loc_strdup2(connect_string, host_name));
+    cmdline_pending = 1;
+    check_error(pthread_cond_wait(&cmdline_signal, &cmdline_mutex));
+    if (last_error) {
+        destroy_cmdline_handler();
+        exit(last_error);
+    }
+
+    post_event(event_cmd_line, loc_strdup(single_command));
+    cmdline_pending = 1;
+    check_error(pthread_cond_wait(&cmdline_signal, &cmdline_mutex));
+    if (last_error) {
+        destroy_cmdline_handler();
+        exit(last_error);
+    }
+
+    check_error(pthread_mutex_unlock(&cmdline_mutex));
+
+    destroy_cmdline_handler();
+
+    if (!keep_alive_flag) {
+        exit(0);
+    }
+
+    return NULL;
+}
+
 void open_script_file(const char * script_name) {
     if (script_name == NULL || (infile = fopen(script_name, "r")) == NULL) {
         if (script_name == NULL) script_name = "<null>";
         fprintf(stderr, "Error: Cannot open script file %s\n", script_name);
         exit(1);
     }
+}
+
+void set_single_command(int keep_alive, const char * host, const char * command) {
+    if (host == NULL || command == NULL) {
+        fprintf(stderr, "Error: Cannot send single command\n");
+        exit(1);
+    }
+
+    keep_alive_flag = keep_alive;
+    host_name = loc_strdup(host);
+    single_command = loc_strdup(command);
 }
 
 static int add_cmdline_cmd(const char * cmd_name, const char * cmd_desc,
@@ -346,7 +403,7 @@ static int add_cmdline_cmd(const char * cmd_name, const char * cmd_desc,
         if (!strcmp(cmd_name, cmds[i].cmd))
             return -EEXIST;
 
-    cmds = (struct cmd *)loc_realloc(cmds, ++cmd_count * sizeof(struct cmd));
+    cmds = (struct CmdDesc *)loc_realloc(cmds, ++cmd_count * sizeof(struct CmdDesc));
 
     cmds[cmd_count-1].cmd = loc_strdup(cmd_name);
     cmds[cmd_count-1].help = loc_strdup(cmd_desc);
@@ -389,7 +446,7 @@ static int add_disconnect_callback(PluginCallBack hnd) {
 }
 #endif /* ENABLE_Plugins */
 
-void ini_cmdline_handler(int interactive, Protocol * protocol) {
+void ini_cmdline_handler(int mode, Protocol * protocol) {
     proto = protocol;
 
 #if ENABLE_Plugins
@@ -413,12 +470,16 @@ void ini_cmdline_handler(int interactive, Protocol * protocol) {
     add_cmdline_cmd("peerinfo",  "show info about a peer",    cmd_peerinfo);
     add_cmdline_cmd("connect",   "connect a peer",            cmd_connect);
 
-    interactive_flag = interactive;
+    mode_flag = mode;
     if (infile == NULL) infile = stdin;
     check_error(pthread_mutex_init(&cmdline_mutex, NULL));
     check_error(pthread_cond_init(&cmdline_signal, NULL));
-    /* Create thread to read cmd line */
-    check_error(pthread_create(&interactive_thread, &pthread_create_attr, interactive_handler, 0));
+
+    /* Create thread to read cmd line in interactive and script mode*/
+    if (mode == 0 || mode == 1)
+        check_error(pthread_create(&command_thread, &pthread_create_attr, interactive_handler, 0));
+    else
+        check_error(pthread_create(&command_thread, &pthread_create_attr, single_command_handler, 0));
 }
 
 #endif /* ENABLE_Cmdline */

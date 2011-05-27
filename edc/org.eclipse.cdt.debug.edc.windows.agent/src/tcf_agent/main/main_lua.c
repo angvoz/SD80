@@ -289,7 +289,7 @@ static void lua_read_command_getline(void *client_data)
                 state->line = (char *)loc_realloc(state->line, state->linemax);
             }
         }
-        state->line[state->lineind++] = c;
+        state->line[state->lineind++] = (char)c;
     }
 eol:
     if(state->bufst != bufst_eol_optnl && state->bufst != bufst_eol && !state->eof) {
@@ -708,7 +708,7 @@ static int lua_post_event(lua_State *L)
     assert(L == luastate);
 
     if(lua_gettop(L) > 2 || !lua_isfunction(L, 1) ||
-       lua_gettop(L) > 1 && !(lua_isnil(L, 2) || lua_isnumber(L, 2))) {
+       (lua_gettop(L) > 1 && !(lua_isnil(L, 2) || lua_isnumber(L, 2)))) {
         luaL_error(L, "wrong number or type of arguments");
     }
     p = (struct post_event_extra *)lua_newuserdata(L, sizeof *p);
@@ -1543,7 +1543,7 @@ int main(int argc, char ** argv) {
 #endif
 
     if (script_name != NULL) {
-        if((lua_read_command_state.req.u.fio.fd = open(script_name, 0)) < 0) {
+        if((lua_read_command_state.req.u.fio.fd = open(script_name, O_RDONLY, 0)) < 0) {
             fprintf(stderr, "%s: error: cannot open script: %s\n", progname, script_name);
             exit(1);
         }

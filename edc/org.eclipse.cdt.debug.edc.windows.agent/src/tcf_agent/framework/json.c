@@ -22,8 +22,14 @@
  */
 
 #include <config.h>
+#ifdef ENABLE_STREAM_MACROS
+#undef ENABLE_STREAM_MACROS
+#endif
+#define ENABLE_STREAM_MACROS 1
+
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include <framework/json.h>
 #include <framework/myalloc.h>
 #include <framework/exceptions.h>
@@ -33,8 +39,8 @@
 #define ENCODING_BASE64     1
 
 static char * buf = NULL;
-static unsigned buf_pos = 0;
-static unsigned buf_size = 0;
+static size_t buf_pos = 0;
+static size_t buf_size = 0;
 
 static void realloc_buf(void) {
     if (buf == NULL) {
@@ -120,7 +126,16 @@ void json_write_string(OutputStream * out, const char * str) {
     }
     else {
         write_stream(out, '"');
-        while (*str) json_write_char(out, *str++);
+        for (;;) {
+            unsigned char ch = (unsigned char)*str++;
+            while (ch >= ' ') {
+                if (ch == '"' || ch == '\\') write_stream(out, '\\');
+                write_stream(out, ch);
+                ch = (unsigned char)*str++;
+            }
+            if (ch == 0) break;
+            json_write_char(out, ch);
+        }
         write_stream(out, '"');
     }
 }
@@ -156,7 +171,7 @@ static int readHexChar(InputStream * inp) {
     return n;
 }
 
-static int read_esc_char(InputStream * inp) {
+static unsigned read_esc_char(InputStream * inp, char * utf8) {
     int ch = read_stream(inp);
     switch (ch) {
     case '"': break;
@@ -170,7 +185,20 @@ static int read_esc_char(InputStream * inp) {
     case 'u': ch = readHexChar(inp); break;
     default: exception(ERR_JSON_SYNTAX);
     }
-    return ch;
+    /* 'ch' can be wide character - convert it to UTF-8 sequence */
+    if (ch < 0x80) {
+        utf8[0] = (char)ch;
+        return 1;
+    }
+    if (ch < 0x800) {
+        utf8[0] = (char)((ch >> 6) | 0xc0);
+        utf8[1] = (char)((ch & 0x3f) | 0x80);
+        return 2;
+    }
+    utf8[0] = (char)((ch >> 12) | 0xe0);
+    utf8[1] = (char)(((ch >> 6) & 0x3f) | 0x80);
+    utf8[2] = (char)((ch & 0x3f) | 0x80);
+    return 3;
 }
 
 int json_read_string(InputStream * inp, char * str, size_t size) {
@@ -186,10 +214,20 @@ int json_read_string(InputStream * inp, char * str, size_t size) {
     if (ch != '"') exception(ERR_JSON_SYNTAX);
     for (;;) {
         ch = read_stream(inp);
+        if (ch < 0) exception(ERR_JSON_SYNTAX);
         if (ch == '"') break;
-        if (ch == '\\') ch = read_esc_char(inp);
-        if (i < size - 1) str[i] = (char)ch;
-        i++;
+        if (ch == '\\') {
+            char utf8[4];
+            unsigned l = read_esc_char(inp, utf8);
+            unsigned n;
+            for (n = 0; n < l; n++, i++) {
+                if (i < size - 1) str[i] = utf8[n];
+            }
+        }
+        else {
+            if (i < size - 1) str[i] = (char)ch;
+            i++;
+        }
     }
     if (i < size) str[i] = 0;
     else str[size - 1] = 0;
@@ -209,9 +247,17 @@ char * json_read_alloc_string(InputStream * inp) {
     if (ch != '"') exception(ERR_JSON_SYNTAX);
     for (;;) {
         ch = read_stream(inp);
+        if (ch < 0) exception(ERR_JSON_SYNTAX);
         if (ch == '"') break;
-        if (ch == '\\') ch = read_esc_char(inp);
-        buf_add(ch);
+        if (ch == '\\') {
+            char utf8[4];
+            unsigned l = read_esc_char(inp, utf8);
+            unsigned n;
+            for (n = 0; n < l; n++) buf_add(utf8[n]);
+        }
+        else {
+            buf_add(ch);
+        }
     }
     buf_add(0);
     str = (char *)loc_alloc(buf_pos);
@@ -364,27 +410,21 @@ int json_read_struct(InputStream * inp, JsonStructCallBack * call_back, void * a
         return 0;
     }
     if (ch == '{') {
-        ch = read_stream(inp);
+        ch = peek_stream(inp);
         if (ch != '}') {
             for (;;) {
-                int nm_len = 0;
                 char nm[256];
-                if (ch != '"') exception(ERR_JSON_SYNTAX);
-                for (;;) {
-                    ch = read_stream(inp);
-                    if (ch == '"') break;
-                    if (ch == '\\') ch = read_esc_char(inp);
-                    if (nm_len < (int)sizeof(nm) - 1) nm[nm_len++] = (char)ch;
-                }
-                nm[nm_len] = 0;
+                json_read_string(inp, nm, sizeof(nm));
                 ch = read_stream(inp);
                 if (ch != ':') exception(ERR_JSON_SYNTAX);
                 call_back(inp, nm, arg);
                 ch = read_stream(inp);
                 if (ch == '}') break;
                 if (ch != ',') exception(ERR_JSON_SYNTAX);
-                ch = read_stream(inp);
             }
+        }
+        else {
+            read_stream(inp);
         }
         return 1;
     }
@@ -406,11 +446,12 @@ char ** json_read_alloc_string_array(InputStream * inp, int * cnt) {
         return NULL;
     }
     else {
-        static unsigned * len_buf = NULL;
+        static size_t * len_buf = NULL;
         static unsigned len_buf_size = 0;
         unsigned len_pos = 0;
 
-        unsigned i, j;
+        unsigned i;
+        size_t j;
         char * str = NULL;
         char ** arr = NULL;
 
@@ -422,10 +463,10 @@ char ** json_read_alloc_string_array(InputStream * inp, int * cnt) {
         else {
             for (;;) {
                 int ch = read_stream(inp);
-                int len = 0;
+                size_t len = 0;
                 if (len_pos >= len_buf_size) {
                     len_buf_size = len_buf_size == 0 ? 0x100 : len_buf_size * 2;
-                    len_buf = (unsigned *)loc_realloc(len_buf, len_buf_size * sizeof(unsigned));
+                    len_buf = (size_t *)loc_realloc(len_buf, len_buf_size * sizeof(size_t));
                 }
                 if (ch == 'n') {
                     if (read_stream(inp) != 'u') exception(ERR_JSON_SYNTAX);
@@ -433,14 +474,23 @@ char ** json_read_alloc_string_array(InputStream * inp, int * cnt) {
                     if (read_stream(inp) != 'l') exception(ERR_JSON_SYNTAX);
                 }
                 else {
+                    size_t buf_pos0 = buf_pos;
                     if (ch != '"') exception(ERR_JSON_SYNTAX);
                     for (;;) {
                         ch = read_stream(inp);
+                        if (ch < 0) exception(ERR_JSON_SYNTAX);
                         if (ch == '"') break;
-                        if (ch == '\\') ch = read_esc_char(inp);
-                        buf_add(ch);
-                        len++;
+                        if (ch == '\\') {
+                            char utf8[4];
+                            unsigned l = read_esc_char(inp, utf8);
+                            unsigned n;
+                            for (n = 0; n < l; n++) buf_add(utf8[n]);
+                        }
+                        else {
+                            buf_add(ch);
+                        }
                     }
+                    len = buf_pos - buf_pos0;
                 }
                 buf_add(0);
                 len_buf[len_pos++] = len;
@@ -547,7 +597,7 @@ size_t json_read_binary_data(JsonReadBinaryState * state, void * buf, size_t len
                 state->rem = 0;
             }
             if (len >= 3) {
-                int i = read_base64(state->inp, (char *)ptr, len);
+                size_t i = read_base64(state->inp, (char *)ptr, len);
                 if (i == 0) break;
                 ptr += i;
                 len -= i;
@@ -573,7 +623,7 @@ void json_read_binary_end(JsonReadBinaryState * state) {
     }
 }
 
-char * json_read_alloc_binary(InputStream * inp, int * size) {
+char * json_read_alloc_binary(InputStream * inp, size_t * size) {
     char * data = NULL;
     int ch = peek_stream(inp);
     *size = 0;
@@ -590,14 +640,14 @@ char * json_read_alloc_binary(InputStream * inp, int * size) {
 
         buf_pos = 0;
         for (;;) {
-            int rd;
+            size_t rd;
             if (buf_pos >= buf_size) realloc_buf();
             rd = json_read_binary_data(&state, buf + buf_pos, buf_size - buf_pos);
             if (rd == 0) break;
             buf_pos += rd;
         }
 
-        assert(state.size_start <= 0 || (int)buf_pos == state.size_start);
+        assert(state.size_start <= 0 || buf_pos == state.size_start);
 
         json_read_binary_end(&state);
         data = (char *)loc_alloc(buf_pos);
@@ -607,7 +657,7 @@ char * json_read_alloc_binary(InputStream * inp, int * size) {
     return data;
 }
 
-void json_write_binary_start(JsonWriteBinaryState * state, OutputStream * out, int size) {
+void json_write_binary_start(JsonWriteBinaryState * state, OutputStream * out, size_t size) {
     state->out = out;
     state->rem = 0;
     state->encoding = out->supports_zero_copy && size > 0 ? ENCODING_BINARY : ENCODING_BASE64;
@@ -755,7 +805,7 @@ static void skip_object(InputStream * inp) {
         }
         return;
     }
-    if (ch == '-' || ch >= '0' && ch <= '9') {
+    if (ch == '-' || (ch >= '0' && ch <= '9')) {
         for (;;) {
             ch = peek_stream(inp);
             if ((ch < '0' || ch > '9') && ch != '.'
@@ -816,6 +866,15 @@ void json_skip_object(InputStream * inp) {
     skip_object(inp);
 }
 
+static void read_errno_param(InputStream * inp, void * x) {
+    ErrorReport * err = (ErrorReport *)x;
+    if (err->param_cnt >= err->param_max) {
+        err->param_max += 4;
+        err->params = (char **)loc_realloc(err->params, err->param_max * sizeof(char *));
+    }
+    err->params[err->param_cnt++] = json_read_object(inp);
+}
+
 int read_errno(InputStream * inp) {
     int no = 0;
     ErrorReport * err = NULL;
@@ -839,6 +898,9 @@ int read_errno(InputStream * inp) {
             }
             else if (strcmp(name, "Format") == 0) {
                 err->format = json_read_alloc_string(inp);
+            }
+            else if (strcmp(name, "Params") == 0) {
+                json_read_array(inp, read_errno_param, err);
             }
             else {
                 ErrorReportItem * i = (ErrorReportItem *)loc_alloc_zero(sizeof(ErrorReportItem));
@@ -875,6 +937,19 @@ static void write_error_props(OutputStream * out, ErrorReport * rep) {
         json_write_string(out, "Format");
         write_stream(out, ':');
         json_write_string(out, rep->format);
+    }
+
+    if (rep->param_cnt > 0) {
+        int n = 0;
+        write_stream(out, ',');
+        json_write_string(out, "Params");
+        write_stream(out, ':');
+        write_stream(out, '[');
+        for (n = 0; n < rep->param_cnt; n++) {
+            if (n > 0) write_stream(out, ',');
+            write_string(out, rep->params[n]);
+        }
+        write_stream(out, ']');
     }
 
     while (i != NULL) {

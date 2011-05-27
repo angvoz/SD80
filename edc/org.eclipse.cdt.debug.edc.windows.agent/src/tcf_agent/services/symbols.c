@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -50,11 +50,15 @@ static void command_get_context_cache_client(void * x) {
     int has_lower_bound = 0;
     int has_offset = 0;
     int has_address = 0;
+    int big_endian = 0;
     ContextAddress size = 0;
     ContextAddress length = 0;
     int64_t lower_bound = 0;
     ContextAddress offset = 0;
     ContextAddress address = 0;
+    RegisterDefinition * reg = NULL;
+    Context * reg_ctx = NULL;
+    int reg_frame = 0;
     void * value = NULL;
     size_t value_size = 0;
 
@@ -76,11 +80,12 @@ static void command_get_context_cache_client(void * x) {
         if (sym_class == SYM_CLASS_REFERENCE) {
             has_offset = get_symbol_offset(sym, &offset) == 0;
         }
-        if (sym_class == SYM_CLASS_REFERENCE || sym_class == SYM_CLASS_FUNCTION) {
+        if (!has_offset && (sym_class == SYM_CLASS_REFERENCE || sym_class == SYM_CLASS_FUNCTION)) {
             has_address = get_symbol_address(sym, &address) == 0;
+            get_symbol_register(sym, &reg_ctx, &reg_frame, &reg);
         }
         if (sym_class == SYM_CLASS_VALUE) {
-            get_symbol_value(sym, &value, &value_size);
+            get_symbol_value(sym, &value, &value_size, &big_endian);
         }
     }
 
@@ -186,11 +191,25 @@ static void command_get_context_cache_client(void * x) {
             write_stream(&c->out, ',');
         }
 
+        if (reg != NULL) {
+            json_write_string(&c->out, "Register");
+            write_stream(&c->out, ':');
+            json_write_string(&c->out, register2id(reg_ctx, reg_frame, reg));
+            write_stream(&c->out, ',');
+        }
+
         if (value != NULL) {
             json_write_string(&c->out, "Value");
             write_stream(&c->out, ':');
             json_write_binary(&c->out, value, value_size);
             write_stream(&c->out, ',');
+
+            if (big_endian) {
+                json_write_string(&c->out, "BigEndian");
+                write_stream(&c->out, ':');
+                json_write_boolean(&c->out, 1);
+                write_stream(&c->out, ',');
+            }
         }
 
         json_write_string(&c->out, "Class");
@@ -268,14 +287,15 @@ static void command_get_children(char * token, Channel * c) {
     cache_enter(command_get_children_cache_client, c, &args, sizeof(args));
 }
 
-typedef struct CommandFindArgs {
+typedef struct CommandFindByNameArgs {
     char token[256];
     char id[256];
+    ContextAddress ip;
     char * name;
-} CommandFindArgs;
+} CommandFindByNameArgs;
 
-static void command_find_cache_client(void * x) {
-    CommandFindArgs * args = (CommandFindArgs *)x;
+static void command_find_by_name_cache_client(void * x) {
+    CommandFindByNameArgs * args = (CommandFindByNameArgs *)x;
     Channel * c = cache_channel();
     Context * ctx = NULL;
     int frame = STACK_NO_FRAME;
@@ -286,7 +306,7 @@ static void command_find_cache_client(void * x) {
     if (ctx == NULL) err = set_errno(ERR_INV_CONTEXT, args->id);
     else if (ctx->exited) err = ERR_ALREADY_EXITED;
 
-    if (err == 0 && find_symbol(ctx, frame, args->name, &sym) < 0) err = errno;
+    if (err == 0 && find_symbol_by_name(ctx, frame, args->ip, args->name, &sym) < 0) err = errno;
 
     cache_exit();
 
@@ -306,17 +326,130 @@ static void command_find_cache_client(void * x) {
     loc_free(args->name);
 }
 
-static void command_find(char * token, Channel * c) {
-    CommandFindArgs args;
+static void command_find_by_name(char * token, Channel * c) {
+    CommandFindByNameArgs args;
 
     json_read_string(&c->inp, args.id, sizeof(args.id));
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    if (peek_stream(&c->inp) != '"' && peek_stream(&c->inp) != 'n') {
+        args.ip = (ContextAddress)json_read_uint64(&c->inp);
+        if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    }
+    args.name = json_read_alloc_string(&c->inp);
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
+
+    strlcpy(args.token, token, sizeof(args.token));
+    cache_enter(command_find_by_name_cache_client, c, &args, sizeof(args));
+}
+
+typedef struct CommandFindByAddrArgs {
+    char token[256];
+    char id[256];
+    ContextAddress addr;
+} CommandFindByAddrArgs;
+
+static void command_find_by_addr_cache_client(void * x) {
+    CommandFindByAddrArgs * args = (CommandFindByAddrArgs *)x;
+    Channel * c = cache_channel();
+    Context * ctx = NULL;
+    int frame = STACK_NO_FRAME;
+    Symbol * sym = NULL;
+    int err = 0;
+
+    if (id2frame(args->id, &ctx, &frame) < 0) ctx = id2ctx(args->id);
+    if (ctx == NULL) err = set_errno(ERR_INV_CONTEXT, args->id);
+    else if (ctx->exited) err = ERR_ALREADY_EXITED;
+
+    if (err == 0 && find_symbol_by_addr(ctx, frame, args->addr, &sym) < 0) err = errno;
+
+    cache_exit();
+
+    write_stringz(&c->out, "R");
+    write_stringz(&c->out, args->token);
+    write_errno(&c->out, err);
+
+    if (err == 0) {
+        json_write_string(&c->out, symbol2id(sym));
+        write_stream(&c->out, 0);
+    }
+    else {
+        write_stringz(&c->out, "null");
+    }
+
+    write_stream(&c->out, MARKER_EOM);
+}
+
+static void command_find_by_addr(char * token, Channel * c) {
+    CommandFindByAddrArgs args;
+
+    json_read_string(&c->inp, args.id, sizeof(args.id));
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    args.addr = (ContextAddress)json_read_uint64(&c->inp);
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
+
+    strlcpy(args.token, token, sizeof(args.token));
+    cache_enter(command_find_by_addr_cache_client, c, &args, sizeof(args));
+}
+
+typedef struct CommandFindInScopeArgs {
+    char token[256];
+    char frame_id[256];
+    char scope_id[256];
+    ContextAddress ip;
+    char * name;
+} CommandFindInScopeArgs;
+
+static void command_find_in_scope_cache_client(void * x) {
+    CommandFindInScopeArgs * args = (CommandFindInScopeArgs *)x;
+    Channel * c = cache_channel();
+    Context * ctx = NULL;
+    int frame = STACK_NO_FRAME;
+    Symbol * scope = NULL;
+    Symbol * sym = NULL;
+    int err = 0;
+
+    if (id2frame(args->frame_id, &ctx, &frame) < 0) ctx = id2ctx(args->frame_id);
+    if (ctx == NULL) err = set_errno(ERR_INV_CONTEXT, args->frame_id);
+    else if (ctx->exited) err = ERR_ALREADY_EXITED;
+
+    if (err == 0 && args->scope_id[0] && id2symbol(args->scope_id, &scope) < 0) err = errno;
+    if (err == 0 && find_symbol_in_scope(ctx, frame, args->ip, scope, args->name, &sym) < 0) err = errno;
+
+    cache_exit();
+
+    write_stringz(&c->out, "R");
+    write_stringz(&c->out, args->token);
+    write_errno(&c->out, err);
+
+    if (err == 0) {
+        json_write_string(&c->out, symbol2id(sym));
+        write_stream(&c->out, 0);
+    }
+    else {
+        write_stringz(&c->out, "null");
+    }
+
+    write_stream(&c->out, MARKER_EOM);
+    loc_free(args->name);
+}
+
+static void command_find_in_scope(char * token, Channel * c) {
+    CommandFindInScopeArgs args;
+
+    json_read_string(&c->inp, args.frame_id, sizeof(args.frame_id));
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    args.ip = (ContextAddress)json_read_uint64(&c->inp);
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    json_read_string(&c->inp, args.scope_id, sizeof(args.scope_id));
     if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
     args.name = json_read_alloc_string(&c->inp);
     if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
     if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
 
     strlcpy(args.token, token, sizeof(args.token));
-    cache_enter(command_find_cache_client, c, &args, sizeof(args));
+    cache_enter(command_find_in_scope_cache_client, c, &args, sizeof(args));
 }
 
 typedef struct CommandListArgs {
@@ -534,12 +667,12 @@ void ini_symbols_service(Protocol * proto) {
     }
     add_command_handler(proto, SYMBOLS, "getContext", command_get_context);
     add_command_handler(proto, SYMBOLS, "getChildren", command_get_children);
-    add_command_handler(proto, SYMBOLS, "find", command_find);
+    add_command_handler(proto, SYMBOLS, "find", command_find_by_name);
+    add_command_handler(proto, SYMBOLS, "findByAddr", command_find_by_addr);
+    add_command_handler(proto, SYMBOLS, "findInScope", command_find_in_scope);
     add_command_handler(proto, SYMBOLS, "list", command_list);
     add_command_handler(proto, SYMBOLS, "getArrayType", command_get_array_type);
     add_command_handler(proto, SYMBOLS, "findFrameInfo", command_find_frame_info);
 }
 
 #endif /* SERVICE_Symbols */
-
-

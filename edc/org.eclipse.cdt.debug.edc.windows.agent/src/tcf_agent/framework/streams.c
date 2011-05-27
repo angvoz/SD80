@@ -18,8 +18,30 @@
 
 #include <config.h>
 #include <stddef.h>
+#include <string.h>
 #include <framework/myalloc.h>
 #include <framework/streams.h>
+
+int (read_stream)(InputStream * inp) {
+    return (inp->cur < inp->end) ? *inp->cur++ : inp->read(inp);
+}
+
+int (peek_stream)(InputStream * inp) {
+    return (inp->cur < inp->end) ? *inp->cur : inp->peek(inp);
+}
+
+void (write_stream)(OutputStream * out, int b) {
+    if (b > ESC && out->cur < out->end) *out->cur++ = (unsigned char)b;
+    else out->write(out, b);
+}
+
+void (write_block_stream)(OutputStream * out, const char * bytes, size_t size) {
+    out->write_block(out, bytes, size);
+}
+
+ssize_t (splice_block_stream)(OutputStream * out, int fd, size_t size, off_t * offset) {
+    return out->splice_block(out, fd, size, offset);
+}
 
 void write_string(OutputStream * out, const char * str) {
     while (*str) write_stream(out, (*str++) & 0xff);
@@ -52,14 +74,10 @@ static void write_block_byte_array_output_stream(OutputStream * out, const char 
     while (pos < size) write_byte_array_output_stream(out, ((const uint8_t *)bytes)[pos++]);
 }
 
-static void flush_byte_array_output_stream(OutputStream * stream) {
-}
-
 OutputStream * create_byte_array_output_stream(ByteArrayOutputStream * buf) {
     memset(buf, 0, sizeof(ByteArrayOutputStream));
     buf->out.write_block = write_block_byte_array_output_stream;
     buf->out.write = write_byte_array_output_stream;
-    buf->out.flush = flush_byte_array_output_stream;
     return &buf->out;
 }
 
@@ -74,6 +92,27 @@ void get_byte_array_output_stream_data(ByteArrayOutputStream * buf, char ** data
     buf->mem = NULL;
     buf->max = 0;
     buf->pos = 0;
+}
+
+static int read_byte_array_input_stream(InputStream * inp) {
+    ByteArrayInputStream * buf = (ByteArrayInputStream *)((char *)inp - offsetof(ByteArrayInputStream, inp));
+    if (buf->pos >= buf->max) return -1;
+    return ((unsigned char *)buf->buf)[buf->pos++];
+}
+
+static int peek_byte_array_input_stream(InputStream * inp) {
+    ByteArrayInputStream * buf = (ByteArrayInputStream *)((char *)inp - offsetof(ByteArrayInputStream, inp));
+    if (buf->pos >= buf->max) return -1;
+    return ((unsigned char *)buf->buf)[buf->pos];
+}
+
+InputStream * create_byte_array_input_stream(ByteArrayInputStream * buf, char * data, size_t size) {
+    memset(buf, 0, sizeof(ByteArrayInputStream));
+    buf->inp.read = read_byte_array_input_stream;
+    buf->inp.peek = peek_byte_array_input_stream;
+    buf->buf = data;
+    buf->max = size;
+    return &buf->inp;
 }
 
 static int read_forwarding_input_stream(InputStream * inp) {
@@ -96,4 +135,3 @@ InputStream * create_forwarding_input_stream(ForwardingInputStream * buf, InputS
     buf->out = out;
     return &buf->fwd;
 }
-

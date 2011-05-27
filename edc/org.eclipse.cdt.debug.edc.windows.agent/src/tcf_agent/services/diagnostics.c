@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <framework/protocol.h>
 #include <framework/json.h>
 #include <framework/exceptions.h>
@@ -45,6 +46,7 @@ static const char * DIAGNOSTICS = "Diagnostics";
 
 typedef struct ContextExtensionDiag {
     int test_process;
+    Channel * channel;
 } ContextExtensionDiag;
 
 static size_t context_extension_offset = 0;
@@ -55,8 +57,25 @@ int is_test_process(Context * ctx) {
 #if defined(_WRS_KERNEL)
     return 1;
 #else
-    return EXT(ctx->mem)->test_process;
+    return EXT(context_get_group(ctx, CONTEXT_GROUP_PROCESS))->test_process;
 #endif
+}
+
+static void channel_close_listener(Channel * c) {
+    LINK * l = context_root.next;
+    while (l != &context_root) {
+        Context * ctx = ctxl2ctxp(l);
+        l = l->next;
+        if (EXT(ctx)->channel == c || (ctx->creator != NULL && EXT(ctx->creator)->channel == c)) {
+            terminate_debug_context(ctx);
+        }
+    }
+    l = context_root.next;
+    while (l != &context_root) {
+        Context * ctx = ctxl2ctxp(l);
+        if (EXT(ctx)->channel == c) EXT(ctx)->channel = NULL;
+        l = l->next;
+    }
 }
 
 #endif /* ENABLE_RCBP_TEST */
@@ -93,6 +112,17 @@ static void command_echo_fp(char * token, Channel * c) {
     write_stream(&c->out, MARKER_EOM);
 }
 
+static void command_echo_err(char * token, Channel * c) {
+    int no = read_errno(&c->inp);
+    if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
+    write_stringz(&c->out, "R");
+    write_stringz(&c->out, token);
+    write_errno(&c->out, no);
+    json_write_string(&c->out, errno_to_str(no));
+    write_stream(&c->out, 0);
+    write_stream(&c->out, MARKER_EOM);
+}
+
 static void command_get_test_list(char * token, Channel * c) {
     const char * arr = "[]";
     if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
@@ -111,7 +141,10 @@ static void run_test_done(int error, Context * ctx, void * arg) {
     RunTestDoneArgs * data = (RunTestDoneArgs *)arg;
     Channel * c = data->c;
 
-    if (ctx != NULL) EXT(ctx->mem)->test_process = 1;
+    if (ctx != NULL) {
+        EXT(context_get_group(ctx, CONTEXT_GROUP_PROCESS))->test_process = 1;
+        EXT(ctx)->channel = c;
+    }
     if (!is_channel_closed(c)) {
         write_stringz(&c->out, "R");
         write_stringz(&c->out, data->token);
@@ -119,6 +152,9 @@ static void run_test_done(int error, Context * ctx, void * arg) {
         json_write_string(&c->out, ctx ? ctx->id : NULL);
         write_stream(&c->out, 0);
         write_stream(&c->out, MARKER_EOM);
+    }
+    else if (ctx != NULL) {
+        terminate_debug_context(ctx);
     }
     channel_unlock(c);
     loc_free(data);
@@ -168,7 +204,7 @@ static void command_cancel_test(char * token, Channel * c) {
     if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
 
 #if ENABLE_RCBP_TEST
-    if (terminate_debug_context(c, id2ctx(id)) != 0) err = errno;
+    if (terminate_debug_context(id2ctx(id)) != 0) err = errno;
 #else
     err = ERR_UNSUPPORTED;
 #endif
@@ -216,7 +252,7 @@ static void get_symbol_cache_client(void * x) {
     if (ctx->exited) {
         error = ERR_ALREADY_EXITED;
     }
-    else if (find_symbol(ctx, STACK_NO_FRAME, args->name, &sym) < 0) {
+    else if (find_symbol_by_name(ctx, STACK_NO_FRAME, 0, args->name, &sym) < 0) {
         error = errno;
     }
     else if (get_symbol_address(sym, &addr) < 0) {
@@ -398,6 +434,7 @@ static void command_dispose_test_stream(char * token, Channel * c) {
 void ini_diagnostics_service(Protocol * proto) {
     add_command_handler(proto, DIAGNOSTICS, "echo", command_echo);
     add_command_handler(proto, DIAGNOSTICS, "echoFP", command_echo_fp);
+    add_command_handler(proto, DIAGNOSTICS, "echoERR", command_echo_err);
     add_command_handler(proto, DIAGNOSTICS, "getTestList", command_get_test_list);
     add_command_handler(proto, DIAGNOSTICS, "runTest", command_run_test);
     add_command_handler(proto, DIAGNOSTICS, "cancelTest", command_cancel_test);
@@ -406,8 +443,6 @@ void ini_diagnostics_service(Protocol * proto) {
     add_command_handler(proto, DIAGNOSTICS, "disposeTestStream", command_dispose_test_stream);
 #if ENABLE_RCBP_TEST
     context_extension_offset = context_extension(sizeof(ContextExtensionDiag));
+    add_channel_close_listener(channel_close_listener);
 #endif
 }
-
-
-

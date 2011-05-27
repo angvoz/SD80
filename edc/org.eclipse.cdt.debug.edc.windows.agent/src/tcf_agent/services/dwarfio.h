@@ -65,6 +65,12 @@ extern U8_T dio_ReadU8LEB128(void);
 extern I8_T dio_ReadS8LEB128(void);
 
 extern U8_T dio_ReadUX(int Size);
+
+/*
+ * Read link-time address value.
+ * Relocation tables are used if necessary to compute the address value.
+ * For a file that can be relotated at run-time, 's' is assigned a section that the address points to.
+ */
 extern U8_T dio_ReadAddressX(ELF_Section ** s, int Size);
 extern U8_T dio_ReadAddress(ELF_Section ** s);
 
@@ -72,13 +78,17 @@ extern char * dio_ReadString(void);
 
 typedef void (*DIO_EntryCallBack)(U2_T /* Tag */, U2_T /* Attr */, U2_T /* Form */);
 /*
- * CallBack is called berore each DWARF entry with Atrr = 0 and Form = 1,
+ * CallBack is called berore each DWARF entry with Atrr = 0 and Form != 0,
  * then is is called for each entry attribute with appropriate Attr and Form values,
  * and then called after the entry with Attr = 0 and Form = 0.
  * This sequence is repeated for each entry in the debug info unit.
  */
 extern void dio_ReadUnit(DIO_UnitDescriptor * Unit, DIO_EntryCallBack CallBack);
-extern void dio_ReadEntry(DIO_EntryCallBack CallBack);
+extern int dio_ReadEntry(DIO_EntryCallBack CallBack, U2_T Attr);
+
+/* CallBack 'Form' value on unit entry: */
+#define DWARF_ENTRY_NO_CHILDREN     2
+#define DWARF_ENTRY_HAS_CHILDREN    3
 
 extern void dio_LoadAbbrevTable(ELF_File * File);
 
@@ -92,4 +102,3 @@ extern void dio_ChkString(U2_T Form);
 #endif /* ENABLE_ELF */
 
 #endif /* D_dwarfio */
-

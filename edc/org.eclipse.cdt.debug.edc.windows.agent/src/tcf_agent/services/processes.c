@@ -20,6 +20,8 @@
  * require a process to be attached before they can access it.
  */
 
+/* TODO: It should be possible to filter processes on a criteria (user, name, etc) */
+
 #include <config.h>
 
 #if SERVICE_Processes
@@ -43,7 +45,7 @@
 #include <services/streamsservice.h>
 #include <services/processes.h>
 
-static const char * PROCESSES = "Processes";
+static const char * PROCESSES[2] = { "Processes", "ProcessesV1" };
 
 #if defined(WIN32)
 #  include <tlhelp32.h>
@@ -116,6 +118,12 @@ typedef struct ProcessInput {
     VirtualStream * vstream;
 } ProcessInput;
 
+typedef struct ProcessStartParams {
+    int attach;
+    int attach_children;
+    int use_terminal;
+} ProcessStartParams;
+
 #define link2prs(A)  ((ChildProcess *)((char *)(A) - offsetof(ChildProcess, link)))
 
 static LINK prs_list;
@@ -148,10 +156,77 @@ static void write_context(OutputStream * out, int pid) {
 
     write_stream(out, '{');
 
+    /* the process Name */
+#if defined(__linux__)
+    /* Use the /proc to get the name */
+    {
+        char buff[256];
+        char fname[256];
+        FILE * file;
+        const char * name = NULL;
+
+        /* clear out buff */
+        buff[0] = 0;
+
+        /* try cmdline */
+        snprintf(fname, sizeof(fname), "/proc/%d/cmdline", pid);
+        file = fopen(fname, "r");
+        if (file) {
+            if (fgets(buff, sizeof(buff), file) != NULL) {
+                if (buff[0]) name = buff;
+            }
+            fclose(file);
+        }
+
+        if (!name) {
+            /* try status */
+            snprintf(fname, sizeof(fname), "/proc/%d/status", pid);
+            file = fopen(fname, "r");
+            if (file) {
+                char * p = fgets(buff, sizeof(buff), file);
+                if (p != NULL) {
+                    /* Find the attribute name */
+                    for (; *p; ++p) {
+                        if (*p == ':') {
+                            /* close off the attr name string */
+                            *p++ = 0;
+
+                            /* is it our name? */
+                            if (!strcmp(buff, "Name")) {
+                                char * n;
+
+                                /* change tab to '[' */
+                                *p = '[';
+
+                                /* change trailing new line to ']' */
+                                for (n = p; *n; ++n)
+                                    if (*n == '\n')
+                                        *n = ']';
+
+                                name = p;
+                                break;
+                            }
+                        }
+                    }
+                }
+                fclose(file);
+            }
+        }
+
+        if (!name) name = pid2id(pid, 0);
+
+        /* Send it out */
+        json_write_string(out, "Name");
+        write_stream(out, ':');
+        json_write_string(out, name);
+        write_stream(out, ',');
+    }
+#else
     json_write_string(out, "Name");
     write_stream(out, ':');
     json_write_string(out, prs ? prs->name : pid2id(pid, 0));
     write_stream(out, ',');
+#endif
 
     json_write_string(out, "CanTerminate");
     write_stream(out, ':');
@@ -194,17 +269,20 @@ static void write_context(OutputStream * out, int pid) {
 }
 
 static void send_event_process_exited(OutputStream * out, ChildProcess * prs) {
-    write_stringz(out, "E");
-    write_stringz(out, PROCESSES);
-    write_stringz(out, "exited");
+    int v;
+    for (v = 0; v < 2; v++) {
+        write_stringz(out, "E");
+        write_stringz(out, PROCESSES[v]);
+        write_stringz(out, "exited");
 
-    json_write_string(out, pid2id(prs->pid, 0));
-    write_stream(out, 0);
+        json_write_string(out, pid2id(prs->pid, 0));
+        write_stream(out, 0);
 
-    json_write_long(out, prs->exit_code);
-    write_stream(out, 0);
+        json_write_long(out, prs->exit_code);
+        write_stream(out, 0);
 
-    write_stream(out, MARKER_EOM);
+        write_stream(out, MARKER_EOM);
+    }
 }
 
 static void command_get_context(char * token, Channel * c) {
@@ -491,7 +569,7 @@ static void start_done(int error, Context * ctx, void * arg) {
 
 #else /* not ENABLE_DebugContext */
 
-#define context_attach(pid, done, client_data, selfattach) (errno = ERR_UNSUPPORTED, -1)
+#define context_attach(pid, done, client_data, mode) (errno = ERR_UNSUPPORTED, -1)
 #define context_attach_self() (errno = ERR_UNSUPPORTED, -1)
 
 #endif /* ENABLE_DebugContext */
@@ -722,7 +800,7 @@ static void write_process_input(ChildProcess * prs) {
     inp->req.done = write_process_input_done;
     inp->req.type = AsyncReqWrite;
     inp->req.u.fio.fd = prs->inp;
-    virtual_stream_create(PROCESSES, pid2id(prs->pid, 0), 0x1000, VS_ENABLE_REMOTE_WRITE,
+    virtual_stream_create(PROCESSES[0], pid2id(prs->pid, 0), 0x1000, VS_ENABLE_REMOTE_WRITE,
         process_input_streams_callback, inp, &inp->vstream);
     virtual_stream_get_id(inp->vstream, prs->inp_id, sizeof(prs->inp_id));
 }
@@ -796,7 +874,7 @@ static ProcessOutput * read_process_output(ChildProcess * prs, int fd, char * id
     out->req.u.fio.bufp = out->buf;
     out->req.u.fio.bufsz = sizeof(out->buf);
     out->req.u.fio.fd = fd;
-    virtual_stream_create(PROCESSES, pid2id(prs->pid, 0), 0x1000, VS_ENABLE_REMOTE_READ,
+    virtual_stream_create(PROCESSES[0], pid2id(prs->pid, 0), 0x1000, VS_ENABLE_REMOTE_READ,
         process_output_streams_callback, out, &out->vstream);
     virtual_stream_get_id(out->vstream, id, id_size);
     out->req_posted = 1;
@@ -806,7 +884,7 @@ static ProcessOutput * read_process_output(ChildProcess * prs, int fd, char * id
 
 #if defined(WIN32)
 
-static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, int attach,
+static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, ProcessStartParams * params,
                 int * pid, int * selfattach, ChildProcess ** prs) {
     typedef struct _SYSTEM_HANDLE_INFORMATION {
         ULONG Count;
@@ -922,7 +1000,7 @@ static int start_process(Channel * c, char ** envp, char * dir, char * exe, char
         si.hStdInput  = hpipes[0][0];
         si.hStdOutput = hpipes[1][1];
         si.hStdError  = hpipes[2][1];
-        if (CreateProcess(exe, cmd, NULL, NULL, TRUE, (attach ? CREATE_SUSPENDED : 0),
+        if (CreateProcess(exe, cmd, NULL, NULL, TRUE, (params->attach ? CREATE_SUSPENDED : 0),
                 (envp ? envp[0] : NULL), (dir[0] ? dir : NULL), &si, &prs_info) == 0)
         {
             err = set_win32_errno(GetLastError());
@@ -986,7 +1064,7 @@ static void task_delete_hook(WIND_TCB * tcb) {
     semGive(prs_list_lock);
 }
 
-static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, int attach,
+static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, ProcessStartParams * params,
                 int * pid, int * selfattach, ChildProcess ** prs) {
     int err = 0;
     char * ptr;
@@ -1036,7 +1114,7 @@ static int start_process(Channel * c, char ** envp, char * dir, char * exe, char
             (*prs)->pid = *pid;
             (*prs)->bcg = c->bcg;
             list_add_first(&(*prs)->link, &prs_list);
-            if (attach) {
+            if (params->attach) {
                 taskStop(*pid);
                 taskActivate(*pid);
                 assert(taskIsStopped(*pid));
@@ -1052,134 +1130,124 @@ static int start_process(Channel * c, char ** envp, char * dir, char * exe, char
     return -1;
 }
 
-#elif USE_PIPES
-
-static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, int attach,
-                int * pid, int * selfattach, ChildProcess ** prs) {
-    int err = 0;
-    int p_inp[2];
-    int p_out[2];
-    int p_err[2];
-
-    if (pipe(p_inp) < 0 || pipe(p_out) < 0 || pipe(p_err) < 0) err = errno;
-
-    if (err == 0 && (p_inp[0] < 3 || p_out[1] < 3 || p_err[1] < 3)) {
-        int fd0 = p_inp[0];
-        int fd1 = p_out[1];
-        int fd2 = p_err[1];
-        if ((p_inp[0] = dup(p_inp[0])) < 0 ||
-            (p_out[1] = dup(p_out[1])) < 0 ||
-            (p_err[1] = dup(p_err[1])) < 0 ||
-            close(fd0) < 0 ||
-            close(fd1) < 0 ||
-            close(fd2) < 0) err = errno;
-    }
-
-    if (!err) {
-        *pid = fork();
-        if (*pid < 0) err = errno;
-        if (*pid == 0) {
-            int fd = -1;
-            int err = 0;
-
-            if (err == 0) {
-                fd = sysconf(_SC_OPEN_MAX);
-                if (fd < 0) err = errno;
-            }
-            if (!err && dup2(p_inp[0], 0) < 0) err = errno;
-            if (!err && dup2(p_out[1], 1) < 0) err = errno;
-            if (!err && dup2(p_err[1], 2) < 0) err = errno;
-            if (!err) {
-                while (fd > 3) close(--fd);
-            }
-            if (!err && attach && context_attach_self() < 0) err = errno;
-            if (!err) {
-                execve(exe, args, envp);
-                err = errno;
-            }
-            if (!attach) err = 1;
-            else if (err < 1) err = EINVAL;
-            else if (err > 0xff) err = EINVAL;
-            exit(err);
-        }
-    }
-    if (!err) {
-        if (close(p_inp[0]) < 0 || close(p_out[1]) < 0 || close(p_err[1]) < 0) err = errno;
-    }
-    if (!err) {
-        *prs = loc_alloc_zero(sizeof(ChildProcess));
-        (*prs)->inp = p_inp[1];
-        (*prs)->out = p_out[0];
-        (*prs)->err = p_err[0];
-        (*prs)->pid = *pid;
-        (*prs)->bcg = c->bcg;
-        list_add_first(&(*prs)->link, &prs_list);
-    }
-
-    *selfattach = 1;
-
-    if (!err) return 0;
-    errno = err;
-    return -1;
-}
-
 #else
 
-static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, int attach,
+static int start_process(Channel * c, char ** envp, char * dir, char * exe, char ** args, ProcessStartParams * params,
                 int * pid, int * selfattach, ChildProcess ** prs) {
     int err = 0;
-    int fd_tty_master = -1;
-    char * tty_slave_name = NULL;
+    if (!params->use_terminal) {
+        int p_inp[2];
+        int p_out[2];
+        int p_err[2];
 
-    fd_tty_master = posix_openpt(O_RDWR|O_NOCTTY);
-    if (fd_tty_master < 0 || grantpt(fd_tty_master) < 0 || unlockpt(fd_tty_master) < 0) err = errno;
-    if (!err) {
-         tty_slave_name = ptsname(fd_tty_master);
-         if (tty_slave_name == NULL) err = EINVAL;
-    }
+        if (pipe(p_inp) < 0 || pipe(p_out) < 0 || pipe(p_err) < 0) err = errno;
 
-    if (!err && fd_tty_master < 3) {
-        int fd0 = fd_tty_master;
-        if ((fd_tty_master = dup(fd_tty_master)) < 0 || close(fd0)) err = errno;
-    }
+        if (err == 0 && (p_inp[0] < 3 || p_out[1] < 3 || p_err[1] < 3)) {
+            int fd0 = p_inp[0];
+            int fd1 = p_out[1];
+            int fd2 = p_err[1];
+            if ((p_inp[0] = dup(p_inp[0])) < 0 ||
+                (p_out[1] = dup(p_out[1])) < 0 ||
+                (p_err[1] = dup(p_err[1])) < 0 ||
+                close(fd0) < 0 ||
+                close(fd1) < 0 ||
+                close(fd2) < 0) err = errno;
+        }
 
-    if (!err) {
-        *pid = fork();
-        if (*pid < 0) err = errno;
-        if (*pid == 0) {
-            int fd = -1;
-            int fd_tty_slave = -1;
+        if (!err) {
+            *pid = fork();
+            if (*pid < 0) err = errno;
+            if (*pid == 0) {
+                int fd = -1;
+                int err = 0;
 
-            setsid();
-            if (!err && (fd = sysconf(_SC_OPEN_MAX)) < 0) err = errno;
-            if (!err && (fd_tty_slave = open(tty_slave_name, O_RDWR)) < 0) err = errno;
-            if (!err && dup2(fd_tty_slave, 0) < 0) err = errno;
-            if (!err && dup2(fd_tty_slave, 1) < 0) err = errno;
-            if (!err && dup2(fd_tty_slave, 2) < 0) err = errno;
-            while (!err && fd > 3) close(--fd);
-            if (!err && attach && context_attach_self() < 0) err = errno;
-            if (!err) {
-                execve(exe, args, envp);
-                err = errno;
+                if (err == 0) {
+                    fd = sysconf(_SC_OPEN_MAX);
+                    if (fd < 0) err = errno;
+                }
+                if (!err && dup2(p_inp[0], 0) < 0) err = errno;
+                if (!err && dup2(p_out[1], 1) < 0) err = errno;
+                if (!err && dup2(p_err[1], 2) < 0) err = errno;
+                if (!err) {
+                    while (fd > 3) close(--fd);
+                }
+                if (!err && params->attach && context_attach_self() < 0) err = errno;
+                if (!err) {
+                    execve(exe, args, envp);
+                    err = errno;
+                }
+                if (!params->attach) err = 1;
+                else if (err < 1) err = EINVAL;
+                else if (err > 0xff) err = EINVAL;
+                exit(err);
             }
-            if (!attach) err = 1;
-            else if (err < 1) err = EINVAL;
-            else if (err > 0xff) err = EINVAL;
-            exit(err);
+        }
+        if (!err) {
+            if (close(p_inp[0]) < 0 || close(p_out[1]) < 0 || close(p_err[1]) < 0) err = errno;
+        }
+        if (!err) {
+            *prs = (ChildProcess *)loc_alloc_zero(sizeof(ChildProcess));
+            (*prs)->inp = p_inp[1];
+            (*prs)->out = p_out[0];
+            (*prs)->err = p_err[0];
+            (*prs)->pid = *pid;
+            (*prs)->bcg = c->bcg;
+            list_add_first(&(*prs)->link, &prs_list);
         }
     }
-    if (!err) {
-        *prs = (ChildProcess *)loc_alloc_zero(sizeof(ChildProcess));
-        (*prs)->inp = fd_tty_master;
-        (*prs)->out = fd_tty_master;
-        (*prs)->err = fd_tty_master;
-        (*prs)->pid = *pid;
-        (*prs)->bcg = c->bcg;
-        list_add_first(&(*prs)->link, &prs_list);
+    else {
+        int fd_tty_master = -1;
+        char * tty_slave_name = NULL;
+
+        fd_tty_master = posix_openpt(O_RDWR|O_NOCTTY);
+        if (fd_tty_master < 0 || grantpt(fd_tty_master) < 0 || unlockpt(fd_tty_master) < 0) err = errno;
+        if (!err) {
+             tty_slave_name = ptsname(fd_tty_master);
+             if (tty_slave_name == NULL) err = EINVAL;
+        }
+
+        if (!err && fd_tty_master < 3) {
+            int fd0 = fd_tty_master;
+            if ((fd_tty_master = dup(fd_tty_master)) < 0 || close(fd0)) err = errno;
+        }
+
+        if (!err) {
+            *pid = fork();
+            if (*pid < 0) err = errno;
+            if (*pid == 0) {
+                int fd = -1;
+                int fd_tty_slave = -1;
+
+                setsid();
+                if (!err && (fd = sysconf(_SC_OPEN_MAX)) < 0) err = errno;
+                if (!err && (fd_tty_slave = open(tty_slave_name, O_RDWR)) < 0) err = errno;
+                if (!err && dup2(fd_tty_slave, 0) < 0) err = errno;
+                if (!err && dup2(fd_tty_slave, 1) < 0) err = errno;
+                if (!err && dup2(fd_tty_slave, 2) < 0) err = errno;
+                while (!err && fd > 3) close(--fd);
+                if (!err && params->attach && context_attach_self() < 0) err = errno;
+                if (!err) {
+                    execve(exe, args, envp);
+                    err = errno;
+                }
+                if (!params->attach) err = 1;
+                else if (err < 1) err = EINVAL;
+                else if (err > 0xff) err = EINVAL;
+                exit(err);
+            }
+        }
+        if (!err) {
+            *prs = (ChildProcess *)loc_alloc_zero(sizeof(ChildProcess));
+            (*prs)->inp = fd_tty_master;
+            (*prs)->out = fd_tty_master;
+            (*prs)->err = fd_tty_master;
+            (*prs)->pid = *pid;
+            (*prs)->bcg = c->bcg;
+            list_add_first(&(*prs)->link, &prs_list);
+        }
     }
 
     *selfattach = 1;
-
     if (!err) return 0;
     errno = err;
     return -1;
@@ -1187,22 +1255,32 @@ static int start_process(Channel * c, char ** envp, char * dir, char * exe, char
 
 #endif
 
-static void command_start(char * token, Channel * c) {
+static void read_start_params(InputStream * inp, const char * nm, void * arg) {
+    ProcessStartParams * params = (ProcessStartParams *)arg;
+    if (strcmp(nm, "Attach") == 0) params->attach = json_read_boolean(inp);
+    else if (strcmp(nm, "AttachChildren") == 0) params->attach_children = json_read_boolean(inp);
+    else if (strcmp(nm, "UseTerminal") == 0) params->use_terminal = json_read_boolean(inp);
+    else json_skip_object(inp);
+}
+
+static void command_start(char * token, Channel * c, void * x) {
     int pid = 0;
     int err = 0;
+    int version = *(int *)x;
     char dir[FILE_PATH_SIZE];
     char exe[FILE_PATH_SIZE];
     char ** args = NULL;
     char ** envp = NULL;
     int args_len = 0;
     int envp_len = 0;
-    int attach = 0;
+    ProcessStartParams params;
     int selfattach = 0;
     int pending = 0;
     ChildProcess * prs = NULL;
     Trap trap;
 
     if (set_trap(&trap)) {
+        memset(&params, 0, sizeof(params));
         json_read_string(&c->inp, dir, sizeof(dir));
         if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
         json_read_string(&c->inp, exe, sizeof(exe));
@@ -1211,12 +1289,17 @@ static void command_start(char * token, Channel * c) {
         if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
         envp = json_read_alloc_string_array(&c->inp, &envp_len);
         if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
-        attach = json_read_boolean(&c->inp);
+        if (version > 0 && (peek_stream(&c->inp) == '{'|| peek_stream(&c->inp) == 'n')) {
+            json_read_struct(&c->inp, read_start_params, &params);
+        }
+        else {
+            params.attach = json_read_boolean(&c->inp);
+        }
         if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
         if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
 
         if (dir[0] != 0 && chdir(dir) < 0) err = errno;
-        if (err == 0 && start_process(c, envp, dir, exe, args, attach, &pid, &selfattach, &prs) < 0) err = errno;
+        if (err == 0 && start_process(c, envp, dir, exe, args, &params, &pid, &selfattach, &prs) < 0) err = errno;
         if (prs != NULL) {
             write_process_input(prs);
             prs->out_struct = read_process_output(prs, prs->out, prs->out_id, sizeof(prs->out_id));
@@ -1224,11 +1307,14 @@ static void command_start(char * token, Channel * c) {
             strlcpy(prs->name, exe, sizeof(prs->name));
         }
         if (!err) {
-            if (attach) {
+            if (params.attach) {
+                int mode = 0;
                 AttachDoneArgs * data = (AttachDoneArgs *)loc_alloc_zero(sizeof *data);
                 data->c = c;
                 strcpy(data->token, token);
-                pending = context_attach(pid, start_done, data, selfattach) == 0;
+                if (selfattach) mode |= CONTEXT_ATTACH_SELF;
+                if (params.attach_children) mode |= CONTEXT_ATTACH_CHILDREN;
+                pending = context_attach(pid, start_done, data, mode) == 0;
                 if (pending) {
                     channel_lock(c);
                 }
@@ -1275,6 +1361,8 @@ static void waitpid_listener(int pid, int exited, int exit_code, int signal, int
 }
 
 void ini_processes_service(Protocol * proto) {
+    int v;
+    static int vs[] = { 0, 1 };
 #if defined(_WRS_KERNEL)
     prs_list_lock = semMCreate(SEM_Q_PRIORITY);
     if (prs_list_lock == NULL) check_error(errno);
@@ -1283,22 +1371,21 @@ void ini_processes_service(Protocol * proto) {
 #endif
     list_init(&prs_list);
     add_waitpid_listener(waitpid_listener, NULL);
-    add_command_handler(proto, PROCESSES, "getContext", command_get_context);
-    add_command_handler(proto, PROCESSES, "getChildren", command_get_children);
-    add_command_handler(proto, PROCESSES, "terminate", command_terminate);
-    add_command_handler(proto, PROCESSES, "signal", command_signal);
-    add_command_handler(proto, PROCESSES, "getSignalList", command_get_signal_list);
-    add_command_handler(proto, PROCESSES, "getEnvironment", command_get_environment);
-    add_command_handler(proto, PROCESSES, "start", command_start);
+    for (v = 0; v < 2; v++) {
+        add_command_handler(proto, PROCESSES[v], "getContext", command_get_context);
+        add_command_handler(proto, PROCESSES[v], "getChildren", command_get_children);
+        add_command_handler(proto, PROCESSES[v], "terminate", command_terminate);
+        add_command_handler(proto, PROCESSES[v], "signal", command_signal);
+        add_command_handler(proto, PROCESSES[v], "getSignalList", command_get_signal_list);
+        add_command_handler(proto, PROCESSES[v], "getEnvironment", command_get_environment);
+        add_command_handler2(proto, PROCESSES[v], "start", command_start, vs + v);
 #if ENABLE_DebugContext
-    add_command_handler(proto, PROCESSES, "attach", command_attach);
-    add_command_handler(proto, PROCESSES, "detach", command_detach);
-    add_command_handler(proto, PROCESSES, "getSignalMask", command_get_signal_mask);
-    add_command_handler(proto, PROCESSES, "setSignalMask", command_set_signal_mask);
+        add_command_handler(proto, PROCESSES[v], "attach", command_attach);
+        add_command_handler(proto, PROCESSES[v], "detach", command_detach);
+        add_command_handler(proto, PROCESSES[v], "getSignalMask", command_get_signal_mask);
+        add_command_handler(proto, PROCESSES[v], "setSignalMask", command_set_signal_mask);
 #endif /* ENABLE_DebugContext */
+    }
 }
 
 #endif
-
-
-

@@ -18,14 +18,11 @@
 
 #include <config.h>
 #include <string.h>
-#include <assert.h>
 #include <framework/trace.h>
 #include <framework/myalloc.h>
 
 void * loc_alloc(size_t size) {
     void * p;
-
-    assert((size & ~0x3ffffff) == 0);
 
     if (size == 0) {
         size = 1;
@@ -34,14 +31,12 @@ void * loc_alloc(size_t size) {
         perror("malloc");
         exit(1);
     }
-    trace(LOG_ALLOC, "loc_alloc(%zd) = %#lx", size, p);
+    trace(LOG_ALLOC, "loc_alloc(%u) = %#lx", (unsigned)size, p);
     return p;
 }
 
 void * loc_alloc_zero(size_t size) {
     void * p;
-
-    assert((size & ~0x3ffffff) == 0);
 
     if (size == 0) {
         size = 1;
@@ -51,14 +46,12 @@ void * loc_alloc_zero(size_t size) {
         exit(1);
     }
     memset(p, 0, size);
-    trace(LOG_ALLOC, "loc_alloc_zero(%zd) = %#lx", size, p);
+    trace(LOG_ALLOC, "loc_alloc_zero(%u) = %#lx", (unsigned)size, p);
     return p;
 }
 
 void * loc_realloc(void * ptr, size_t size) {
     void * p;
-
-    assert((size & ~0x3ffffff) == 0);
 
     if (size == 0) {
         size = 1;
@@ -67,7 +60,7 @@ void * loc_realloc(void * ptr, size_t size) {
         perror("realloc");
         exit(1);
     }
-    trace(LOG_ALLOC, "loc_realloc(%#lx, %zd) = %#lx", ptr, size,p);
+    trace(LOG_ALLOC, "loc_realloc(%#lx, %u) = %#lx", ptr, (unsigned)size, p);
     return p;
 }
 

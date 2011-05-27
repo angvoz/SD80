@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -59,7 +59,21 @@ typedef void EnumerateSymbolsCallBack(void *, Symbol *);
  * On error, returns -1 and sets errno.
  * On success returns 0.
  */
-extern int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym);
+extern int find_symbol_by_name(Context * ctx, int frame, ContextAddress ip, char * name, Symbol ** sym);
+
+/*
+ * Find symbol information for given symbol name in given context and visibility scope.
+ * On error, returns -1 and sets errno.
+ * On success returns 0.
+ */
+extern int find_symbol_in_scope(Context * ctx, int frame, ContextAddress ip, Symbol * scope, char * name, Symbol ** sym);
+
+/*
+ * Find symbol information for given address in given context.
+ * On error, returns -1 and sets errno.
+ * On success returns 0.
+ */
+extern int find_symbol_by_addr(Context * ctx, int frame, ContextAddress addr, Symbol ** sym);
 
 /*
  * Enumerate symbols in given context.
@@ -93,7 +107,8 @@ extern int id2symbol(const char * id, Symbol ** sym);
 /* Get symbol class */
 extern int get_symbol_class(const Symbol * sym, int * symbol_class);
 
-/* Get symbol type */
+/* Get symbol type.
+ * If the symbol is a modified type, like "volatile int", return original (unmodified) type */
 extern int get_symbol_type(const Symbol * sym, Symbol ** type);
 
 /* Get type class, see TYPE_CLASS_* */
@@ -128,7 +143,7 @@ extern int get_symbol_length(const Symbol * sym, ContextAddress * length);
 /* Get array index lower bound (index of first element) */
 extern int get_symbol_lower_bound(const Symbol * sym, int64_t * value);
 
-/* Get children type IDs (struct, union, class, function and enum).
+/* Get children IDs of a type (struct, union, class, function and enum).
  * The array returned shall not be modified by the client,
  * and it may be overwritten by a subsequent calls to symbol functions */
 extern int get_symbol_children(const Symbol * sym, Symbol *** children, int * count);
@@ -139,10 +154,13 @@ extern int get_symbol_offset(const Symbol * sym, ContextAddress * offset);
 /* Get value (constant objects and enums).
  * The array returned shall not be modified by the client,
  * and it may be overwritten by a subsequent calls to symbol functions */
-extern int get_symbol_value(const Symbol * sym, void ** value, size_t * size);
+extern int get_symbol_value(const Symbol * sym, void ** value, size_t * size, int * big_endian);
 
 /* Get address (variables) */
 extern int get_symbol_address(const Symbol * sym, ContextAddress * address);
+
+/* Get register if the symbol is a register variable */
+extern int get_symbol_register(const Symbol * sym, Context ** ctx, int * frame, RegisterDefinition ** reg);
 
 /* Get a type that represents an array of elements of given base type.
  * If 'length' is zero, returned type represents pointer to given type */
@@ -168,6 +186,7 @@ extern int get_next_stack_frame(StackFrame * frame, StackFrame * down);
  * For given context and instruction address,
  * search for stack tracing information.
  * Return -1 and set errno in case of an error.
+ * Set 'info' to NULL if no stack tracing information found for the address.
  */
 extern int get_stack_tracing_info(Context * ctx, ContextAddress addr, StackTracingInfo ** info);
 

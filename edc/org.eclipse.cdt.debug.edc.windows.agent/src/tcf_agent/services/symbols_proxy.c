@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -36,14 +36,15 @@
 #  include <main/test.h>
 #endif
 
-#define HASH_SIZE 101
+#define HASH_SIZE (4 * MEM_USAGE_FACTOR - 1)
 
 /* Symbols cahce, one per channel */
 typedef struct SymbolsCache {
     Channel * channel;
     LINK link_root;
     LINK link_sym[HASH_SIZE];
-    LINK link_find[HASH_SIZE];
+    LINK link_find_by_name[HASH_SIZE];
+    LINK link_find_in_scope[HASH_SIZE];
     LINK link_list[HASH_SIZE];
     LINK link_frame[HASH_SIZE];
     int service_available;
@@ -58,7 +59,7 @@ typedef struct SymInfoCache {
     char * type_id;
     char * base_type_id;
     char * index_type_id;
-    char * pointer_type_id;
+    char * register_id;
     char * name;
     Context * update_owner;
     int update_policy;
@@ -77,7 +78,8 @@ typedef struct SymInfoCache {
     int64_t lower_bound;
     int64_t upper_bound;
     char * value;
-    int value_size;
+    size_t value_size;
+    int big_endian;
     char ** children_ids;
     int children_count;
     ReplyHandlerInfo * pending_get_context;
@@ -110,6 +112,7 @@ typedef struct FindSymCache {
     int update_policy;
     Context * ctx;
     uint64_t ip;
+    char * scope;
     char * name;
     char * id;
     int disposed;
@@ -136,6 +139,7 @@ typedef struct StackFrameCache {
     ReplyHandlerInfo * pending;
     ErrorReport * error;
     Context * ctx;
+    uint64_t ip;
     uint64_t address;
     uint64_t size;
 
@@ -209,7 +213,8 @@ static SymbolsCache * get_symbols_cache(void) {
         list_add_first(&syms->link_root, &root);
         for (i = 0; i < HASH_SIZE; i++) {
             list_init(syms->link_sym + i);
-            list_init(syms->link_find + i);
+            list_init(syms->link_find_by_name + i);
+            list_init(syms->link_find_in_scope + i);
             list_init(syms->link_list + i);
             list_init(syms->link_frame + i);
         }
@@ -243,7 +248,7 @@ static void free_sym_info_cache(SymInfoCache * c) {
         loc_free(c->type_id);
         loc_free(c->base_type_id);
         loc_free(c->index_type_id);
-        loc_free(c->pointer_type_id);
+        loc_free(c->register_id);
         loc_free(c->name);
         loc_free(c->value);
         loc_free(c->children_ids);
@@ -305,8 +310,11 @@ static void free_symbols_cache(SymbolsCache * syms) {
         while (!list_is_empty(syms->link_sym + i)) {
             free_sym_info_cache(syms2sym(syms->link_sym[i].next));
         }
-        while (!list_is_empty(syms->link_find + i)) {
-            free_find_sym_cache(syms2find(syms->link_find[i].next));
+        while (!list_is_empty(syms->link_find_by_name + i)) {
+            free_find_sym_cache(syms2find(syms->link_find_by_name[i].next));
+        }
+        while (!list_is_empty(syms->link_find_in_scope + i)) {
+            free_find_sym_cache(syms2find(syms->link_find_in_scope[i].next));
         }
         while (!list_is_empty(syms->link_list + i)) {
             free_list_sym_cache(syms2list(syms->link_list[i].next));
@@ -343,7 +351,9 @@ static void read_context_data(InputStream * inp, const char * name, void * args)
     else if (strcmp(name, "UpperBound") == 0) { s->upper_bound = json_read_int64(inp); s->has_upper_bound = 1; }
     else if (strcmp(name, "Offset") == 0) { s->offset = json_read_long(inp); s->has_offset = 1; }
     else if (strcmp(name, "Address") == 0) { s->address = (ContextAddress)json_read_uint64(inp); s->has_address = 1; }
+    else if (strcmp(name, "Register") == 0) s->register_id = json_read_alloc_string(inp);
     else if (strcmp(name, "Value") == 0) s->value = json_read_alloc_binary(inp, &s->value_size);
+    else if (strcmp(name, "BigEndian") == 0) s->big_endian = json_read_boolean(inp);
     else json_skip_object(inp);
 }
 
@@ -429,7 +439,7 @@ static void validate_find(Channel * c, void * args, int error) {
     if (trap.error) exception(trap.error);
 }
 
-int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
+int find_symbol_by_name(Context * ctx, int frame, ContextAddress addr,  char * name, Symbol ** sym) {
     uint64_t ip = 0;
     LINK * l = NULL;
     SymbolsCache * syms = NULL;
@@ -440,7 +450,8 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
     if (!set_trap(&trap)) return -1;
 
     if (frame == STACK_NO_FRAME) {
-        ctx = ctx->mem;
+        ctx = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
+        ip = addr;
     }
     else {
         StackFrame * info = NULL;
@@ -451,7 +462,7 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
 
     h = hash_find(ctx, name, ip);
     syms = get_symbols_cache();
-    for (l = syms->link_find[h].next; l != syms->link_find + h; l = l->next) {
+    for (l = syms->link_find_by_name[h].next; l != syms->link_find_by_name + h; l = l->next) {
         FindSymCache * c = syms2find(l);
         if (c->ctx == ctx && c->ip == ip && strcmp(c->name, name) == 0) {
             f = c;
@@ -460,19 +471,27 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
     }
 
 #if ENABLE_RCBP_TEST
-    if (f == NULL && !syms->service_available) {
+    if ((f == NULL && !syms->service_available) || (f != NULL && f->pending == NULL && f->error != NULL)) {
         void * address = NULL;
         int sym_class = 0;
         if (find_test_symbol(ctx, name, &address, &sym_class) >= 0) {
             char bf[256];
-            f = (FindSymCache *)loc_alloc_zero(sizeof(FindSymCache));
-            list_add_first(&f->link_syms, syms->link_find + h);
-            context_lock(f->ctx = ctx);
-            f->name = loc_strdup(name);
-            f->ip = ip;
+            if (f == NULL) {
+                f = (FindSymCache *)loc_alloc_zero(sizeof(FindSymCache));
+                list_add_first(&f->link_syms, syms->link_find_by_name + h);
+                context_lock(f->ctx = ctx);
+                f->name = loc_strdup(name);
+                f->ip = ip;
+            }
+            else {
+                release_error_report(f->error);
+                loc_free(f->id);
+                f->error = NULL;
+                f->id = NULL;
+            }
             f->update_policy = UPDATE_ON_MEMORY_MAP_CHANGES;
-            snprintf(bf, sizeof(bf), "TEST.%X.%"PRIX64".%s", sym_class,
-                    (uint64_t)(uintptr_t)address, ctx->mem->id);
+            snprintf(bf, sizeof(bf), "@T.%X.%"PRIX64".%s", sym_class,
+                    (uint64_t)(uintptr_t)address, context_get_group(ctx, CONTEXT_GROUP_PROCESS)->id);
             f->id = loc_strdup(bf);
         }
     }
@@ -481,7 +500,7 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
     if (f == NULL) {
         Channel * c = get_channel(syms);
         f = (FindSymCache *)loc_alloc_zero(sizeof(FindSymCache));
-        list_add_first(&f->link_syms, syms->link_find + h);
+        list_add_first(&f->link_syms, syms->link_find_by_name + h);
         context_lock(f->ctx = ctx);
         f->ip = ip;
         f->name = loc_strdup(name);
@@ -493,6 +512,8 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
         else {
             json_write_string(&c->out, ctx->id);
         }
+        write_stream(&c->out, 0);
+        json_write_uint64(&c->out, ip);
         write_stream(&c->out, 0);
         json_write_string(&c->out, name);
         write_stream(&c->out, 0);
@@ -512,6 +533,90 @@ int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
     }
     clear_trap(&trap);
     return 0;
+}
+
+int find_symbol_in_scope(Context * ctx, int frame, ContextAddress addr, Symbol * scope, char * name, Symbol ** sym) {
+    uint64_t ip = 0;
+    LINK * l = NULL;
+    SymbolsCache * syms = NULL;
+    FindSymCache * f = NULL;
+    unsigned h;
+    Trap trap;
+
+    if (!set_trap(&trap)) return -1;
+
+    if (frame == STACK_NO_FRAME) {
+        ctx = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
+        ip = addr;
+    }
+    else {
+        StackFrame * info = NULL;
+        if (frame == STACK_TOP_FRAME && (frame = get_top_frame(ctx)) < 0) exception(errno);;
+        if (get_frame_info(ctx, frame, &info) < 0) exception(errno);
+        if (read_reg_value(info, get_PC_definition(ctx), &ip) < 0) exception(errno);
+    }
+
+    h = hash_find(ctx, name, ip);
+    syms = get_symbols_cache();
+    for (l = syms->link_find_in_scope[h].next; l != syms->link_find_in_scope + h; l = l->next) {
+        FindSymCache * c = syms2find(l);
+        if (c->ctx == ctx && c->ip == ip && strcmp(c->name, name) == 0) {
+            if (scope == NULL && c->scope == NULL) {
+                f = c;
+                break;
+            }
+            if (scope == NULL || c->scope == NULL) continue;
+            if (strcmp(scope->cache->id, c->scope) == 0) {
+                f = c;
+                break;
+            }
+        }
+    }
+
+    if (f == NULL) {
+        Channel * c = get_channel(syms);
+        f = (FindSymCache *)loc_alloc_zero(sizeof(FindSymCache));
+        list_add_first(&f->link_syms, syms->link_find_in_scope + h);
+        context_lock(f->ctx = ctx);
+        f->ip = ip;
+        if (scope != NULL) f->scope = loc_strdup(scope->cache->id);
+        f->name = loc_strdup(name);
+        f->update_policy = ip ? UPDATE_ON_EXE_STATE_CHANGES : UPDATE_ON_MEMORY_MAP_CHANGES;
+        f->pending = protocol_send_command(c, SYMBOLS, "findInScope", validate_find, f);
+        if (frame != STACK_NO_FRAME) {
+            json_write_string(&c->out, frame2id(ctx, frame));
+        }
+        else {
+            json_write_string(&c->out, ctx->id);
+        }
+        write_stream(&c->out, 0);
+        json_write_uint64(&c->out, ip);
+        write_stream(&c->out, 0);
+        json_write_string(&c->out, scope ? scope->cache->id : NULL);
+        write_stream(&c->out, 0);
+        json_write_string(&c->out, name);
+        write_stream(&c->out, 0);
+        write_stream(&c->out, MARKER_EOM);
+        cache_wait(&f->cache);
+    }
+    else if (f->pending != NULL) {
+        cache_wait(&f->cache);
+    }
+    else if (f->error != NULL) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Symbol '%s' not found", name);
+        exception(set_errno(set_error_report_errno(f->error), msg));
+    }
+    else if (id2symbol(f->id, sym) < 0) {
+        exception(errno);
+    }
+    clear_trap(&trap);
+    return 0;
+}
+
+int find_symbol_by_addr(Context * ctx, int frame, ContextAddress addr, Symbol ** sym) {
+    errno = ERR_UNSUPPORTED;
+    return -1;
 }
 
 static void read_sym_list_item(InputStream * inp, void * args) {
@@ -559,7 +664,7 @@ int enumerate_symbols(Context * ctx, int frame, EnumerateSymbolsCallBack * func,
     if (!set_trap(&trap)) return -1;
 
     if (frame == STACK_NO_FRAME) {
-        ctx = ctx->mem;
+        ctx = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
     }
     else {
         StackFrame * info = NULL;
@@ -626,6 +731,7 @@ int id2symbol(const char * id, Symbol ** sym) {
     SymInfoCache * s = NULL;
     unsigned h = hash_sym_id(id);
     SymbolsCache * syms = get_symbols_cache();
+
     for (l = syms->link_sym[h].next; l != syms->link_sym + h; l = l->next) {
         SymInfoCache * x = syms2sym(l);
         if (strcmp(x->id, id) == 0) {
@@ -640,11 +746,11 @@ int id2symbol(const char * id, Symbol ** sym) {
         list_add_first(&s->link_syms, syms->link_sym + h);
         list_init(&s->array_syms);
 #if ENABLE_RCBP_TEST
-        if (strncmp(id, "TEST.", 5) == 0) {
+        if (strncmp(id, "@T.", 3) == 0) {
             int sym_class = 0;
             uint64_t address = 0;
             char ctx_id[256];
-            if (sscanf(id, "TEST.%X.%"SCNx64".%255s", &sym_class, &address, ctx_id) == 3) {
+            if (sscanf(id, "@T.%X.%"SCNx64".%255s", &sym_class, &address, ctx_id) == 3) {
                 s->done_context = 1;
                 s->has_address = 1;
                 s->address = (ContextAddress)address;
@@ -765,7 +871,7 @@ int get_symbol_offset(const Symbol * sym, ContextAddress * offset) {
     return 0;
 }
 
-int get_symbol_value(const Symbol * sym, void ** value, size_t * size) {
+int get_symbol_value(const Symbol * sym, void ** value, size_t * size, int * big_endian) {
     SymInfoCache * c = get_sym_info_cache(sym);
     if (c == NULL) return -1;
     if (c->sym_class != SYM_CLASS_VALUE) {
@@ -774,6 +880,7 @@ int get_symbol_value(const Symbol * sym, void ** value, size_t * size) {
     }
     *value = c->value;
     *size = c->value_size;
+    *big_endian = c->big_endian;
     return 0;
 }
 
@@ -786,6 +893,16 @@ int get_symbol_address(const Symbol * sym, ContextAddress * address) {
     }
     *address = c->address;
     return 0;
+}
+
+int get_symbol_register(const Symbol * sym, Context ** ctx, int * frame, RegisterDefinition ** reg) {
+    SymInfoCache * c = get_sym_info_cache(sym);
+    if (c == NULL) return -1;
+    if (c->register_id == NULL) {
+        errno = ERR_INV_CONTEXT;
+        return -1;
+    }
+    return id2register(c->register_id, ctx, frame, reg);
 }
 
 static void validate_children(Channel * c, void * args, int error) {
@@ -1007,7 +1124,13 @@ static void validate_frame(Channel * c, void * args, int error) {
             if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
             size = json_read_uint64(&c->inp);
             if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
-            if (!error && addr != 0 && size != 0) {
+            if (error || size == 0) {
+                f->address = f->ip & ~(uint64_t)3;
+                f->size = 4;
+            }
+            else {
+                assert(addr <= f->ip);
+                assert(addr + size > f->ip);
                 f->address = addr;
                 f->size = size;
             }
@@ -1047,6 +1170,8 @@ int get_next_stack_frame(StackFrame * frame, StackFrame * down) {
     LINK * l;
     uint64_t ip = 0;
     Context * ctx = frame->ctx;
+    /* Here we assume that stack tracing info is valid for all threads in same memory space */
+    Context * prs = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
     SymbolsCache * syms = NULL;
     StackFrameCache * f = NULL;
 
@@ -1058,12 +1183,11 @@ int get_next_stack_frame(StackFrame * frame, StackFrame * down) {
         return 0;
     }
 
-    h = hash_frame(ctx->mem);
+    h = hash_frame(prs);
     syms = get_symbols_cache();
     for (l = syms->link_frame[h].next; l != syms->link_frame + h; l = l->next) {
         StackFrameCache * c = syms2frame(l);
-        /* Here we assume that stack tracing info is valid for all threads in same memory space */
-        if (c->ctx == ctx->mem) {
+        if (c->ctx == prs) {
             if (c->pending != NULL) {
                 cache_wait(&c->cache);
             }
@@ -1083,9 +1207,8 @@ int get_next_stack_frame(StackFrame * frame, StackFrame * down) {
         Channel * c = get_channel(syms);
         f = (StackFrameCache *)loc_alloc_zero(sizeof(StackFrameCache));
         list_add_first(&f->link_syms, syms->link_frame + h);
-        context_lock(f->ctx = ctx->mem);
-        f->address = ip;
-        f->size = 1;
+        context_lock(f->ctx = prs);
+        f->ip = ip;
         f->pending = protocol_send_command(c, SYMBOLS, "findFrameInfo", validate_frame, f);
         json_write_string(&c->out, f->ctx->id);
         write_stream(&c->out, 0);
@@ -1098,11 +1221,18 @@ int get_next_stack_frame(StackFrame * frame, StackFrame * down) {
         exception(set_error_report_errno(f->error));
     }
     else if (f->fp != NULL) {
-        int i;
-        frame->fp = (ContextAddress)evaluate_stack_trace_commands(ctx, frame, f->fp);
-        for (i = 0; i < f->regs_cnt; i++) {
-            uint64_t v = evaluate_stack_trace_commands(ctx, frame, f->regs[i]);
-            if (write_reg_value(down, f->regs[i]->reg, v) < 0) exception(errno);
+        Trap trap;
+        if (set_trap(&trap)) {
+            int i;
+            frame->fp = (ContextAddress)evaluate_stack_trace_commands(ctx, frame, f->fp);
+            for (i = 0; i < f->regs_cnt; i++) {
+                uint64_t v = evaluate_stack_trace_commands(ctx, frame, f->regs[i]);
+                if (write_reg_value(down, f->regs[i]->reg, v) < 0) exception(errno);
+            }
+            clear_trap(&trap);
+        }
+        else {
+            frame->fp = 0;
         }
     }
 
@@ -1134,8 +1264,16 @@ static void flush_syms(Context * ctx, int mode) {
                     free_sym_info_cache(c);
                 }
             }
-            l = syms->link_find[i].next;
-            while (l != syms->link_find + i) {
+            l = syms->link_find_by_name[i].next;
+            while (l != syms->link_find_by_name + i) {
+                FindSymCache * c = syms2find(l);
+                l = l->next;
+                if ((mode & (1 << c->update_policy)) && c->ctx == ctx) {
+                    free_find_sym_cache(c);
+                }
+            }
+            l = syms->link_find_in_scope[i].next;
+            while (l != syms->link_find_in_scope + i) {
                 FindSymCache * c = syms2find(l);
                 l = l->next;
                 if ((mode & (1 << c->update_policy)) && c->ctx == ctx) {
@@ -1151,11 +1289,12 @@ static void flush_syms(Context * ctx, int mode) {
                 }
             }
             if (mode & (1 << UPDATE_ON_MEMORY_MAP_CHANGES)) {
+                Context * prs = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
                 l = syms->link_frame[i].next;
                 while (l != syms->link_frame + i) {
                     StackFrameCache * c = syms2frame(l);
                     l = l->next;
-                    if (c->ctx == ctx->mem) free_stack_frame_cache(c);
+                    if (c->ctx == prs) free_stack_frame_cache(c);
                 }
             }
         }

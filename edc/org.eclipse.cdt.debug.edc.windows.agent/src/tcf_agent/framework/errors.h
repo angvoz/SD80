@@ -50,6 +50,7 @@
 #define ERR_INV_COMMAND         (STD_ERR_BASE + 25)
 #define ERR_INV_TRANSPORT       (STD_ERR_BASE + 26)
 #define ERR_CACHE_MISS          (STD_ERR_BASE + 27)
+#define ERR_NOT_ACTIVE          (STD_ERR_BASE + 28)
 
 typedef struct ErrorReportItem {
     char * name;
@@ -60,6 +61,9 @@ typedef struct ErrorReportItem {
 typedef struct ErrorReport {
     int code;
     char * format;
+    char ** params;
+    int param_cnt;
+    int param_max;
     uint64_t time_stamp;
     ErrorReportItem * props;
 } ErrorReport;
@@ -88,6 +92,7 @@ extern int set_gai_errno(int gai_error_code);
 #ifdef WIN32
 /*
  * Set errno to indicate WIN32 error code.
+ * This function is thread-safe - can be called from background threads.
  * Return new value of errno.
  */
 extern int set_win32_errno(DWORD win32_error_code);
@@ -114,6 +119,11 @@ extern int get_error_code(int no);
  * Return NULL if 'no' = 0.
  */
 extern ErrorReport * get_error_report(int no);
+
+/*
+ * Compare two error reports and return 1 if equal, return 0 if not.
+ */
+extern int compare_error_reports(ErrorReport * x, ErrorReport * y);
 
 /*
  * Create new instance of TCF error report.

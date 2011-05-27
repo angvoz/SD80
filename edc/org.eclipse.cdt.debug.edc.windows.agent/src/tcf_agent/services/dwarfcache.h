@@ -34,11 +34,16 @@
 typedef struct FileInfo FileInfo;
 typedef struct LocationInfo LocationInfo;
 typedef struct ObjectInfo ObjectInfo;
+typedef struct PubNamesInfo PubNamesInfo;
+typedef struct PubNamesTable PubNamesTable;
+typedef struct ObjectArray ObjectArray;
 typedef struct SymbolInfo SymbolInfo;
 typedef struct PropertyValue PropertyValue;
 typedef struct LineNumbersState LineNumbersState;
 typedef struct CompUnit CompUnit;
 typedef struct SymbolSection SymbolSection;
+typedef struct UnitAddressRange UnitAddressRange;
+typedef struct FrameInfoRange FrameInfoRange;
 typedef struct DWARFCache DWARFCache;
 
 struct FileInfo {
@@ -46,9 +51,10 @@ struct FileInfo {
     char * mDir;
     U4_T mModTime;
     U4_T mSize;
+    unsigned mNameHash;
 };
 
-#define SYM_HASH_SIZE 1023
+#define SYM_HASH_SIZE (32 * MEM_USAGE_FACTOR - 1)
 
 struct SymbolSection {
     ELF_File * mFile;
@@ -58,8 +64,8 @@ struct SymbolSection {
     unsigned mSymCount;
     ElfX_Sym * mSymPool;    /* pointer to ELF section data: array of Elf32_Sym or Elf64_Sym */
     size_t mSymPoolSize;
-    unsigned mSymbolHash[SYM_HASH_SIZE];
-    unsigned * mHashNext;
+    unsigned * mSymNamesHash;
+    unsigned * mSymNamesNext;
 };
 
 struct SymbolInfo {
@@ -77,18 +83,36 @@ struct SymbolInfo {
 
 struct ObjectInfo {
     ObjectInfo * mHashNext;
-    ObjectInfo * mListNext;
     ObjectInfo * mSibling;
     ObjectInfo * mChildren;
     ObjectInfo * mParent;
 
-    U8_T mID;
+    U8_T mID; /* Link-time debug information entry address: address of .debug_info section + offset in the section */
     U2_T mTag;
 
     U2_T mFundType;
     ObjectInfo * mType;
     CompUnit * mCompUnit;
     char * mName;
+};
+
+#define OBJECT_ARRAY_SIZE 128
+
+struct ObjectArray {
+    ObjectArray * mNext;
+    ObjectInfo mArray[OBJECT_ARRAY_SIZE];
+};
+
+struct PubNamesInfo {
+    unsigned mNext;
+    U8_T mID;
+};
+
+struct PubNamesTable {
+    unsigned * mHash;
+    PubNamesInfo * mNext;
+    unsigned mCnt;
+    unsigned mMax;
 };
 
 struct PropertyValue {
@@ -101,7 +125,7 @@ struct PropertyValue {
     U1_T * mAddr;
     size_t mSize;
     int mBigEndian;
-    int (*mAccessFunc)(PropertyValue *, int, U8_T *);
+    RegisterDefinition * mRegister;
 };
 
 #define LINE_IsStmt         0x01
@@ -112,6 +136,8 @@ struct PropertyValue {
 
 struct LineNumbersState {
     ContextAddress mAddress;
+    char * mFileName;
+    U4_T mNext;
     U4_T mFile;
     U4_T mLine;
     U2_T mColumn;
@@ -120,19 +146,19 @@ struct LineNumbersState {
 };
 
 struct CompUnit {
+    ObjectInfo * mObject;
+
     ELF_File * mFile;
-    ELF_Section * mSection;
     ELF_Section * mTextSection;
 
-    U8_T mID;
     ContextAddress mLowPC;
     ContextAddress mHighPC;
 
     DIO_UnitDescriptor mDesc;
+    RegisterIdScope mRegIdScope;
 
     U8_T mDebugRangesOffs;
     U8_T mLineInfoOffs;
-    char * mName;
     char * mDir;
 
     U4_T mFilesCnt;
@@ -146,9 +172,25 @@ struct CompUnit {
     U4_T mStatesCnt;
     U4_T mStatesMax;
     LineNumbersState * mStates;
+    LineNumbersState ** mStatesIndex;
 
     CompUnit * mBaseTypes;
-    ObjectInfo * mChildren;
+
+    U1_T mARangesFound;
+};
+
+/* Address range of a compilation unit. A unit can occupy multiple address ranges. */
+struct UnitAddressRange {
+    CompUnit * mUnit;       /* Compilation unit */
+    ELF_Section * mSection; /* ELF file secdtion that contains the range */
+    ContextAddress mAddr;   /* Link-time start address of the range */
+    ContextAddress mSize;   /* Size of the range */
+};
+
+struct FrameInfoRange {
+    ContextAddress mAddr;
+    ContextAddress mSize;
+    U8_T mOffset;
 };
 
 #define DWARF_CACHE_MAGIC 0x34625490
@@ -157,32 +199,50 @@ struct DWARFCache {
     int magic;
     ELF_File * mFile;
     ErrorReport * mErrorReport;
-    CompUnit ** mCompUnits;
-    unsigned mCompUnitsCnt;
-    ELF_Section * mDebugRanges;
-    ELF_Section * mDebugARanges;
+    ObjectInfo * mCompUnits;
+    ELF_Section * mDebugLineV1;
     ELF_Section * mDebugLine;
     ELF_Section * mDebugLoc;
+    ELF_Section * mDebugRanges;
     ELF_Section * mDebugFrame;
     ELF_Section * mEHFrame;
     SymbolSection ** mSymSections;
     unsigned mSymSectionsCnt;
-    unsigned mSymSectionsLen;
+    unsigned mSymSectionsMax;
     ObjectInfo ** mObjectHash;
-    ObjectInfo * mObjectList;
-    DWARFCache * mLineInfoNext;
+    unsigned mObjectHashSize;
+    ObjectArray * mObjectList;
+    unsigned mObjectArrayPos;
+    UnitAddressRange * mAddrRanges;
+    unsigned mAddrRangesCnt;
+    unsigned mAddrRangesMax;
+    PubNamesTable mPubNames;
+    PubNamesTable mPubTypes;
+    FrameInfoRange * mFrameInfoRanges;
+    unsigned mFrameInfoRangesCnt;
+    unsigned mFrameInfoRangesMax;
 };
 
 /* Return DWARF cache for given file, create and populate the cache if needed, throw an exception if error */
 extern DWARFCache * get_dwarf_cache(ELF_File * file);
 
+/* Return symbol name hash. The hash is used to build mSymNamesHash table. */
 extern unsigned calc_symbol_name_hash(const char * s);
 
+/* Compare symbol names. */
+extern int cmp_symbol_names(const char * x, const char * y);
+
+/* Return file name hash. The hash is used to search FileInfo. */
+extern unsigned calc_file_name_hash(const char * s);
+
 /* Load line number information for given compilation unit, throw an exception if error */
-extern void load_line_numbers(DWARFCache * cache, CompUnit * unit);
+extern void load_line_numbers(CompUnit * unit);
 
 /* Find ObjectInfo by ID */
 extern ObjectInfo * find_object(DWARFCache * cache, U8_T ID);
+
+/* Search and return first compilation unit address range in given link-time address range 'addr_min'..'addr_max'. */
+extern UnitAddressRange * find_comp_unit_addr_range(DWARFCache * cache, ContextAddress addr_min, ContextAddress addr_max);
 
 /* Get SymbolInfo */
 extern void unpack_elf_symbol_info(SymbolSection * section, U4_T index, SymbolInfo * info);
@@ -191,7 +251,7 @@ extern void unpack_elf_symbol_info(SymbolSection * section, U4_T index, SymbolIn
  * Read and evaluate a property of a DWARF object, perform ELF relocations if any.
  * FORM_ADDR values are mapped to run-time address space.
  */
-extern void read_and_evaluate_dwarf_object_property(Context * ctx, int frame, U8_T base, ObjectInfo * obj, int attr_tag, PropertyValue * value);
+extern void read_and_evaluate_dwarf_object_property(Context * ctx, int frame, U8_T base, ObjectInfo * obj, U2_T attr_tag, PropertyValue * value);
 
 /* Convert PropertyValue to a number */
 extern U8_T get_numeric_property_value(PropertyValue * Value);

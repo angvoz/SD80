@@ -672,12 +672,23 @@ void WinDebugMonitor::HandleDebugStringEvent(DEBUG_EVENT& debugEvent)
 				debugStringLength,NULL);
 		debugStringBuffer[debugStringLength] = 0;
 
-		// write console data, if console
-		LoggingService::WriteLoggingMessage(channel, debugStringBuffer, LoggingService::GetWindowsConsoleID());
+		// convert from ansi to utf-8
+		wchar_t* wideChars = new wchar_t[debugStringLength];
 
+		// Covert to Unicode.
+		if (MultiByteToWideChar(CP_ACP, 0, debugStringBuffer, debugStringLength,
+				wideChars, debugStringLength) != 0)
+		{
+		    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wideChars, debugStringLength, NULL, 0, NULL, NULL);
+		    std::string strTo( size_needed, 0 );
+		    WideCharToMultiByte(CP_UTF8, 0, wideChars, debugStringLength, &strTo[0], size_needed, NULL, NULL);
+			// write console data, if console
+			LoggingService::WriteLoggingMessage(channel, strTo, LoggingService::GetWindowsConsoleID());
+			LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", strTo.c_str());
+		}
+
+		delete[] wideChars;
 		delete[] debugStringBuffer;
-
-		LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", debugStringBuffer);
 	}
 
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);

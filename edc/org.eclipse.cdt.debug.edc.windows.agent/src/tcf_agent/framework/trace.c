@@ -23,6 +23,7 @@ int log_mode = LOG_EVENTS | LOG_CHILD | LOG_WAITPID | LOG_CONTEXT | LOG_PROTOCOL
 #include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 #if defined(WIN32)
 #elif defined(_WRS_KERNEL)
@@ -58,7 +59,7 @@ int print_trace(int mode, const char * fmt, ...) {
             exit(1);
         }
 
-        if (pthread_mutex_lock(&mutex) != 0) {
+        if ((errno = pthread_mutex_lock(&mutex)) != 0) {
             perror("pthread_mutex_lock");
             exit(1);
         }
@@ -71,7 +72,7 @@ int print_trace(int mode, const char * fmt, ...) {
         fprintf(log_file, "\n");
         fflush(log_file);
 
-        if (pthread_mutex_unlock(&mutex) != 0) {
+        if ((errno = pthread_mutex_unlock(&mutex)) != 0) {
             perror("pthread_mutex_unlock");
             exit(1);
         }
@@ -99,11 +100,9 @@ void open_log_file(const char * log_name) {
 
 void ini_trace(void) {
 #if ENABLE_Trace
-    if (pthread_mutex_init(&mutex, NULL) != 0) {
+    if ((errno = pthread_mutex_init(&mutex, NULL)) != 0) {
         perror("pthread_mutex_init");
         exit(1);
     }
 #endif /* ENABLE_Trace */
 }
-
-

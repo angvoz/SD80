@@ -256,8 +256,14 @@ public class TypeUtils {
 			return ""; //$NON-NLS-1$
 		if (type instanceof IReferenceType)
 			return getFullTypeName(((IReferenceType) type).getType()) + " &"; //$NON-NLS-1$
-		if (type instanceof IPointerType)
-			return getFullTypeName(((IPointerType) type).getType()) + " *"; //$NON-NLS-1$
+		if (type instanceof IPointerType) {
+			IType pointedTo = ((IPointerType) type).getType();
+			if (pointedTo instanceof ISubroutineType)
+				// TODO: get parameters instead of saying "..."
+				return "(*)(...)"; //$NON-NLS-1$
+			else
+				return getFullTypeName(pointedTo) + " *"; //$NON-NLS-1$
+		}
 		if (type instanceof IArrayType) {
 			IArrayType arrayType = (IArrayType) type;
 
@@ -293,8 +299,7 @@ public class TypeUtils {
 					+ " " + getFullTypeName(((IQualifierType) type).getType()); //$NON-NLS-1$
 		if (type instanceof ISubroutineType) {
 			// TODO: real stuff once we parse parameters
-			// TODO: the '*' for a function pointer (e.g. in a vtable) is in the wrong place
-			return getFullTypeName(((ISubroutineType) type).getType()) + "(...)"; //$NON-NLS-1$
+			return getFullTypeName(((ISubroutineType) type).getType());
 		}
 		return type.getName() + getFullTypeName(type.getType());
 	}

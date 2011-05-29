@@ -6,8 +6,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Ericsson   - Initial API and implementation
- * Ericsson   - Added support for Mac OS
+ *     Ericsson   - Initial API and implementation
+ *     Ericsson   - Added support for Mac OS
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.launching;
 
@@ -57,6 +58,7 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.ILaunchConfiguration;
 
 public class LaunchUtils {
+	private static final String GDB_UI_PLUGIN_ID = "org.eclipse.cdt.dsf.gdb.ui"; //$NON-NLS-1$
 
 	/**
 	 * A prefix that we use to indicate that a GDB version is for MAC OS
@@ -82,8 +84,7 @@ public class LaunchUtils {
 		if (cproject == null && name.length() > 0) {
 			IProject proj = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
 			if (!proj.exists()) {
-				abort(
-						LaunchMessages.getFormattedString("AbstractCLaunchDelegate.Project_NAME_does_not_exist", name), null, //$NON-NLS-1$
+				abort(LaunchMessages.getFormattedString("AbstractCLaunchDelegate.Project_NAME_does_not_exist", name), null, //$NON-NLS-1$
 						ICDTLaunchConfigurationConstants.ERR_NOT_A_C_PROJECT);
 			} else if (!proj.isOpen()) {
 				abort(LaunchMessages.getFormattedString("AbstractCLaunchDelegate.Project_NAME_is_closed", name), null, //$NON-NLS-1$
@@ -95,7 +96,6 @@ public class LaunchUtils {
 		return cproject;
 	}
 	
-
 	/**
 	 * Verify that program name of the configuration can be found as a file.
 	 * 
@@ -130,7 +130,6 @@ public class LaunchUtils {
 		
 		return programPath;
 	}
-
 
 	/**
 	 * Verify that the executable path points to a valid binary file.
@@ -214,7 +213,7 @@ public class LaunchUtils {
 	}
 	
     public static IPath getGDBPath(ILaunchConfiguration configuration) {
-		String defaultGdbCommand = Platform.getPreferencesService().getString("org.eclipse.cdt.dsf.gdb.ui",  //$NON-NLS-1$
+		String defaultGdbCommand = Platform.getPreferencesService().getString(GDB_UI_PLUGIN_ID,
                 IGdbDebugPreferenceConstants.PREF_DEFAULT_GDB_COMMAND,
                 IGDBLaunchConfigurationConstants.DEBUGGER_DEBUG_NAME_DEFAULT, null);
 
@@ -432,24 +431,56 @@ public class LaunchUtils {
 	}
 	
 	/**
-	 * This methods return true if the launch is meant to be in Non-Stop mode.
-	 * Returns false otherwise.
+	 * Returns <code>true</code> if the launch is meant to be in Non-Stop mode.
+	 * Returns <code>false</code> otherwise.
 	 * 
 	 * @since 4.0
 	 */
 	public static boolean getIsNonStopMode(ILaunchConfiguration config) {
 		try {
-			boolean nonStopMode = config.getAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_NON_STOP,
-                    IGDBLaunchConfigurationConstants.DEBUGGER_NON_STOP_DEFAULT);
-    		return nonStopMode;
+			return config.getAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_NON_STOP,
+					getIsNonStopModeDefault());
     	} catch (CoreException e) {    		
     	}
     	return false;
     }
 	
 	/**
-	 * This methods return true if the launch is meant to be for post-mortem
-	 * tracing.  Returns false otherwise.
+	 * Returns workspace-level default for the Non-Stop mode.
+	 * 
+	 * @since 4.0
+	 */
+	public static boolean getIsNonStopModeDefault() {
+		return Platform.getPreferencesService().getBoolean(GDB_UI_PLUGIN_ID,
+				IGdbDebugPreferenceConstants.PREF_DEFAULT_NON_STOP,
+				IGDBLaunchConfigurationConstants.DEBUGGER_NON_STOP_DEFAULT, null);
+    }
+	
+	/**
+	 * Returns workspace-level default for the stop at main option.
+	 * 
+	 * @since 4.0
+	 */
+	public static boolean getStopAtMainDefault() {
+		return Platform.getPreferencesService().getBoolean(GDB_UI_PLUGIN_ID,
+				IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN,
+				ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_DEFAULT, null);
+    }
+	
+	/**
+	 * Returns workspace-level default for the stop at main symbol.
+	 * 
+	 * @since 4.0
+	 */
+	public static String getStopAtMainSymbolDefault() {
+		return Platform.getPreferencesService().getString(GDB_UI_PLUGIN_ID,
+				IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN_SYMBOL,
+				ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT, null);
+    }
+	
+	/**
+	 * Returns <code>true</code> if the launch is meant to be for post-mortem
+	 * tracing.  Returns <code>false</code> otherwise.
 	 * 
 	 * @since 4.0
 	 */
@@ -458,7 +489,7 @@ public class LaunchUtils {
 		if (sessionType == SessionType.CORE) {
 			try {
 				String coreType = config.getAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_POST_MORTEM_TYPE,
-						                              IGDBLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT);
+						IGDBLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT);
 				return coreType.equals(IGDBLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE);
 			} catch (CoreException e) {    		
 			}

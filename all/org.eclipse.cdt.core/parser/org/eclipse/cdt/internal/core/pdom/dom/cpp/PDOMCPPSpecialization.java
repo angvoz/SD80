@@ -31,7 +31,6 @@ import org.eclipse.core.runtime.CoreException;
  * Base class for specializations and instances of other bindings.
  */
 abstract class PDOMCPPSpecialization extends PDOMCPPBinding implements ICPPSpecialization, IPDOMOverloader {
-
 	private static final int ARGMAP = PDOMCPPBinding.RECORD_SIZE + 0;
 	private static final int SIGNATURE_HASH = PDOMCPPBinding.RECORD_SIZE + 4;
 	private static final int SPECIALIZED = PDOMCPPBinding.RECORD_SIZE + 8;
@@ -49,7 +48,7 @@ abstract class PDOMCPPSpecialization extends PDOMCPPBinding implements ICPPSpeci
 		super(linkage, parent, spec.getNameCharArray());
 		getDB().putRecPtr(record + SPECIALIZED, specialized.getRecord());
 
-		// specializations that are not instances have the same map as their owner.
+		// Specializations that are not instances have the same map as their owner.
 		if (this instanceof ICPPTemplateInstance) {
 			long rec= PDOMCPPTemplateParameterMap.putMap(this, spec.getTemplateParameterMap());
 			getDB().putRecPtr(record + ARGMAP, rec);

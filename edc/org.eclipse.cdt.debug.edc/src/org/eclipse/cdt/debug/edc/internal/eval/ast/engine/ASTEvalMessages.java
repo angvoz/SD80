@@ -62,6 +62,7 @@ public class ASTEvalMessages extends NLS {
 
 	public static String OperatorIndirection_RequiresPointer;
 	public static String OperatorIndirection_NoBitField;
+	public static String OperatorIndirection_NoFunction;
 	public static String OperatorIndirection_UnhandledType;
 
 	public static String OperatorMinus_NonPtrMinusPtr;

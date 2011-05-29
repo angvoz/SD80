@@ -46,7 +46,6 @@ class SmartTypingConfigurationBlock extends AbstractConfigurationBlock {
 
 	public SmartTypingConfigurationBlock(OverlayPreferenceStore store) {
 		super(store);
-		
 		store.addKeys(createOverlayStoreKeys());
 	}
 	
@@ -166,7 +165,6 @@ class SmartTypingConfigurationBlock extends AbstractConfigurationBlock {
 //	}
 
 	private void addAutoclosingSection(Composite composite) {
-		
 		GridLayout layout= new GridLayout();
 		layout.numColumns= 1;
 		composite.setLayout(layout);

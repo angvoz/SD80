@@ -232,8 +232,8 @@ typedef struct {
     Elf32_Sword r_addend;
 } Elf32_Rela;
 
-#define ELF32_R_SYM(i)  ((i)>>8)
-#define ELF32_R_TYPE(i) ((unsigned char)(i))
+#define ELF32_R_SYM(i)  ((i) >> 8)
+#define ELF32_R_TYPE(i) ((uint8_t)(i))
 
 typedef struct {
     Elf32_Sword d_tag;
@@ -301,6 +301,20 @@ typedef struct {
 #define ELF64_ST_TYPE(info)             ((info) & 0xf)
 
 typedef struct {
+    Elf64_Addr    r_offset;
+    Elf64_Xword   r_info;
+} Elf64_Rel;
+
+typedef struct {
+    Elf64_Addr    r_offset;
+    Elf64_Xword   r_info;
+    Elf64_Sxword  r_addend;
+} Elf64_Rela;
+
+#define ELF64_R_SYM(i)  ((uint32_t)((i) >> 32))
+#define ELF64_R_TYPE(i) ((uint32_t)(i))
+
+typedef struct {
     Elf64_Sxword d_tag;
     union {
         Elf64_Xword d_val;
@@ -321,6 +335,19 @@ typedef struct {
 
 #endif
 
+#ifndef EM_ARM
+#define EM_ARM 40
+#endif
+#ifndef EM_X86_64
+#define EM_X86_64 62
+#endif
+#ifndef EM_PPC
+#define EM_PPC 20
+#endif
+#ifndef EM_PPC64
+#define EM_PPC64 21
+#endif
+
 typedef struct ElfX_Sym {
     union {
         Elf32_Sym Elf32;
@@ -339,24 +366,26 @@ typedef int64_t  I8_T;
 
 typedef struct ELF_File ELF_File;
 typedef struct ELF_Section ELF_Section;
+typedef struct ELF_SecSymbol ELF_SecSymbol;
 typedef struct ELF_PHeader ELF_PHeader;
 
 struct ELF_File {
     ELF_File * next;
-    U4_T ref_cnt;
 
     char * name;
     dev_t dev;
     ino_t ino;
     int64_t mtime;
     int mtime_changed;
+    ErrorReport * error;
     int fd;
 
-    int big_endian; /* 0 - least significant first, 1 - most significat first */
-    int byte_swap;  /* > 0 if file endianness not same as the agent endianness */
-    int elf64;
-    int type;
-    int machine;
+    uint8_t big_endian; /* 0 - least significant first, 1 - most significat first */
+    uint8_t byte_swap;  /* > 0 if file endianness not same as the agent endianness */
+    uint8_t elf64;
+    uint16_t type;
+    uint16_t machine;
+    uint8_t os_abi;
 
     unsigned section_cnt;
     ELF_Section * sections;
@@ -370,6 +399,14 @@ struct ELF_File {
 
     int age;
     int listed;
+    int debug_info_file;
+    char * debug_info_file_name;
+};
+
+struct ELF_SecSymbol {
+    void * parent;
+    unsigned index;
+    U8_T address;
 };
 
 struct ELF_Section {
@@ -391,6 +428,10 @@ struct ELF_Section {
     size_t mmap_size;
 
     int relocate;
+
+    ELF_SecSymbol * symbols;
+    unsigned symbols_cnt;
+    unsigned symbols_max;
 };
 
 struct ELF_PHeader {
@@ -412,18 +453,19 @@ extern void swap_bytes(void * buf, size_t size);
 
 /*
  * Open ELF file for reading.
- * Same file can be opened mutiple times, each call to elf_open() increases reference counter.
- * File must be closed after usage by calling elf_close().
+ * Same file can be opened mutiple times.
  * Returns the file descriptior on success. If error, returns NULL and sets errno.
+ * The file descriptor is valid only during single dispatch cycle.
  */
-extern ELF_File * elf_open(char * file_name);
+extern ELF_File * elf_open(const char * file_name);
 
 /*
- * Close ELF file.
- * Each call of elf_close() decrements reference counter.
- * The file will be kept in a cache for some time even after all references are closed.
+ * Open ELF file for reading for given device and inode.
+ * Same file can be opened mutiple times.
+ * Returns the file descriptior on success. If error, returns NULL and sets errno.
+ * The file descriptor is valid only during single dispatch cycle.
  */
-extern void elf_close(ELF_File * file);
+extern ELF_File * elf_open_inode(Context * ctx, dev_t dev, ino_t ino, int64_t mtime);
 
 /*
  * Iterate context ELF files that are mapped in context memory in given address range (inclusive).
@@ -462,6 +504,12 @@ extern void elf_add_close_listener(ELFCloseListener listener);
 extern ContextAddress elf_map_to_run_time_address(Context * ctx, ELF_File * file, ELF_Section * section, ContextAddress addr);
 
 /*
+ * Map run-time address in a context to link time address in an ELF file.
+ * Return 0 if the address is not currently mapped.
+ */
+extern ContextAddress elf_map_to_link_time_address(Context * ctx, ContextAddress addr, ELF_File ** file, ELF_Section ** sec);
+
+/*
  * Read a word from context memory. Word size and endianess are determened by ELF file.
  */
 extern int elf_read_memory_word(Context * ctx, ELF_File * file, ContextAddress addr, ContextAddress * word);
@@ -474,6 +522,12 @@ extern int elf_read_memory_word(Context * ctx, ELF_File * file, ContextAddress a
 extern ContextAddress elf_get_debug_structure_address(Context * ctx, ELF_File ** file);
 
 /*
+ * Search and return first compilation unit address range in given run-time address range 'addr_min'..'addr_max' (inclusive).
+ * If 'range_rt_addr' not NULL, *range_rt_addr is assigned run-time address of the range.
+ */
+extern struct UnitAddressRange * elf_find_unit(Context * ctx, ContextAddress addr_min, ContextAddress addr_max, ContextAddress * range_rt_addr);
+
+/*
  * Initialize ELF support module.
  */
 extern void ini_elf(void);
@@ -481,5 +535,3 @@ extern void ini_elf(void);
 #endif /* ENABLE_ELF */
 
 #endif /* D_elf */
-
-

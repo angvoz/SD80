@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -16,22 +16,29 @@
  * Expression evaluation service.
  */
 
-#ifndef D_expression
-#define D_expression
+#ifndef D_expressions
+#define D_expressions
 
+#include <config.h>
 #include <framework/protocol.h>
 #include <framework/context.h>
 #include <services/symbols.h>
 
+#if SERVICE_Expressions
+
 /* Value represents result of expression evaluation */
 struct Value {
-    Symbol * type;              /* Value type symbol, can be empty */
+    Symbol * sym;               /* Value symbol, can be NULL */
+    Symbol * type;              /* Value type symbol, can be NULL */
     int type_class;             /* See symbols.h for type class definitions */
     void * value;               /* Pointer to value data buffer, or NULL if remote value */
+    RegisterDefinition * reg;   /* Not NULL if the value represents a register variable */
     ContextAddress address;     /* Address of value data in remote target memory */
     ContextAddress size;        /* Value size in bytes */
     int remote;                 /* 1 if value data is in remote target memory, 0 if loaded into a local buffer */
-    int constant;               /* 1 if value is not expected to change during execution of value context */
+    int constant;               /* 1 if the value is not expected to change during execution of value context */
+    int big_endian;             /* 1 if the value is big endian */
+    int function;               /* 1 if the value represents a function */
 };
 
 typedef struct Value Value;
@@ -43,26 +50,33 @@ typedef struct Value Value;
  */
 typedef int ExpressionIdentifierCallBack(Context *, int /*frame*/, char * /*name*/, Value *);
 
-#if SERVICE_Expressions
-
 /*
  * Evaluate given expression in given context.
- * If load != 0 then result value is always loaded into a local buffer.
+ * 'ctx' - debug context to use for memory access and symbols lookup.
+ * 'frame' - stack frame to use for registers and local variables values.
+ * 'addr' - instruction address for symbols lookup, ignored if frame != STACK_NO_FRAME.
+ * 's' - the expression text.
+ * If load != 0 then result value is always loaded into a local buffer,
+ * otherwise 'v' can point to a value in the target memory.
  * Return 0 if no errors, otherwise return -1 and sets errno.
  */
-extern int evaluate_expression(Context * ctx, int frame, char * s, int load, Value * v);
+extern int evaluate_expression(Context * ctx, int frame, ContextAddress addr, char * s, int load, Value * v);
 
-/* Cast a Value to a boolean - 0 or 1 */
-extern int value_to_boolean(Value * v);
-
-/* Cast a Value to an address */
-extern ContextAddress value_to_address(Value * v);
+/*
+ * Cast a Value to another type ("boolean" means 0 or 1).
+ * Returns 0 if no errors, otherwise returns -1 and sets errno.
+ */
+int value_to_boolean(Value *v, int *res);
+int value_to_address(Value *v, ContextAddress *res);
+int value_to_signed(Value *v, int64_t *res);
+int value_to_unsigned(Value *v, uint64_t *res);
+int value_to_double(Value *v, double *res);
 
 /*
  * Allocate and fill local data buffer for a value.
  * The buffer is freed automatically at the end of current event dispatch cycle.
  */
-extern void set_value(Value * v, void * data, size_t size);
+extern void set_value(Value * v, void * data, size_t size, int big_endian);
 
 /*
  * Add identifier callback to the list of expression callbacks.
@@ -74,5 +88,4 @@ extern void ini_expressions_service(Protocol * proto);
 
 #endif /* SERVICE_Expressions */
 
-#endif /* D_expression */
-
+#endif /* D_expressions */

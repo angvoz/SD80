@@ -23,16 +23,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#if defined(__linux__)
-#  include <linux/kdev_t.h>
-#endif
-#if defined(_WRS_KERNEL)
-#  include <moduleLib.h>
-#endif
-#if defined(_MSC_VER)
-#  include <system/Windows/windbgcache.h>
-#  include <system/Windows/context-win32.h>
-#endif
 #include <framework/myalloc.h>
 #include <framework/trace.h>
 #include <framework/json.h>
@@ -40,53 +30,166 @@
 #include <framework/exceptions.h>
 #include <services/memorymap.h>
 
-typedef struct MemoryMap {
-    int valid;
-    unsigned region_cnt;
-    unsigned region_max;
-    MemoryRegion * regions;
-    ErrorReport * error;
-} MemoryMap;
-
 typedef struct Listener {
     MemoryMapEventListener * listener;
     void * args;
 } Listener;
 
+typedef struct ContextExtensionMM {
+    int valid;
+    ErrorReport * error;
+    MemoryMap target_map;
+    MemoryMap client_map;
+} ContextExtensionMM;
+
+typedef struct ClientMap {
+    LINK link_list;
+    LINK link_hash;
+    LINK link_ctx;
+    char * id;
+    MemoryMap map;
+    Channel * channel;
+} ClientMap;
+
 static size_t context_extension_offset = 0;
 
-#define EXT(ctx) ((MemoryMap *)((char *)(ctx) + context_extension_offset))
+#define EXT(ctx) ((ContextExtensionMM *)((char *)(ctx) + context_extension_offset))
 
-static const char * MEMORYMAP = "MemoryMap";
+static const char MEMORY_MAP[] = "MemoryMap";
 
 static Listener * listeners = NULL;
 static unsigned listener_cnt = 0;
 static unsigned listener_max = 0;
 
+#define list2map(A)    ((ClientMap *)((char *)(A) - offsetof(ClientMap, link_list)))
+#define hash2map(A)    ((ClientMap *)((char *)(A) - offsetof(ClientMap, link_hash)))
+#define ctx2map(A)     ((ClientMap *)((char *)(A) - offsetof(ClientMap, link_ctx)))
+
+#define MAP_HASH_SIZE (4 * MEM_USAGE_FACTOR - 1)
+static LINK client_map_list;
+static LINK client_map_hash[MAP_HASH_SIZE];
+
 static TCFBroadcastGroup * broadcast_group = NULL;
 
-static void event_memory_map_changed(Context * ctx, void * args) {
-    unsigned i;
-    OutputStream * out;
-    MemoryMap * map = NULL;
+static unsigned map_id_hash(const char * id) {
+    int i;
+    unsigned h = 0;
+    for (i = 0; id[i]; i++) h += id[i];
+    return h % MAP_HASH_SIZE;
+}
 
-    ctx = ctx->mem;
-    map = EXT(ctx);
-
-    for (i = 0; i < map->region_cnt; i++) {
-        MemoryRegion * r = map->regions + i;
-        loc_free(r->file_name);
-        loc_free(r->sect_name);
+static MemoryRegion * add_region(MemoryMap * map) {
+    MemoryRegion * r = NULL;
+    if (map->region_cnt >= map->region_max) {
+        map->region_max += 8;
+        map->regions = (MemoryRegion *)loc_realloc(map->regions, sizeof(MemoryRegion) * map->region_max);
     }
-    map->region_cnt = 0;
+    r = map->regions + map->region_cnt++;
+    memset(r, 0, sizeof(MemoryRegion));
+    return r;
+}
 
-    if (!map->valid) return;
-    map->valid = 0;
+static int str_equ(char * x, char * y) {
+    if (x == y) return 1;
+    if (x == NULL) return 0;
+    if (y == NULL) return 0;
+    return strcmp(x, y) == 0;
+}
 
+static int update_context_client_map(Context * ctx) {
+    ContextExtensionMM * ext = EXT(ctx);
+    unsigned r_cnt = 0;
+    int equ = 0;
+    unsigned h, i;
+    LINK * l;
+    LINK maps;
+
+    assert(ctx == context_get_group(ctx, CONTEXT_GROUP_PROCESS));
+    list_init(&maps);
+    h = map_id_hash(ctx->id);
+    for (l = client_map_hash[h].next; l != &client_map_hash[h]; l = l->next) {
+        ClientMap * m = hash2map(l);
+        if (strcmp(m->id, ctx->id) == 0) {
+            list_add_last(&m->link_ctx, &maps);
+            r_cnt += m->map.region_cnt;
+        }
+    }
+    if (ctx->name != NULL) {
+        h = map_id_hash(ctx->name);
+        for (l = client_map_hash[h].next; l != &client_map_hash[h]; l = l->next) {
+            ClientMap * m = hash2map(l);
+            if (strcmp(m->id, ctx->name) == 0) {
+                list_add_last(&m->link_ctx, &maps);
+                r_cnt += m->map.region_cnt;
+            }
+        }
+    }
+    equ = ext->client_map.region_cnt == r_cnt;
+    if (equ) {
+        unsigned k = 0;
+        for (l = maps.next; equ && l != &maps; l = l->next) {
+            ClientMap * m = ctx2map(l);
+            for (i = 0; equ && i < m->map.region_cnt; i++) {
+                MemoryRegion * x = m->map.regions + i;
+                MemoryRegion * y = ext->client_map.regions + k++;
+                equ =
+                    y->addr == x->addr &&
+                    y->size == x->size &&
+                    y->file_offs == x->file_offs &&
+                    y->bss == x->bss &&
+                    y->flags == x->flags &&
+                    str_equ(y->file_name, x->file_name) &&
+                    str_equ(y->sect_name, x->sect_name);
+            }
+        }
+    }
+    if (equ) return 0;
+
+    context_clear_memory_map(&ext->client_map);
+    for (l = maps.next; l != &maps; l = l->next) {
+        ClientMap * m = ctx2map(l);
+        for (i = 0; i < m->map.region_cnt; i++) {
+            MemoryRegion * x = m->map.regions + i;
+            MemoryRegion * y = add_region(&ext->client_map);
+            y->addr = x->addr;
+            y->size = x->size;
+            y->file_offs = x->file_offs;
+            y->bss = x->bss;
+            y->flags = x->flags;
+            if (x->file_name) y->file_name = loc_strdup(x->file_name);
+            if (x->sect_name) y->sect_name = loc_strdup(x->sect_name);
+            if (x->id) y->id = loc_strdup(x->id);
+        }
+    }
+
+    return 1;
+}
+
+static void update_all_context_client_maps(void) {
+    LINK * l;
+    for (l = context_root.next; l != &context_root; l = l->next) {
+        Context * ctx = ctxl2ctxp(l);
+        if (ctx->exited) continue;
+        if (ctx != context_get_group(ctx, CONTEXT_GROUP_PROCESS)) continue;
+        if (update_context_client_map(ctx)) send_context_changed_event(ctx);
+    }
+}
+
+static void event_memory_map_changed(Context * ctx, void * args) {
+    OutputStream * out;
+    ContextExtensionMM * ext = EXT(ctx);
+
+    if (ctx != context_get_group(ctx, CONTEXT_GROUP_PROCESS)) return;
+    update_context_client_map(ctx);
+    context_clear_memory_map(&ext->target_map);
+    if (!ext->valid) return;
+    ext->valid = 0;
+
+    if (ctx->exited) return;
     out = &broadcast_group->out;
 
     write_stringz(out, "E");
-    write_stringz(out, MEMORYMAP);
+    write_stringz(out, MEMORY_MAP);
     write_stringz(out, "changed");
 
     json_write_string(out, ctx->id);
@@ -95,249 +198,50 @@ static void event_memory_map_changed(Context * ctx, void * args) {
 }
 
 static void event_context_disposed(Context * ctx, void * args) {
-    unsigned i;
-    MemoryMap * map = EXT(ctx);
+    MemoryMap * map;
+    ContextExtensionMM * ext = EXT(ctx);
 
-    for (i = 0; i < map->region_cnt; i++) {
-        MemoryRegion * r = map->regions + i;
-        loc_free(r->file_name);
-        loc_free(r->sect_name);
-    }
+    map = &ext->target_map;
+    context_clear_memory_map(map);
     loc_free(map->regions);
-    release_error_report(map->error);
     memset(map, 0, sizeof(MemoryMap));
+
+    map = &ext->client_map;
+    context_clear_memory_map(map);
+    loc_free(map->regions);
+    memset(map, 0, sizeof(MemoryMap));
+
+    release_error_report(ext->error);
 }
 
-#if defined(_WRS_KERNEL)
-
-static int hooks_done = 0;
-
-static void add_map_region(MemoryMap * map, void * addr, int size, unsigned flags, char * file, char * sect) {
-    MemoryRegion * r = NULL;
-    if (map->region_cnt >= map->region_max) {
-        map->region_max += 8;
-        map->regions = (MemoryRegion *)loc_realloc(map->regions, sizeof(MemoryRegion) * map->region_max);
-    }
-    r = map->regions + map->region_cnt++;
-    memset(r, 0, sizeof(MemoryRegion));
-    r->addr = (ContextAddress)addr;
-    r->size = (ContextAddress)size;
-    r->flags = flags;
-    if (file != NULL) r->file_name = loc_strdup(file);
-    if (sect != NULL) r->sect_name = loc_strdup(sect);
-}
-
-static int module_list_proc(MODULE_ID id, int args) {
-    MODULE_INFO info;
-    MemoryMap * map = (MemoryMap *)args;
-
-    memset(&info, 0, sizeof(info));
-    if (moduleInfoGet(id, &info) == OK) {
-        char * file = id->nameWithPath;
-        if (info.segInfo.textAddr != NULL && info.segInfo.textSize > 0) {
-            add_map_region(map, info.segInfo.textAddr, info.segInfo.textSize, MM_FLAG_R | MM_FLAG_X, file, ".text");
+int memory_map_get(Context * ctx, MemoryMap ** client_map, MemoryMap ** target_map) {
+    ContextExtensionMM * ext = EXT(ctx);
+    assert(ctx == context_get_group(ctx, CONTEXT_GROUP_PROCESS));
+    if (!ext->valid) {
+        context_clear_memory_map(&ext->target_map);
+        release_error_report(ext->error);
+        if (context_get_memory_map(ctx, &ext->target_map) < 0) {
+            ext->error = get_error_report(errno);
+            ext->valid = get_error_code(errno) != ERR_CACHE_MISS;
         }
-        if (info.segInfo.dataAddr != NULL && info.segInfo.dataSize > 0) {
-            add_map_region(map, info.segInfo.dataAddr, info.segInfo.dataSize, MM_FLAG_R | MM_FLAG_W, file, ".data");
-        }
-        if (info.segInfo.bssAddr != NULL && info.segInfo.bssSize > 0) {
-            add_map_region(map, info.segInfo.bssAddr, info.segInfo.bssSize, MM_FLAG_R | MM_FLAG_W, file, ".bss");
+        else {
+            ext->error = NULL;
+            ext->valid = 1;
         }
     }
+    if (ext->error != NULL) {
+        set_error_report_errno(ext->error);
+        return -1;
+    }
+    *client_map = &ext->client_map;
+    *target_map = &ext->target_map;
     return 0;
-}
-
-static void module_create_event(void * args) {
-    LINK * l;
-    for (l = context_root.next; l != &context_root; l = l->next) {
-        Context * ctx = ctxl2ctxp(l);
-        if (ctx->parent == NULL) event_memory_map_changed(ctx, NULL);
-    }
-}
-
-static int module_create_func(MODULE_ID  id) {
-    post_event(module_create_event, NULL);
-    return 0;
-}
-
-static MemoryMap * get_memory_map(Context * ctx) {
-    MemoryMap * map = NULL;
-    if (!hooks_done) {
-        hooks_done = 1;
-        moduleCreateHookAdd(module_create_func);
-    }
-    ctx = ctx->mem;
-    map = EXT(ctx);
-    if (!map->valid && !ctx->exited) {
-        moduleEach(module_list_proc, (int)map);
-        map->valid = 1;
-    }
-    return map;
-}
-
-#elif defined(WIN32)
-
-#if defined(_MSC_VER)
-static void add_map_region(MemoryMap * map, DWORD64 addr, ULONG size, char * file) {
-    MemoryRegion * r = NULL;
-    if (map->region_cnt >= map->region_max) {
-        map->region_max += 8;
-        map->regions = (MemoryRegion *)loc_realloc(map->regions, sizeof(MemoryRegion) * map->region_max);
-    }
-    r = map->regions + map->region_cnt++;
-    memset(r, 0, sizeof(MemoryRegion));
-    r->addr = (ContextAddress)addr;
-    r->size = (ContextAddress)size;
-    r->file_name = loc_strdup(file);
-}
-
-static BOOL CALLBACK modules_callback(PCWSTR ModuleName, DWORD64 ModuleBase, ULONG ModuleSize, PVOID UserContext) {
-    MemoryMap * map = (MemoryMap *)UserContext;
-    static char * fnm_buf = NULL;
-    static int fnm_max = 0;
-    int fnm_len = 0;
-    int fnm_err = 0;
-
-    if (fnm_buf == NULL) {
-        fnm_max = 256;
-        fnm_buf = loc_alloc(fnm_max);
-    }
-    for (;;) {
-        fnm_len = WideCharToMultiByte(CP_UTF8, 0, ModuleName, -1, fnm_buf, fnm_max - 1, NULL, NULL);
-        if (fnm_len != 0) break;
-        fnm_err = GetLastError();
-        if (fnm_err != ERROR_INSUFFICIENT_BUFFER) {
-            set_win32_errno(fnm_err);
-            trace(LOG_ALWAYS, "Can't get module name: %s", errno_to_str(errno));
-            return TRUE;
-        }
-        fnm_max *= 2;
-        fnm_buf = loc_realloc(fnm_buf, fnm_max);
-    }
-    fnm_buf[fnm_len] = 0;
-
-    add_map_region(map, ModuleBase, ModuleSize, fnm_buf);
-
-    return TRUE;
-}
-#endif
-
-static MemoryMap * get_memory_map(Context * ctx) {
-    MemoryMap * map = NULL;
-
-    ctx = ctx->mem;
-    map = EXT(ctx);
-    if (map->valid || ctx->exited) return map;
-
-    release_error_report(map->error);
-    map->error = NULL;
-    map->region_cnt = 0;
-
-#if defined(_MSC_VER)
-    {
-        HANDLE process = get_context_handle(ctx);
-        map->region_cnt = 0;
-        if (!EnumerateLoadedModulesW64(process, modules_callback, map)) {
-            map->error = get_error_report(set_win32_errno(GetLastError()));
-        }
-        map->valid = 1;
-    }
-#endif
-
-    return map;
-}
-
-#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__)
-
-static MemoryMap * get_memory_map(Context * ctx) {
-    return EXT(ctx->mem);
-}
-
-#else
-
-static MemoryMap * get_memory_map(Context * ctx) {
-    char maps_file_name[FILE_PATH_SIZE];
-    MemoryMap * map = NULL;
-    FILE * file = NULL;
-
-    ctx = ctx->mem;
-    map = EXT(ctx);
-    if (map->valid || ctx->exited) return map;
-
-    release_error_report(map->error);
-    map->error = NULL;
-    map->region_cnt = 0;
-
-    snprintf(maps_file_name, sizeof(maps_file_name), "/proc/%d/maps", id2pid(ctx->id, NULL));
-    if ((file = fopen(maps_file_name, "r")) == NULL) {
-        map->error = get_error_report(errno);
-        return map;
-    }
-    for (;;) {
-        unsigned long addr0 = 0;
-        unsigned long addr1 = 0;
-        unsigned long offset = 0;
-        unsigned long dev_ma = 0;
-        unsigned long dev_mi = 0;
-        unsigned long inode = 0;
-        char permissions[16];
-        char file_name[FILE_PATH_SIZE];
-        MemoryRegion * r = NULL;
-        unsigned i = 0;
-
-        int cnt = fscanf(file, "%lx-%lx %s %lx %lx:%lx %ld",
-            &addr0, &addr1, permissions, &offset, &dev_ma, &dev_mi, &inode);
-        if (cnt == 0 || cnt == EOF) break;
-
-        for (;;) {
-            int ch = fgetc(file);
-            if (ch == '\n' || ch == EOF) break;
-            if (i < FILE_PATH_SIZE - 1 && (ch != ' ' || i > 0)) {
-                file_name[i++] = ch;
-            }
-        }
-        file_name[i++] = 0;
-
-        if (inode != 0 && file_name[0] && file_name[0] != '[') {
-            if (map->region_cnt >= map->region_max) {
-                map->region_max += 8;
-                map->regions = (MemoryRegion *)loc_realloc(map->regions, sizeof(MemoryRegion) * map->region_max);
-            }
-            r = map->regions + map->region_cnt++;
-            memset(r, 0, sizeof(MemoryRegion));
-            r->addr = addr0;
-            r->size = addr1 - addr0;
-            r->file_offs = offset;
-            r->dev = MKDEV(dev_ma, dev_mi);
-            r->ino = (ino_t)inode;
-            r->file_name = loc_strdup(file_name);
-            for (i = 0; permissions[i]; i++) {
-                switch (permissions[i]) {
-                case 'r': r->flags |= MM_FLAG_R; break;
-                case 'w': r->flags |= MM_FLAG_W; break;
-                case 'x': r->flags |= MM_FLAG_X; break;
-                }
-            }
-        }
-    }
-    fclose(file);
-    map->valid = 1;
-    return map;
-}
-
-#endif
-
-void memory_map_get_regions(Context * ctx, MemoryRegion ** regions, unsigned * cnt) {
-    MemoryMap * map = get_memory_map(ctx);
-    *regions = map->regions;
-    *cnt = map->region_cnt;
-    set_error_report_errno(map->error);
 }
 
 void memory_map_event_module_loaded(Context * ctx) {
     unsigned i;
     assert(ctx->ref_count > 0);
-    assert(ctx->parent == NULL);
+    assert(ctx == context_get_group(ctx, CONTEXT_GROUP_PROCESS));
     event_memory_map_changed(ctx, NULL);
     for (i = 0; i < listener_cnt; i++) {
         Listener * l = listeners + i;
@@ -349,7 +253,8 @@ void memory_map_event_module_loaded(Context * ctx) {
 void memory_map_event_code_section_ummapped(Context * ctx, ContextAddress addr, ContextAddress size) {
     unsigned i;
     assert(ctx->ref_count > 0);
-    assert(ctx->parent == NULL);
+    assert(ctx == context_get_group(ctx, CONTEXT_GROUP_PROCESS));
+    event_memory_map_changed(ctx, NULL);
     for (i = 0; i < listener_cnt; i++) {
         Listener * l = listeners + i;
         if (l->listener->code_section_ummapped == NULL) continue;
@@ -360,6 +265,7 @@ void memory_map_event_code_section_ummapped(Context * ctx, ContextAddress addr, 
 void memory_map_event_module_unloaded(Context * ctx) {
     unsigned i;
     assert(ctx->ref_count > 0);
+    assert(ctx == context_get_group(ctx, CONTEXT_GROUP_PROCESS));
     event_memory_map_changed(ctx, NULL);
     for (i = 0; i < listener_cnt; i++) {
         Listener * l = listeners + i;
@@ -379,64 +285,96 @@ void add_memory_map_event_listener(MemoryMapEventListener * listener, void * cli
     l->args = client_data;
 }
 
+static void write_map_region(OutputStream * out, MemoryRegion * m) {
+    MemoryRegionAttribute * x = m->attrs;
+
+    write_stream(out, '{');
+    json_write_string(out, "Addr");
+    write_stream(out, ':');
+    json_write_uint64(out, m->addr);
+    write_stream(out, ',');
+    json_write_string(out, "Size");
+    write_stream(out, ':');
+    json_write_uint64(out, m->size);
+    write_stream(out, ',');
+    json_write_string(out, "Flags");
+    write_stream(out, ':');
+    json_write_ulong(out, m->flags);
+    if (m->file_name != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, "FileName");
+        write_stream(out, ':');
+        json_write_string(out, m->file_name);
+        write_stream(out, ',');
+        if (m->sect_name != NULL) {
+            json_write_string(out, "SectionName");
+            write_stream(out, ':');
+            json_write_string(out, m->sect_name);
+        }
+        else {
+            json_write_string(out, "Offs");
+            write_stream(out, ':');
+            json_write_uint64(out, m->file_offs);
+        }
+        if (m->bss) {
+            write_stream(out, ',');
+            json_write_string(out, "BSS");
+            write_stream(out, ':');
+            json_write_boolean(out, m->bss);
+        }
+    }
+    if (m->id != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, "ID");
+        write_stream(out, ':');
+        json_write_string(out, m->id);
+    }
+    while (x != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, x->name);
+        write_stream(out, ':');
+        write_string(out, x->value);
+        x = x->next;
+    }
+    write_stream(out, '}');
+}
+
 static void command_get(char * token, Channel * c) {
     char id[256];
     int err = 0;
     Context * ctx = NULL;
-    MemoryMap * map = NULL;
+    MemoryMap * client_map = NULL;
+    MemoryMap * target_map = NULL;
 
     json_read_string(&c->inp, id, sizeof(id));
     if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
     if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
 
     ctx = id2ctx(id);
-    if (ctx == NULL) err = ERR_INV_COMMAND;
-    else map = get_memory_map(ctx);
+    if (ctx == NULL) err = ERR_INV_CONTEXT;
+    else ctx = context_get_group(ctx, CONTEXT_GROUP_PROCESS);
 
-    if (!err) err = set_error_report_errno(map->error);
+    if (!err && memory_map_get(ctx, &client_map, &target_map) < 0) err = errno;
 
     write_stringz(&c->out, "R");
     write_stringz(&c->out, token);
     write_errno(&c->out, err);
-    if (map == NULL) {
+    if (err) {
         write_stringz(&c->out, "null");
     }
     else {
         unsigned n;
+        unsigned cnt = 0;
         write_stream(&c->out, '[');
-        for (n = 0; n < map->region_cnt; n++) {
-            MemoryRegion * m = map->regions + n;
-            if (n > 0) write_stream(&c->out, ',');
-            write_stream(&c->out, '{');
-            json_write_string(&c->out, "Addr");
-            write_stream(&c->out, ':');
-            json_write_uint64(&c->out, m->addr);
-            write_stream(&c->out, ',');
-            json_write_string(&c->out, "Size");
-            write_stream(&c->out, ':');
-            json_write_ulong(&c->out, m->size);
-            write_stream(&c->out, ',');
-            json_write_string(&c->out, "Flags");
-            write_stream(&c->out, ':');
-            json_write_ulong(&c->out, m->flags);
-            if (m->file_name != NULL) {
-                write_stream(&c->out, ',');
-                json_write_string(&c->out, "FileName");
-                write_stream(&c->out, ':');
-                json_write_string(&c->out, m->file_name);
-                write_stream(&c->out, ',');
-                if (m->sect_name != NULL) {
-                    json_write_string(&c->out, "SectionName");
-                    write_stream(&c->out, ':');
-                    json_write_string(&c->out, m->sect_name);
-                }
-                else {
-                    json_write_string(&c->out, "Offs");
-                    write_stream(&c->out, ':');
-                    json_write_ulong(&c->out, m->file_offs);
-                }
-            }
-            write_stream(&c->out, '}');
+        for (n = 0; n < client_map->region_cnt; n++) {
+            if (cnt > 0) write_stream(&c->out, ',');
+            write_map_region(&c->out, client_map->regions + n);
+            cnt++;
+        }
+        for (n = 0; n < target_map->region_cnt; n++) {
+            if (cnt > 0) write_stream(&c->out, ',');
+            write_map_region(&c->out, target_map->regions + n);
+            cnt++;
         }
         write_stream(&c->out, ']');
         write_stream(&c->out, 0);
@@ -445,19 +383,120 @@ static void command_get(char * token, Channel * c) {
     write_stream(&c->out, MARKER_EOM);
 }
 
+static void read_map_attribute(InputStream * inp, const char * name, void * args) {
+    MemoryRegion * r = (MemoryRegion *)args;
+    if (strcmp(name, "Addr") == 0) r->addr = (ContextAddress)json_read_uint64(inp);
+    else if (strcmp(name, "Size") == 0) r->size = (ContextAddress)json_read_uint64(inp);
+    else if (strcmp(name, "Offs") == 0) r->file_offs = json_read_uint64(inp);
+    else if (strcmp(name, "BSS") == 0) r->bss = json_read_boolean(inp);
+    else if (strcmp(name, "Flags") == 0) r->flags = (unsigned)json_read_long(inp);
+    else if (strcmp(name, "FileName") == 0) r->file_name = json_read_alloc_string(inp);
+    else if (strcmp(name, "SectionName") == 0) r->sect_name = json_read_alloc_string(inp);
+    else if (strcmp(name, "ID") == 0) r->id = json_read_alloc_string(inp);
+    else {
+        MemoryRegionAttribute * x = (MemoryRegionAttribute *)loc_alloc(sizeof(MemoryRegionAttribute));
+        x->name = loc_strdup(name);
+        x->value = json_read_object(inp);
+        x->next = r->attrs;
+        r->attrs = x;
+    }
+}
+
+static void read_map_item(InputStream * inp, void * args) {
+    MemoryMap * map = (MemoryMap *)args;
+    MemoryRegion * r = add_region(map);
+
+    json_read_struct(inp, read_map_attribute, r);
+}
+
+static void command_set(char * token, Channel * c) {
+    char id[256];
+    unsigned h;
+    ClientMap * cm = NULL;
+    LINK * l = NULL;
+    MemoryMap map;
+
+    memset(&map, 0, sizeof(map));
+
+    json_read_string(&c->inp, id, sizeof(id));
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    json_read_array(&c->inp, read_map_item, &map);
+    if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
+    if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
+
+    h = map_id_hash(id);
+    for (l = client_map_hash[h].next; l != &client_map_hash[h]; l = l->next) {
+        ClientMap * m = hash2map(l);
+        if (m->channel == c && strcmp(m->id, id) == 0) {
+            context_clear_memory_map(&m->map);
+            loc_free(m->map.regions);
+            cm = m;
+            break;
+        }
+    }
+    if (map.region_cnt > 0) {
+        if (cm == NULL) {
+            cm = (ClientMap *)loc_alloc_zero(sizeof(ClientMap));
+            cm->id = loc_strdup(id);
+            cm->channel = c;
+            list_add_last(&cm->link_list, &client_map_list);
+            list_add_last(&cm->link_hash, &client_map_hash[h]);
+        }
+        cm->map = map;
+        update_all_context_client_maps();
+    }
+    else if (cm != NULL) {
+        list_remove(&cm->link_list);
+        list_remove(&cm->link_hash);
+        loc_free(cm->id);
+        loc_free(cm);
+        update_all_context_client_maps();
+    }
+
+    write_stringz(&c->out, "R");
+    write_stringz(&c->out, token);
+    write_errno(&c->out, 0);
+    write_stream(&c->out, MARKER_EOM);
+}
+
+static void channel_close_listener(Channel * c) {
+    int notify = 0;
+    LINK * l = client_map_list.next;
+    while (l != &client_map_list) {
+        ClientMap * m = list2map(l);
+        l = l->next;
+        if (m->channel != c) continue;
+        list_remove(&m->link_list);
+        list_remove(&m->link_hash);
+        context_clear_memory_map(&m->map);
+        loc_free(m->map.regions);
+        loc_free(m->id);
+        loc_free(m);
+        notify = 1;
+    }
+    if (notify) update_all_context_client_maps();
+}
+
 void ini_memory_map_service(Protocol * proto, TCFBroadcastGroup * bcg) {
+    int i;
     static ContextEventListener listener = {
-        NULL,
         event_memory_map_changed,
+        NULL,
         NULL,
         NULL,
         event_memory_map_changed,
         event_context_disposed
     };
     broadcast_group = bcg;
+    add_channel_close_listener(channel_close_listener);
+    list_init(&client_map_list);
+    for (i = 0; i < MAP_HASH_SIZE; i++) {
+        list_init(&client_map_hash[i]);
+    }
     add_context_event_listener(&listener, NULL);
-    add_command_handler(proto, MEMORYMAP, "get", command_get);
-    context_extension_offset = context_extension(sizeof(MemoryMap));
+    add_command_handler(proto, MEMORY_MAP, "get", command_get);
+    add_command_handler(proto, MEMORY_MAP, "set", command_set);
+    context_extension_offset = context_extension(sizeof(ContextExtensionMM));
 }
 
 

@@ -211,6 +211,7 @@
 #define AT_source_info              0x0810
 #define AT_lo_user_v2               0x2000
 #define AT_wrs_options              0x2001
+#define AT_MIPS_linkage_name        0x2007
 #define AT_hi_user_v2               0x3fff
 
 
@@ -370,6 +371,7 @@
 #define OP_calli                    0x9a  /* typo? */
 #define OP_ref                      0x9a
 #define OP_call_ref                 0x9a
+#define OP_call_frame_cfa           0x9c
 #define OP_bit_piece                0x9d
 #define OP_lo_user                  0xe0
 #define OP_hi_user                  0xff
@@ -562,5 +564,3 @@
 #define ADDR_huge16                 3
 #define ADDR_near32                 4
 #define ADDR_far32                  5
-
-

@@ -965,7 +965,7 @@ public class CPPSemantics {
 			
 			if (friendInLocalClass && !(scope instanceof ICPPClassScope))
 				return;			
-			if (!data.contentAssist && data.hasResultOrProblem()) 
+			if (!data.contentAssist && hasReachableResult(data))
 				return;
 			
 			// Lookup in base classes
@@ -981,13 +981,35 @@ public class CPPSemantics {
 				data.usingDirectivesOnly = true;
 			}
 			
-			// compute next scopes
+			// Compute next scopes
 			if (useTemplScope && nextTmplScope != null) {
 				nextTmplScope= enclosingTemplateScope(nextTmplScope.getTemplateDeclaration());
 			} else {
 				nextScope= getParentScope(scope, data.tu);
 			}
 		}
+	}
+
+	/**
+	 * Checks if lookup data contains result bindings reachable through includes
+	 * from the translation unit where lookup started. Any binding is considered reachable
+	 * if the lookup is not done in a context of a translation unit.
+	 * 
+	 * @param data the LookupData object.
+	 * @return {@code true} if the lookup data contains at least one reachable binding.
+	 */
+	private static boolean hasReachableResult(LookupData data) {
+    	if (data.foundItems instanceof Object[]) {
+    		for (Object item : (Object[]) data.foundItems) {
+    			if (item instanceof IBinding) {
+    				IBinding binding = (IBinding) item;
+    				if (!isFromIndex(binding) || data.tu == null || isReachableFromAst(data.tu, binding)) {
+    					return true;
+    				}
+    			}
+    		}
+    	}
+    	return false;
 	}
 
 	private static void lookupInlineNamespaces(LookupData data, IIndexFileSet fileSet, ICPPNamespaceScope namespace) throws DOMException {

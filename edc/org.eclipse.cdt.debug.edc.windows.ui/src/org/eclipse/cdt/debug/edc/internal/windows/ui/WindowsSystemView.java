@@ -96,9 +96,9 @@ public class WindowsSystemView extends SystemView {
 		protected void receiveContextInfo(ProcessContext context) {
 			if (context != null)
 			{
-				String osid = (String) context.getProperties().get(IWindowsOSData.PROP_OS_ID);
-				processesByID.put(Integer.parseInt(osid), new SystemDMContainer(getProcesses(), context.getProperties()));
-				processContextsByOSID.put(Integer.parseInt(osid), context);
+				Integer osid = (Integer) context.getProperties().get(IWindowsOSData.PROP_OS_ID);
+				processesByID.put(osid, new SystemDMContainer(getProcesses(), context.getProperties()));
+				processContextsByOSID.put(osid, context);
 			}
 			setBuildComplete(--contextCountdown <= 0);
 		}
@@ -109,11 +109,11 @@ public class WindowsSystemView extends SystemView {
 
 		private void getThreadInfo() throws CoreException {
 			final TCFServiceManager tcfServiceManager = (TCFServiceManager)EDCDebugger.getDefault().getServiceManager();
-	        final IWindowsOSData symbianDataService = (IWindowsOSData) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IWindowsOSData.NAME);
-	        if (symbianDataService != null)
+	        final IWindowsOSData windowsDataService = (IWindowsOSData) ((TCFServiceManager) tcfServiceManager).getPeerService(getPeer(), IWindowsOSData.NAME);
+	        if (windowsDataService != null)
 	        {
 	        	contextCountdown++;
-	        	symbianDataService.getThreads(new IWindowsOSData.DoneGetThreads() {
+	        	windowsDataService.getThreads(new IWindowsOSData.DoneGetThreads() {
 					
 					public void doneGetThreads(IToken token, Exception error,
 							List<Map<String, Object>> threads) {

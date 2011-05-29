@@ -28,8 +28,7 @@ RunControlContext::RunControlContext(ContextOSID osid, const ContextID& parentID
 
 void RunControlContext::initialize()
 {
-	const std::string& str = AgentUtils::IntToString(GetOSID());
-	SetProperty(PROP_OS_ID, new PropertyValue(str));
+	SetProperty(PROP_OS_ID, new PropertyValue(GetOSID()));
 }
 
 ContextOSID RunControlContext::GetOSID() {

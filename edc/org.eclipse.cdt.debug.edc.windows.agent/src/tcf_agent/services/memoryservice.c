@@ -43,7 +43,7 @@ static const char * MEMORY = "Memory";
 #define CMD_SET     2
 #define CMD_FILL    3
 
-#define BUF_SIZE    0x1000
+#define BUF_SIZE    (128 * MEM_USAGE_FACTOR)
 
 typedef struct MemoryCommandArgs {
     Channel * c;
@@ -57,7 +57,6 @@ typedef struct MemoryCommandArgs {
 
 static void write_context(OutputStream * out, Context * ctx) {
     assert(!ctx->exited);
-    assert(ctx->parent == NULL);
 
     write_stream(out, '{');
 
@@ -65,38 +64,84 @@ static void write_context(OutputStream * out, Context * ctx) {
     write_stream(out, ':');
     json_write_string(out, ctx->id);
 
-    write_stream(out, ',');
-    json_write_string(out, "ProcessID");
-    write_stream(out, ':');
-    json_write_string(out, ctx->mem->id);
-
-    /* Check endianness */
-    {
-        short n = 0x0201;
-        char * p = (char *)&n;
+    if (ctx->parent != NULL) {
         write_stream(out, ',');
-        json_write_string(out, "BigEndian");
+        json_write_string(out, "ParentID");
         write_stream(out, ':');
-        json_write_boolean(out, *p == 0x02);
+        json_write_string(out, ctx->parent->id);
     }
 
     write_stream(out, ',');
-    json_write_string(out, "AddressSize");
+    json_write_string(out, "ProcessID");
     write_stream(out, ':');
-    json_write_ulong(out, sizeof(char *));
+    json_write_string(out, context_get_group(ctx, CONTEXT_GROUP_PROCESS)->id);
+
+    if (ctx->name != NULL) {
+        write_stream(out, ',');
+        json_write_string(out, "Name");
+        write_stream(out, ':');
+        json_write_string(out, ctx->name);
+    }
 
     write_stream(out, ',');
-    json_write_string(out, "AccessTypes");
+    json_write_string(out, "BigEndian");
     write_stream(out, ':');
-    write_stream(out, '[');
-    json_write_string(out, "instruction");
-    write_stream(out, ',');
-    json_write_string(out, "data");
-#if !defined(_WRS_KERNEL)
-    write_stream(out, ',');
-    json_write_string(out, "user");
-#endif
-    write_stream(out, ']');
+    json_write_boolean(out, ctx->big_endian);
+
+    if (ctx->mem_access) {
+        int cnt = 0;
+
+        write_stream(out, ',');
+        json_write_string(out, "AddressSize");
+        write_stream(out, ':');
+        json_write_ulong(out, context_word_size(ctx));
+
+        write_stream(out, ',');
+        json_write_string(out, "AccessTypes");
+        write_stream(out, ':');
+        write_stream(out, '[');
+        if (ctx->mem_access & MEM_ACCESS_INSTRUCTION) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "instruction");
+        }
+        if (ctx->mem_access & MEM_ACCESS_DATA) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "data");
+        }
+        if (ctx->mem_access & MEM_ACCESS_IO) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "io");
+        }
+        if (ctx->mem_access & MEM_ACCESS_USER) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "user");
+        }
+        if (ctx->mem_access & MEM_ACCESS_SUPERVISOR) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "supervisor");
+        }
+        if (ctx->mem_access & MEM_ACCESS_HYPERVISOR) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "hypervisor");
+        }
+        if (ctx->mem_access & MEM_ACCESS_VIRTUAL) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "virtual");
+        }
+        if (ctx->mem_access & MEM_ACCESS_PHYSICAL) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "physical");
+        }
+        if (ctx->mem_access & MEM_ACCESS_CACHE) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "cache");
+        }
+        if (ctx->mem_access & MEM_ACCESS_TLB) {
+            if (cnt++) write_stream(out, ',');
+            json_write_string(out, "tlb");
+        }
+        write_stream(out, ']');
+    }
 
     write_stream(out, '}');
 }
@@ -109,7 +154,7 @@ static void write_ranges(OutputStream * out, ContextAddress addr, int size, int 
 
         json_write_string(out, "addr");
         write_stream(out, ':');
-        json_write_ulong(out, addr);
+        json_write_uint64(out, addr);
         write_stream(out, ',');
 
         json_write_string(out, "size");
@@ -130,7 +175,7 @@ static void write_ranges(OutputStream * out, ContextAddress addr, int size, int 
 
         json_write_string(out, "addr");
         write_stream(out, ':');
-        json_write_ulong(out, addr + offs);
+        json_write_uint64(out, addr + offs);
         write_stream(out, ',');
 
         json_write_string(out, "size");
@@ -164,13 +209,13 @@ static void command_get_context(char * token, Channel * c) {
 
     ctx = id2ctx(id);
 
-    if (ctx == NULL || ctx->mem != ctx) err = ERR_INV_CONTEXT;
+    if (ctx == NULL || ctx->mem_access == 0) err = ERR_INV_CONTEXT;
     else if (ctx->exited) err = ERR_ALREADY_EXITED;
 
     write_stringz(&c->out, "R");
     write_stringz(&c->out, token);
     write_errno(&c->out, err);
-    if (err == 0 && ctx->parent == NULL) {
+    if (err == 0) {
         write_context(&c->out, ctx);
     }
     else {
@@ -198,11 +243,28 @@ static void command_get_children(char * token, Channel * c) {
         int cnt = 0;
         for (qp = context_root.next; qp != &context_root; qp = qp->next) {
             Context * ctx = ctxl2ctxp(qp);
+            if (ctx->parent != NULL) continue;
             if (ctx->exited) continue;
-            if (ctx->mem != ctx) continue;
+            if (ctx->mem_access == 0 && list_is_empty(&ctx->children)) continue;
             if (cnt > 0) write_stream(&c->out, ',');
             json_write_string(&c->out, ctx->id);
             cnt++;
+        }
+    }
+    else {
+        Context * parent = id2ctx(id);
+        if (parent != NULL) {
+            LINK * l;
+            int cnt = 0;
+            for (l = parent->children.next; l != &parent->children; l = l->next) {
+                Context * ctx = cldl2ctxp(l);
+                assert(ctx->parent == parent);
+                if (ctx->exited) continue;
+                if (ctx->mem_access == 0 && list_is_empty(&ctx->children)) continue;
+                if (cnt > 0) write_stream(&c->out, ',');
+                json_write_string(&c->out, ctx->id);
+                cnt++;
+            }
         }
     }
     write_stream(&c->out, ']');
@@ -231,8 +293,8 @@ static MemoryCommandArgs * read_command_args(char * token, Channel * c, int cmd)
 
     buf.ctx = id2ctx(id);
     if (buf.ctx == NULL) err = ERR_INV_CONTEXT;
-    else if (buf.ctx->parent != NULL) err = ERR_INV_CONTEXT;
     else if (buf.ctx->exited) err = ERR_ALREADY_EXITED;
+    else if (buf.ctx->mem_access == 0) err = ERR_INV_CONTEXT;
 
     if (err != 0) {
         if (cmd != CMD_GET) {
@@ -263,8 +325,6 @@ static MemoryCommandArgs * read_command_args(char * token, Channel * c, int cmd)
 }
 
 static void send_event_memory_changed(OutputStream * out, Context * ctx, ContextAddress addr, unsigned long size) {
-    assert(ctx->parent == NULL);
-
     write_stringz(out, "E");
     write_stringz(out, MEMORY);
     write_stringz(out, "memoryChanged");
@@ -278,7 +338,7 @@ static void send_event_memory_changed(OutputStream * out, Context * ctx, Context
 
     json_write_string(out, "addr");
     write_stream(out, ':');
-    json_write_ulong(out, addr);
+    json_write_uint64(out, addr);
 
     write_stream(out, ',');
 
@@ -337,7 +397,7 @@ static void safe_memory_set(void * parm) {
                 write_stringz(out, "null");
             }
             else {
-                write_ranges(out, addr0, size, addr - addr0, BYTE_INVALID | BYTE_CANNOT_WRITE, err);
+                write_ranges(out, addr0, size, (int)(addr - addr0), BYTE_INVALID | BYTE_CANNOT_WRITE, err);
             }
             write_stream(out, MARKER_EOM);
             clear_trap(&trap);
@@ -355,7 +415,7 @@ static void safe_memory_set(void * parm) {
 
 static void command_set(char * token, Channel * c) {
     MemoryCommandArgs * args = read_command_args(token, c, CMD_SET);
-    if (args != NULL) post_safe_event(args->ctx->mem, safe_memory_set, args);
+    if (args != NULL) post_safe_event(args->ctx, safe_memory_set, args);
 }
 
 static void safe_memory_get(void * parm) {
@@ -404,7 +464,7 @@ static void safe_memory_get(void * parm) {
                 write_stringz(out, "null");
             }
             else {
-                write_ranges(out, addr0, size, addr - addr0, BYTE_INVALID | BYTE_CANNOT_READ, err);
+                write_ranges(out, addr0, size, (int)(addr - addr0), BYTE_INVALID | BYTE_CANNOT_READ, err);
             }
             write_stream(out, MARKER_EOM);
             clear_trap(&trap);
@@ -422,7 +482,7 @@ static void safe_memory_get(void * parm) {
 
 static void command_get(char * token, Channel * c) {
     MemoryCommandArgs * args = read_command_args(token, c, CMD_GET);
-    if (args != NULL) post_safe_event(args->ctx->mem, safe_memory_get, args);
+    if (args != NULL) post_safe_event(args->ctx, safe_memory_get, args);
 }
 
 static void safe_memory_fill(void * parm) {
@@ -480,7 +540,7 @@ static void safe_memory_fill(void * parm) {
 
             while (err == 0 && addr < addr0 + size) {
                 char tmp[sizeof(buf)];
-                int wr = addr0 + size - addr;
+                int wr = (int)(addr0 + size - addr);
                 if (wr > buf_pos) wr = buf_pos;
                 /* TODO: word size, mode */
                 memcpy(tmp, buf, wr);
@@ -497,7 +557,7 @@ static void safe_memory_fill(void * parm) {
                 write_stringz(out, "null");
             }
             else {
-                write_ranges(out, addr0, size, addr - addr0, BYTE_INVALID | BYTE_CANNOT_WRITE, err);
+                write_ranges(out, addr0, size, (int)(addr - addr0), BYTE_INVALID | BYTE_CANNOT_WRITE, err);
             }
             write_stream(out, MARKER_EOM);
             clear_trap(&trap);
@@ -515,7 +575,7 @@ static void safe_memory_fill(void * parm) {
 
 static void command_fill(char * token, Channel * c) {
     MemoryCommandArgs * args = read_command_args(token, c, CMD_FILL);
-    if (args != NULL) post_safe_event(args->ctx->mem, safe_memory_fill, args);
+    if (args != NULL) post_safe_event(args->ctx, safe_memory_fill, args);
 }
 
 static void send_event_context_added(OutputStream * out, Context * ctx) {
@@ -563,21 +623,21 @@ static void send_event_context_removed(OutputStream * out, Context * ctx) {
 static void event_context_created(Context * ctx, void * client_data) {
     TCFBroadcastGroup * bcg = (TCFBroadcastGroup *)client_data;
 
-    if (ctx->parent != NULL) return;
+    if (ctx->mem_access == 0) return;
     send_event_context_added(&bcg->out, ctx);
 }
 
 static void event_context_changed(Context * ctx, void * client_data) {
     TCFBroadcastGroup * bcg = (TCFBroadcastGroup *)client_data;
 
-    if (ctx->parent != NULL) return;
+    if (ctx->mem_access == 0) return;
     send_event_context_changed(&bcg->out, ctx);
 }
 
 static void event_context_exited(Context * ctx, void * client_data) {
     TCFBroadcastGroup * bcg = (TCFBroadcastGroup *)client_data;
 
-    if (ctx->parent != NULL) return;
+    if (ctx->mem_access == 0) return;
     send_event_context_removed(&bcg->out, ctx);
 }
 
@@ -598,5 +658,3 @@ void ini_memory_service(Protocol * proto, TCFBroadcastGroup * bcg) {
 }
 
 #endif /* SERVICE_Memory */
-
-

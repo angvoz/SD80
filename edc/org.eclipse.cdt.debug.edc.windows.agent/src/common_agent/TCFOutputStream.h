@@ -85,8 +85,6 @@ public:
 
 	void writeStringZ(const std::string& str);
 
-	void flush();
-
 private:
 
 	OutputStream* out_; /* Output stream */
@@ -111,7 +109,7 @@ public:
 	
     virtual void write(int byte) = 0;
     virtual void write_block(const char * bytes, size_t size) = 0;
-    virtual int splice_block(int fd, size_t size, off_t * offset) = 0;
+    virtual ssize_t splice_block(int fd, size_t size, off_t * offset) = 0;
     virtual void flush() = 0;
 
 private:
@@ -122,7 +120,7 @@ private:
 
 	static void write_impl(OutputStream* output, int byte);
 	static void write_block_impl(OutputStream * stream, const char * bytes, size_t size);
-	static int splice_block_impl(OutputStream * stream, int fd, size_t size, off_t * offset);
+	static ssize_t splice_block_impl(OutputStream * stream, int fd, size_t size, off_t * offset);
 	static void flush_impl(OutputStream * stream);
 };
 #endif

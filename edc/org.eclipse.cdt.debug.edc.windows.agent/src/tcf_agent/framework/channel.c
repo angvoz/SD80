@@ -24,9 +24,12 @@
 #include <errno.h>
 #include <assert.h>
 #include <ctype.h>
+#include <string.h>
 #include <framework/tcf.h>
 #include <framework/channel.h>
 #include <framework/channel_tcp.h>
+#include <framework/channel_pipe.h>
+#include <framework/protocol.h>
 #include <framework/myalloc.h>
 #include <framework/events.h>
 #include <framework/exceptions.h>
@@ -43,22 +46,8 @@
 static ChannelCloseListener close_listeners[16];
 static int close_listeners_cnt = 0;
 
-#define isBoardcastOkay(c) ((c)->state == ChannelStateConnected || \
-                            (c)->state == ChannelStateRedirectSent || \
-                            (c)->state == ChannelStateRedirectReceived)
-
-static void flush_all(OutputStream * out) {
-    TCFBroadcastGroup * bcg = out2bcast(out);
-    LINK * l = bcg->channels.next;
-
-    assert(is_dispatch_thread());
-    assert(bcg->magic == BCAST_MAGIC);
-    while (l != &bcg->channels) {
-        Channel * c = bclink2channel(l);
-        if (isBoardcastOkay(c)) flush_stream(&c->out);
-        l = l->next;
-    }
-}
+static const int BROADCAST_OK_STATES = (1 << ChannelStateConnected) | (1 << ChannelStateRedirectSent) | (1 << ChannelStateRedirectReceived);
+#define isBoardcastOkay(c) ((1 << (c)->state) & BROADCAST_OK_STATES)
 
 static void write_all(OutputStream * out, int byte) {
     TCFBroadcastGroup * bcg = out2bcast(out);
@@ -68,7 +57,7 @@ static void write_all(OutputStream * out, int byte) {
     assert(bcg->magic == BCAST_MAGIC);
     while (l != &bcg->channels) {
         Channel * c = bclink2channel(l);
-        if (isBoardcastOkay(c)) c->out.write(&c->out, byte);
+        if (isBoardcastOkay(c)) write_stream(&c->out, byte);
         l = l->next;
     }
 }
@@ -86,9 +75,9 @@ static void write_block_all(OutputStream * out, const char * bytes, size_t size)
     }
 }
 
-static int splice_block_all(OutputStream * out, int fd, size_t size, off_t * offset) {
+static ssize_t splice_block_all(OutputStream * out, int fd, size_t size, off_t * offset) {
     char buffer[0x400];
-    int rd = 0;
+    ssize_t rd = 0;
 
     assert(is_dispatch_thread());
     if (size > sizeof(buffer)) size = sizeof(buffer);
@@ -121,7 +110,6 @@ TCFBroadcastGroup * broadcast_group_alloc(void) {
     list_init(&p->channels);
     p->magic = BCAST_MAGIC;
     p->out.write = write_all;
-    p->out.flush = flush_all;
     p->out.write_block = write_block_all;
     p->out.splice_block = splice_block_all;
     return p;
@@ -175,10 +163,11 @@ PeerServer * channel_peer_from_url(const char * url) {
 
     peer_server_addprop(ps, loc_strdup("Name"), loc_strdup("TCF Agent"));
     peer_server_addprop(ps, loc_strdup("OSName"), loc_strdup(get_os_name()));
+    peer_server_addprop(ps, loc_strdup("AgentID"), loc_strdup(get_agent_id()));
 
     s = url;
     i = 0;
-    while (*s && isalpha(*s) && i < (int)sizeof transport) transport[i++] = (char)toupper(*s++);
+    while (*s && isalpha((int)*s) && i < (int)sizeof transport) transport[i++] = (char)toupper((int)*s++);
     if (*s == ':' && i < (int)sizeof transport) {
         s++;
         peer_server_addprop(ps, loc_strdup("TransportName"), loc_strndup(transport, i));
@@ -229,6 +218,12 @@ ChannelServer * channel_server(PeerServer * ps) {
     if (transportname == NULL || strcmp(transportname, "TCP") == 0 || strcmp(transportname, "SSL") == 0) {
         return channel_tcp_server(ps);
     }
+    else if (strcmp(transportname, "PIPE") == 0) {
+        return channel_pipe_server(ps);
+    }
+    else if (strcmp(transportname, "UNIX") == 0) {
+        return channel_unix_server(ps);
+    }
     else {
         errno = ERR_INV_TRANSPORT;
         return NULL;
@@ -243,6 +238,12 @@ void channel_connect(PeerServer * ps, ChannelConnectCallBack callback, void * ca
 
     if (transportname == NULL || strcmp(transportname, "TCP") == 0 || strcmp(transportname, "SSL") == 0) {
         channel_tcp_connect(ps, callback, callback_args);
+    }
+    else if (strcmp(transportname, "PIPE") == 0) {
+        channel_pipe_connect(ps, callback, callback_args);
+    }
+    else if (strcmp(transportname, "UNIX") == 0) {
+        channel_unix_connect(ps, callback, callback_args);
     }
     else {
         callback(callback_args, ERR_INV_TRANSPORT, NULL);

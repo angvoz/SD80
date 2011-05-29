@@ -57,8 +57,8 @@ static const int char2int[] = {
 
 #define OBF_SIZE 0x100
 
-int write_base64(OutputStream * out, const char * buf0, int len) {
-    int pos = 0;
+size_t write_base64(OutputStream * out, const char * buf0, size_t len) {
+    size_t pos = 0;
     const unsigned char * buf = (const unsigned char *)buf0;
 
     char obf[OBF_SIZE + 8];
@@ -75,14 +75,14 @@ int write_base64(OutputStream * out, const char * buf0, int len) {
         }
         else {
             int byte1 = buf[pos++];
-            obf[obf_len++] = int2char[(byte0 << 4) & 0x3f | (byte1 >> 4)];
+            obf[obf_len++] = int2char[((byte0 << 4) & 0x3f) | (byte1 >> 4)];
             if (pos == len) {
                 obf[obf_len++] = int2char[(byte1 << 2) & 0x3f];
                 obf[obf_len++] = '=';
             }
             else {
                 int byte2 = buf[pos++];
-                obf[obf_len++] = int2char[(byte1 << 2) & 0x3f | (byte2 >> 6)];
+                obf[obf_len++] = int2char[((byte1 << 2) & 0x3f) | (byte2 >> 6)];
                 obf[obf_len++] = int2char[byte2 & 0x3f];
             }
         }
@@ -99,8 +99,8 @@ int write_base64(OutputStream * out, const char * buf0, int len) {
     return ((len + 2) / 3) * 4;
 }
 
-int read_base64(InputStream * inp, char * buf, int buf_size) {
-    int pos = 0;
+size_t read_base64(InputStream * inp, char * buf, size_t buf_size) {
+    size_t pos = 0;
     int ch_max = sizeof(char2int) / sizeof(int);
 
     assert(buf_size >= 3);
@@ -125,4 +125,3 @@ int read_base64(InputStream * inp, char * buf, int buf_size) {
     }
     return pos;
 }
-

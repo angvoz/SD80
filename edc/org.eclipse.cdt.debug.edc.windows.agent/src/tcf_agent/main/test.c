@@ -34,6 +34,10 @@
 #  include <system/Windows/context-win32.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum test_enum {
     enum_val1 = 1,
     enum_val2 = 2,
@@ -67,6 +71,7 @@ short tcf_test_short = 0;
 long tcf_test_long = 0;
 
 void tcf_test_func3(void) {
+    tcf_test_char++;
     usleep(1000);
 }
 
@@ -75,12 +80,14 @@ void tcf_test_func2(void) {
     int func2_local2 = 2;
     test_struct func2_local3 = { enum_val3, 153, NULL, 3.14f, 2.71 };
     func2_local3.f_struct = &func2_local3;
+    tcf_test_short++;
     tcf_test_func3();
     func2_local1++;
     func2_local2 = func2_local1;
 }
 
 void tcf_test_func1(void) {
+    tcf_test_long++;
     tcf_test_func2();
 }
 
@@ -90,6 +97,10 @@ void tcf_test_func0(test_enum e) {
 
 static char array[0x1000];
 char * tcf_test_array = array;
+
+#ifdef __cplusplus
+}
+#endif
 
 static void * test_sub(void * x) {
     volatile int * test_done = (int *)x;
@@ -129,6 +140,10 @@ int find_test_symbol(Context * ctx, char * name, void ** addr, int * sym_class) 
         if (strcmp(name, "tcf_test_array") == 0) {
             *sym_class = SYM_CLASS_REFERENCE;
             *addr = &tcf_test_array;
+        }
+        else if (strcmp(name, "tcf_test_char") == 0) {
+            *sym_class = SYM_CLASS_REFERENCE;
+            *addr = &tcf_test_char;
         }
         else {
             *sym_class = SYM_CLASS_FUNCTION;
@@ -213,7 +228,7 @@ int run_test_process(ContextAttachCallBack * done, void * data) {
         test_proc();
         exit(0);
     }
-    return context_attach(pid, done, data, 1);
+    return context_attach(pid, done, data, CONTEXT_ATTACH_SELF);
 #endif
 }
 

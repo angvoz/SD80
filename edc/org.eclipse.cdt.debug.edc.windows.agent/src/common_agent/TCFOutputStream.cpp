@@ -110,10 +110,6 @@ void TCFOutputStream::writeStringZ(const std::string& str) {
 	writeZero();
 }
 
-void TCFOutputStream::flush() {
-	out_->flush(out_);
-}
-
 std::map<OutputStream*, TCFOutputStreamAdapter*> TCFOutputStreamAdapter::adapterMap;
 
 TCFOutputStreamAdapter* TCFOutputStreamAdapter::findOutputStream(OutputStream* stream) {
@@ -136,7 +132,6 @@ TCFOutputStreamAdapter::TCFOutputStreamAdapter(OutputStream* output) {
 	theStream_->write = TCFOutputStreamAdapter::write_impl;
 	theStream_->write_block = TCFOutputStreamAdapter::write_block_impl;
 	theStream_->splice_block = TCFOutputStreamAdapter::splice_block_impl;
-	theStream_->flush = TCFOutputStreamAdapter::flush_impl;
 
 	adapterMap[theStream_] = this;
 }
@@ -153,7 +148,7 @@ void TCFOutputStreamAdapter::write_block_impl(OutputStream * stream, const char 
 	TCFOutputStreamAdapter* tcfStream = findOutputStream(stream);
 	tcfStream->write_block(bytes, size);
 }
-int TCFOutputStreamAdapter::splice_block_impl(OutputStream * stream, int fd, size_t size, off_t * offset) {
+ssize_t TCFOutputStreamAdapter::splice_block_impl(OutputStream * stream, int fd, size_t size, off_t * offset) {
 	TCFOutputStreamAdapter* tcfStream = findOutputStream(stream);
 	return tcfStream->splice_block(fd, size, offset);
 }

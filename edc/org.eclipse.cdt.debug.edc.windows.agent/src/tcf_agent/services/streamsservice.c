@@ -21,6 +21,7 @@
 #if SERVICE_Streams
 
 #include <assert.h>
+#include <string.h>
 #include <framework/channel.h>
 #include <framework/exceptions.h>
 #include <framework/json.h>
@@ -52,9 +53,9 @@ struct VirtualStream {
     LINK clients;
     uint64_t pos;
     char * buf;
-    unsigned buf_len;
-    unsigned buf_inp;
-    unsigned buf_out;
+    size_t buf_len;
+    size_t buf_inp;
+    size_t buf_out;
     unsigned eos_inp;
     unsigned eos_out;
     unsigned data_available_posted;
@@ -103,7 +104,7 @@ struct Subscription {
 #define client2read_request(A)  ((ReadRequest *)((char *)(A) - offsetof(ReadRequest, link_client)))
 #define client2write_request(A) ((WriteRequest *)((char *)(A) - offsetof(WriteRequest, link_client)))
 
-#define HANDLE_HASH_SIZE 0x100
+#define HANDLE_HASH_SIZE (4 * MEM_USAGE_FACTOR - 1)
 static LINK handle_hash[HANDLE_HASH_SIZE];
 static LINK clients;
 static LINK streams;
@@ -246,7 +247,7 @@ static void notify_space_available(void * args) {
 }
 
 static void advance_stream_buffer(VirtualStream * stream) {
-    unsigned len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
+    size_t len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
     uint64_t min_pos = ~(uint64_t)0;
     uint64_t buf_pos = stream->pos - len;
     LINK * l;
@@ -276,7 +277,7 @@ static void advance_stream_buffer(VirtualStream * stream) {
 }
 
 static StreamClient * create_client(VirtualStream * stream, Channel * channel) {
-    unsigned len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
+    size_t len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
     StreamClient * client = (StreamClient *)loc_alloc_zero(sizeof(StreamClient));
     list_init(&client->link_hash);
     list_init(&client->link_stream);
@@ -339,14 +340,14 @@ static void delete_subscription(Subscription * s) {
 static void send_read_reply(StreamClient * client, char * token, size_t size) {
     VirtualStream * stream = client->stream;
     Channel * c = client->channel;
-    unsigned lost = 0;
-    unsigned read1 = 0;
-    unsigned read2 = 0;
+    size_t lost = 0;
+    size_t read1 = 0;
+    size_t read2 = 0;
     int eos = 0;
     char * data1 = NULL;
     char * data2 = NULL;
-    unsigned pos = 0;
-    unsigned len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
+    size_t pos;
+    size_t len = (stream->buf_inp + stream->buf_len - stream->buf_out) % stream->buf_len;
 
     assert(len > 0 || stream->eos_inp);
     assert(client->pos <= stream->pos);
@@ -451,15 +452,15 @@ int virtual_stream_add_data(VirtualStream * stream, char * buf, size_t buf_size,
     if (stream->eos_inp) err = ERR_EOF;
 
     if (!err) {
-        unsigned len = (stream->buf_out + stream->buf_len - stream->buf_inp - 1) % stream->buf_len;
+        size_t len = (stream->buf_out + stream->buf_len - stream->buf_inp - 1) % stream->buf_len;
         assert(len < stream->buf_len);
         if (buf_size < len) len = buf_size;
         if (stream->buf_inp + len <= stream->buf_len) {
             memcpy(stream->buf + stream->buf_inp, buf, len);
         }
         else {
-            unsigned x = stream->buf_len - stream->buf_inp;
-            unsigned y = len - x;
+            size_t x = stream->buf_len - stream->buf_inp;
+            size_t y = len - x;
             memcpy(stream->buf + stream->buf_inp, buf, x);
             memcpy(stream->buf, buf + x, y);
         }
@@ -512,8 +513,8 @@ int virtual_stream_get_data(VirtualStream * stream, char * buf, size_t buf_size,
         memcpy(buf, stream->buf + stream->buf_out, len);
     }
     else {
-        unsigned x = stream->buf_len - stream->buf_out;
-        unsigned y = len - x;
+        size_t x = stream->buf_len - stream->buf_out;
+        size_t y = len - x;
         memcpy(buf, stream->buf + stream->buf_out, x);
         memcpy(buf + x, stream->buf, y);
     }
@@ -687,7 +688,7 @@ static void command_write(char * token, Channel * c) {
 
     {
         JsonReadBinaryState state;
-        unsigned data_pos = 0;
+        size_t data_pos = 0;
 
         if (!err && !list_is_empty(&client->write_requests)) data = (char *)loc_alloc(size);
 

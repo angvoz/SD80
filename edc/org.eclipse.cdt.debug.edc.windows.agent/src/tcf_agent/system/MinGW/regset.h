@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2009, 2010 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -13,7 +13,10 @@
  *******************************************************************************/
 
 /*
- * This module handles process/thread OS contexts and their state machine.
+ * This header file provides definition of REG_SET - a structure that can
+ * hold values of target CPU registers.
  */
 
-#include <system/Windows/context-win32.c>
+#if defined(WIN32)
+   typedef CONTEXT REG_SET;
+#endif

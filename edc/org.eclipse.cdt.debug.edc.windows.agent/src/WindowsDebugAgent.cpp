@@ -34,7 +34,6 @@ static void channel_server_connecting(Channel * c) {
 	trace(LOG_PROTOCOL, "channel server connecting");
 
 	send_hello_message(c);
-	flush_stream(&c->out);
 }
 
 static void channel_server_connected(Channel * c) {

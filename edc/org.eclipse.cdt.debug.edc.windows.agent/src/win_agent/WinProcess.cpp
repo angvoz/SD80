@@ -140,3 +140,9 @@ void WinProcess::SingleStep(const AgentActionParams& params) throw (AgentExcepti
 WinDebugMonitor* WinProcess::GetMonitor() {
 	return monitor_;
 }
+
+std::map<std::string, Properties>& WinProcess::GetExecutables()
+{
+	return executables_;
+}
+

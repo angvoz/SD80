@@ -16,10 +16,6 @@
  * This module provides access to Windows Portable Executable debug information.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef D_windbgcache
 #define D_windbgcache
 
@@ -32,6 +28,10 @@ extern "C" {
 #else
 #  define _NO_CVCONST_H
 #  include <dbghelp.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #if defined(__GNUC__)
@@ -164,6 +164,7 @@ typedef struct _IMAGEHLP_STACK_FRAME {
 typedef VOID IMAGEHLP_CONTEXT, *PIMAGEHLP_CONTEXT;
 
 typedef BOOL (CALLBACK *PSYM_ENUMERATESYMBOLS_CALLBACK)(PSYMBOL_INFO pSymInfo, ULONG SymbolSize, PVOID UserContext);
+typedef BOOL (CALLBACK *PENUMLOADED_MODULES_CALLBACKW64)(PCWSTR ModuleName, DWORD64 ModuleBase, ULONG ModuleSize, PVOID UserContext);
 
 #endif /* defined(__GNUC__) */
 
@@ -202,12 +203,14 @@ enum DataKind {
 };
 
 #define SymInitialize LocSymInitialize
+#define SymGetOptions LocSymGetOptions
 #define SymSetOptions LocSymSetOptions
 #define SymGetLineFromName LocSymGetLineFromName
 #define SymGetLineFromAddr LocSymGetLineFromAddr
 #define SymGetLineNext LocSymGetLineNext
 #define SymGetTypeInfo LocSymGetTypeInfo
 #define SymFromIndex LocSymFromIndex
+#define SymFromAddr LocSymFromAddr
 #define SymSetContext LocSymSetContext
 #define SymFromName LocSymFromName
 #define SymEnumSymbols LocSymEnumSymbols
@@ -220,12 +223,14 @@ enum DataKind {
 #define EnumerateLoadedModulesW64 LocEnumerateLoadedModulesW64
 
 extern BOOL SymInitialize(HANDLE hProcess, PCSTR UserSearchPath, BOOL fInvadeProcess);
+extern DWORD SymGetOptions(void);
 extern BOOL SymSetOptions(DWORD Options);
 extern BOOL SymGetLineFromName(HANDLE hProcess, PCSTR ModuleName, PCSTR FileName, DWORD dwLineNumber, PLONG plDisplacement, PIMAGEHLP_LINE Line);
 extern BOOL SymGetLineFromAddr(HANDLE hProcess, DWORD dwAddr, PDWORD pdwDisplacement, PIMAGEHLP_LINE Line);
 extern BOOL SymGetLineNext(HANDLE hProcess, PIMAGEHLP_LINE Line);
 extern BOOL SymGetTypeInfo(HANDLE hProcess, DWORD64 ModBase, ULONG TypeId, IMAGEHLP_SYMBOL_TYPE_INFO GetType, PVOID pInfo);
 extern BOOL SymFromIndex(HANDLE hProcess, ULONG64 BaseOfDll, DWORD Index, PSYMBOL_INFO Symbol);
+extern BOOL SymFromAddr(HANDLE hProcess, DWORD64 Address, PDWORD64 Displacement, PSYMBOL_INFO Symbol);
 extern BOOL SymSetContext(HANDLE hProcess, PIMAGEHLP_STACK_FRAME StackFrame, PIMAGEHLP_CONTEXT Context);
 extern BOOL SymFromName(HANDLE hProcess, PCSTR Name, PSYMBOL_INFO Symbol);
 extern BOOL SymEnumSymbols(HANDLE hProcess, ULONG64 BaseOfDll, PCSTR Mask, PSYM_ENUMERATESYMBOLS_CALLBACK EnumSymbolsCallback, PVOID UserContext);
@@ -237,10 +242,9 @@ extern BOOL SymCleanup(HANDLE hProcess);
 
 extern BOOL LocEnumerateLoadedModulesW64(HANDLE hProcess, PENUMLOADED_MODULES_CALLBACKW64 Callback, PVOID UserContext);
 
-#endif /* defined(WIN32) */
-#endif /* D_windbgcache */
-
 #ifdef __cplusplus
 }
 #endif
 
+#endif /* defined(WIN32) */
+#endif /* D_windbgcache */

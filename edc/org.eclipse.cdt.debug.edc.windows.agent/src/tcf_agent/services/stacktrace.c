@@ -32,6 +32,7 @@
 #include <framework/json.h>
 #include <framework/cache.h>
 #include <framework/exceptions.h>
+#include <services/registers.h>
 #include <services/stacktrace.h>
 #include <services/symbols.h>
 
@@ -72,45 +73,80 @@ static void invalidate_stack_trace(StackTrace * stack) {
     stack->valid = 0;
 }
 
+static int has_registers(StackFrame * frame) {
+    uint64_t v;
+    RegisterDefinition * r;
+    for (r = get_reg_definitions(frame->ctx); r->name != NULL; r++) {
+        if (read_reg_value(frame, r, &v) == 0) return 1;
+    }
+    return 0;
+}
+
 static void trace_stack(Context * ctx, StackTrace * stack) {
     int i;
     int error = 0;
     StackFrame frame;
+    ContextAddress prev_fp = 0;
 
     stack->frame_cnt = 0;
     memset(&frame, 0, sizeof(frame));
     frame.is_top_frame = 1;
     frame.ctx = ctx;
+    trace(LOG_STACK, "Stack trace, ctx %s", ctx->id);
     while (stack->frame_cnt < MAX_FRAMES) {
         StackFrame down;
         memset(&down, 0, sizeof(down));
         down.ctx = ctx;
+        trace(LOG_STACK, "Frame %d", stack->frame_cnt);
+#if ENABLE_Trace
+        if (LOG_STACK & log_mode) {
+            uint64_t v;
+            RegisterDefinition * r;
+            for (r = get_reg_definitions(ctx); r->name != NULL; r++) {
+                if (read_reg_value(&frame, r, &v) == 0) {
+                    trace(LOG_STACK, "  %-8s %16"PRIX64, r->name, v);
+                }
+            }
+        }
+#endif
 #if ENABLE_Symbols
         if (get_next_stack_frame(&frame, &down) < 0) {
             error = errno;
+            trace(LOG_STACK, "  trace error: %s", errno_to_str(errno));
             loc_free(down.regs);
             break;
         }
 #endif
-        if (frame.fp == 0 && crawl_stack_frame(&frame, &down) < 0) {
-            error = errno;
+        if (frame.fp == 0) {
+            trace(LOG_STACK, "  *** frame info not available ***");
             loc_free(down.regs);
-            break;
+            memset(&down, 0, sizeof(down));
+            down.ctx = ctx;
+            if (crawl_stack_frame(&frame, &down) < 0) {
+                error = errno;
+                trace(LOG_STACK, "  crawl error: %s", errno_to_str(errno));
+                loc_free(down.regs);
+                break;
+            }
         }
-        if (stack->frame_cnt > 0 && frame.fp == 0) {
+        trace(LOG_STACK, "  cfa      %16"PRIX64, (uint64_t)frame.fp);
+        if (stack->frame_cnt > 0 && frame.fp == prev_fp) {
             loc_free(down.regs);
             break;
         }
         add_frame(stack, &frame);
+        prev_fp = frame.fp;
         frame = down;
     }
 
-    loc_free(frame.regs);
+    if (!frame.is_top_frame && has_registers(&frame)) add_frame(stack, &frame);
+    else loc_free(frame.regs);
 
     if (get_error_code(error) == ERR_CACHE_MISS) {
         invalidate_stack_trace(stack);
+        stack->error = get_error_report(ERR_CACHE_MISS);
     }
-    else if (error) {
+    else if (error && stack->frame_cnt == 0) {
         stack->error = get_error_report(error);
     }
     for (i = 0; i < stack->frame_cnt / 2; i++) {
@@ -123,7 +159,9 @@ static void trace_stack(Context * ctx, StackTrace * stack) {
 static StackTrace * create_stack_trace(Context * ctx) {
     StackTrace * stack = EXT(ctx);
     if (!stack->valid) {
-        stack->frame_cnt = 0;
+        assert(stack->frame_cnt == 0);
+        release_error_report(stack->error);
+        stack->error = NULL;
         stack->valid = 1;
         trace_stack(ctx, stack);
     }
@@ -153,7 +191,7 @@ static void write_context(OutputStream * out, char * id, Context * ctx, int leve
     write_stream(out, ',');
     json_write_string(out, "ProcessID");
     write_stream(out, ':');
-    json_write_string(out, ctx->mem->id);
+    json_write_string(out, context_get_group(ctx, CONTEXT_GROUP_PROCESS)->id);
 
     if (frame->is_top_frame) {
         write_stream(out, ',');
@@ -339,6 +377,7 @@ int get_top_frame(Context * ctx) {
         return STACK_TOP_FRAME;
     }
 
+    assert(stack->frame_cnt > 0);
     return stack->frame_cnt - 1;
 }
 
@@ -362,10 +401,14 @@ int get_frame_info(Context * ctx, int frame, StackFrame ** info) {
     }
 
     if (frame == STACK_TOP_FRAME) {
+        if (stack->frame_cnt == 0) {
+            errno = set_errno(ERR_INV_CONTEXT, "No such stack frame");
+            return -1;
+        }
         frame = stack->frame_cnt - 1;
     }
     else if (frame < 0 || frame >= stack->frame_cnt) {
-        errno = ERR_INV_CONTEXT;
+        errno = set_errno(ERR_INV_CONTEXT, "No such stack frame");
         return -1;
     }
 
@@ -388,6 +431,10 @@ static void flush_stack_trace(Context * ctx, void * args) {
     invalidate_stack_trace(EXT(ctx));
 }
 
+static void flush_on_register_change(Context * ctx, int frame, RegisterDefinition * def, void * args) {
+    invalidate_stack_trace(EXT(ctx));
+}
+
 static void delete_stack_trace(Context * ctx, void * args) {
     invalidate_stack_trace(EXT(ctx));
     loc_free(EXT(ctx)->frames);
@@ -395,7 +442,7 @@ static void delete_stack_trace(Context * ctx, void * args) {
 }
 
 void ini_stack_trace_service(Protocol * proto, TCFBroadcastGroup * bcg) {
-    static ContextEventListener listener = {
+    static ContextEventListener context_listener = {
         NULL,
         flush_stack_trace,
         NULL,
@@ -403,11 +450,14 @@ void ini_stack_trace_service(Protocol * proto, TCFBroadcastGroup * bcg) {
         flush_stack_trace,
         delete_stack_trace
     };
-    add_context_event_listener(&listener, bcg);
+    static RegistersEventListener registers_listener = {
+        flush_on_register_change,
+    };
+    add_context_event_listener(&context_listener, bcg);
+    add_registers_event_listener(&registers_listener, bcg);
     add_command_handler(proto, STACKTRACE, "getContext", command_get_context);
     add_command_handler(proto, STACKTRACE, "getChildren", command_get_children);
     context_extension_offset = context_extension(sizeof(StackTrace));
 }
 
 #endif
-

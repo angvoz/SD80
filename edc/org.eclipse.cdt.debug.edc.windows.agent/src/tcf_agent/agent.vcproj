@@ -42,6 +42,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalOptions="/Oy-"
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories=".;system/Windows;machine/x86_64"
@@ -70,7 +71,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="WS2_32.lib Iphlpapi.lib"
+				AdditionalDependencies="WS2_32.lib Iphlpapi.lib version.lib"
 				OutputFile=".\obj\MSVC\Release/agent.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
@@ -160,7 +161,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="WS2_32.lib Iphlpapi.lib"
+				AdditionalDependencies="WS2_32.lib Iphlpapi.lib version.lib"
 				OutputFile=".\obj\MSVC\Debug/agent.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
@@ -232,6 +233,14 @@
 			</File>
 			<File
 				RelativePath=".\framework\channel.h"
+				>
+			</File>
+			<File
+				RelativePath=".\framework\channel_pipe.c"
+				>
+			</File>
+			<File
+				RelativePath=".\framework\channel_pipe.h"
 				>
 			</File>
 			<File
@@ -324,6 +333,14 @@
 			</File>
 			<File
 				RelativePath=".\framework\myalloc.h"
+				>
+			</File>
+			<File
+				RelativePath=".\framework\outputbuf.c"
+				>
+			</File>
+			<File
+				RelativePath=".\framework\outputbuf.h"
 				>
 			</File>
 			<File
@@ -614,6 +631,14 @@
 				RelativePath=".\services\tcf_elf.h"
 				>
 			</File>
+			<File
+				RelativePath=".\services\terminals.c"
+				>
+			</File>
+			<File
+				RelativePath=".\services\terminals.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="main"
@@ -778,6 +803,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\system\Windows\pthreads-win32.c"
+					>
+				</File>
+				<File
+					RelativePath=".\system\Windows\pthreads-win32.h"
+					>
+				</File>
+				<File
 					RelativePath=".\system\Windows\regset.h"
 					>
 				</File>
@@ -914,18 +947,6 @@
 				Name="Cygwin"
 				>
 				<File
-					RelativePath=".\system\Cygwin\context-cygwin.c"
-					>
-					<FileConfiguration
-						Name="Debug|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath=".\system\Cygwin\regset.h"
 					>
 				</File>
@@ -933,18 +954,6 @@
 			<Filter
 				Name="Msys"
 				>
-				<File
-					RelativePath=".\system\Msys\context-msys.c"
-					>
-					<FileConfiguration
-						Name="Debug|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-				</File>
 				<File
 					RelativePath=".\system\Msys\regset.h"
 					>

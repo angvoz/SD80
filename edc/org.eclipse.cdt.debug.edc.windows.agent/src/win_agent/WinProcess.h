@@ -41,6 +41,8 @@ public:
 
 	static WinProcess* GetProcessByID(int processID);
 
+	std::map<std::string, Properties>& GetExecutables();
+
 private:
 	void initialize();
 
@@ -48,6 +50,7 @@ private:
 	HANDLE processHandle_;
 	std::string processName_;
 	WinDebugMonitor* monitor_;
+	std::map<std::string, Properties> executables_;
 
 	static std::map<int, WinProcess*> processIDMap;
 };

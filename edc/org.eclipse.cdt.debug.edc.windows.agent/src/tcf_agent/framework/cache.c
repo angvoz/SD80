@@ -18,6 +18,7 @@
 
 #include <config.h>
 #include <assert.h>
+#include <string.h>
 #include <framework/errors.h>
 #include <framework/exceptions.h>
 #include <framework/myalloc.h>
@@ -127,6 +128,7 @@ void cache_notify(AbstractCache * cache) {
     unsigned cnt = cache->wait_list_cnt;
 
     assert(is_dispatch_thread());
+    if (cnt == 0) return;
     list_remove(&cache->link);
     cache->wait_list_cnt = 0;
     if (wait_list_max < cnt) {

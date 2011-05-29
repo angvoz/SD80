@@ -21,7 +21,7 @@
 
 #include <config.h>
 
-#if ENABLE_DebugContext || SERVICE_Processes
+#if (ENABLE_DebugContext && !ENABLE_ContextProxy) || SERVICE_Processes || SERVICE_Terminals
 
 typedef void WaitPIDListener(int pid, int exited, int exit_code, int signal, int event_code, int syscall, void * args);
 

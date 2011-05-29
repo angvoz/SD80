@@ -38,15 +38,36 @@ typedef uintptr_t ContextAddress;
 typedef struct RegisterData RegisterData;
 
 typedef struct RegisterDefinition RegisterDefinition;
+typedef struct NamedRegisterValue NamedRegisterValue;
+
+struct NamedRegisterValue {
+    uint8_t * value;
+    const char * name;
+    const char * description;
+};
 
 struct RegisterDefinition {
-    const char * name;           /* pointer to register name */
-    size_t       offset;         /* offset to entry in REG_SET */
-    size_t       size;           /* register size in bytes */
-    int16_t      dwarf_id;       /* ID of the register in DWARF sections, or -1 */
-    int16_t      eh_frame_id;    /* ID of the register in .eh_frame section, or -1 */
-    uint8_t      traceable;      /* register value can be traced using .eh_frame of .debug_frame */
-    uint8_t      big_endian;     /* 0 - little endian, 1 -  big endian */
+    const char *    name;          /* pointer to register name */
+    size_t          offset;        /* offset to entry in REG_SET */
+    size_t          size;          /* register size in bytes */
+    int16_t         dwarf_id;      /* ID of the register in DWARF sections, or -1 */
+    int16_t         eh_frame_id;   /* ID of the register in .eh_frame section, or -1 */
+    uint8_t         big_endian;    /* 0 - little endian, 1 -  big endian */
+    uint8_t         fp_value;      /* true if the register value is a floating-point value */
+    uint8_t         no_read;       /* true if context value can not be read */
+    uint8_t         no_write;      /* true if context value can not be written */
+    uint8_t         read_once;     /* true if reading the context (register) destroys its current value */
+    uint8_t         write_once;    /* true if register value can not be overwritten - every write counts */
+    uint8_t         side_effects;  /* true if writing the context can change values of other registers */
+    uint8_t         volatile_value;/* true if the register value can change even when target is stopped */
+    uint8_t         left_to_right; /* true if the lowest numbered bit should be shown to user as the left-most bit */
+    int             first_bit;     /* bit numbering base (0 or 1) to use when showing bits to user */
+    int *           bits;          /* if context is a bit field, contains the field bit numbers in the parent register definition, -1 marks end of the list */
+    RegisterDefinition * parent;   /* parent register definition, NULL for top level definitions */
+    NamedRegisterValue ** values;  /* predefined names (mnemonics) for some of register values */
+    ContextAddress  memory_address;/* the address of a memory mapped register */
+    const char *    memory_context;/* the context ID of a memory context in which a memory mapped register is located */
+    const char *    role;          /* the role the register plays in a program execution */
 };
 
 /* Stack tracing command codes */
@@ -55,6 +76,9 @@ struct RegisterDefinition {
 #define SFT_CMD_FP              3
 #define SFT_CMD_DEREF           4
 #define SFT_CMD_ADD             5
+#define SFT_CMD_SUB             6
+#define SFT_CMD_AND             7
+#define SFT_CMD_OR              8
 
 /* Stack tracing command */
 typedef struct StackTracingCommand {
@@ -86,20 +110,25 @@ typedef struct StackTracingInfo {
 #define STACK_NO_FRAME      (-1)
 #define STACK_TOP_FRAME     (-2)
 
-typedef struct StackFrame StackFrame;
-
-struct StackFrame {
+typedef struct StackFrame {
     int is_top_frame;
     Context * ctx;
     ContextAddress fp;      /* frame address */
     RegisterData * regs;    /* register values */
-};
+} StackFrame;
+
+typedef struct RegisterIdScope {
+    uint16_t machine;
+    uint8_t os_abi;
+    uint8_t big_endian;
+    uint8_t id_type;
+} RegisterIdScope;
 
 /* Return array of CPU register definitions. Last item in the array has name == NULL */
 extern RegisterDefinition * get_reg_definitions(Context * ctx);
 
 /* Search register definition for given register ID, return NULL if not found */
-extern RegisterDefinition * get_reg_by_id(Context * ctx, unsigned id, unsigned numbering_convention);
+extern RegisterDefinition * get_reg_by_id(Context * ctx, unsigned id, RegisterIdScope * scope);
 
 /* Return register definition of instruction pointer */
 extern RegisterDefinition * get_PC_definition(Context * ctx);
@@ -123,13 +152,13 @@ extern ContextAddress get_regs_PC(Context * ctx);
 extern void set_regs_PC(Context * ctx, ContextAddress y);
 
 /* Get TCF ID of a stack frame */
-extern char * frame2id(Context * ctx, int frame);
+extern const char * frame2id(Context * ctx, int frame);
 
 /* Get stack frame for TCF ID */
 extern int id2frame(const char * id, Context ** ctx, int * frame);
 
 /* Get TCF ID of a register */
-extern char * register2id(Context * ctx, int frame, RegisterDefinition * reg);
+extern const char * register2id(Context * ctx, int frame, RegisterDefinition * reg);
 
 /* Get register for TCF ID */
 extern int id2register(const char * id, Context ** ctx, int * frame, RegisterDefinition ** reg_def);
@@ -150,9 +179,7 @@ extern uint8_t * get_break_instruction(Context * ctx, size_t * size);
  */
 extern int crawl_stack_frame(StackFrame * frame, StackFrame * down);
 
-/*
- * Execute stack tracing command sequence.
- */
+/* Execute stack tracing command sequence */
 extern uint64_t evaluate_stack_trace_commands(Context * ctx, StackFrame * frame, StackTracingCommandSequence * cmds);
 
 #endif /* ENABLE_DebugContext */

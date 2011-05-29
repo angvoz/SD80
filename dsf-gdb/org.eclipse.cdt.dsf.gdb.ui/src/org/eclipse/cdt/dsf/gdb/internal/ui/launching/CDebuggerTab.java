@@ -1,15 +1,16 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2010 QNX Software Systems and others.
+ * Copyright (c) 2008, 2011 QNX Software Systems and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * QNX Software Systems - Initial API and implementation
- * Ken Ryall (Nokia) - https://bugs.eclipse.org/bugs/show_bug.cgi?id=118894
- * IBM Corporation
- * Ericsson
+ *     QNX Software Systems - Initial API and implementation
+ *     Ken Ryall (Nokia) - https://bugs.eclipse.org/bugs/show_bug.cgi?id=118894
+ *     IBM Corporation
+ *     Ericsson
+ *     Sergey Prigogin (Google)
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.launching;
 
@@ -23,6 +24,7 @@ import org.eclipse.cdt.debug.ui.ICDebuggerPage;
 import org.eclipse.cdt.debug.ui.ICDebuggerPageExtension;
 import org.eclipse.cdt.debug.ui.ICDebuggerPageExtension.IContentChangeListener;
 import org.eclipse.cdt.dsf.gdb.IGDBLaunchConfigurationConstants;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbUIPlugin;
 import org.eclipse.cdt.dsf.gdb.launching.LaunchMessages;
 import org.eclipse.cdt.dsf.gdb.service.SessionType;
@@ -30,6 +32,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.ILaunchConfigurationTab;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
@@ -53,19 +56,18 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 public class CDebuggerTab extends CLaunchConfigurationTab {
-	
     /**
-     * Tab identifier used for ordering of tabs added using the 
-     * <code>org.eclipse.debug.ui.launchConfigurationTabs</code>
+     * Tab identifier used for ordering of tabs added using
+     * the <code>org.eclipse.debug.ui.launchConfigurationTabs</code>
      * extension point.
-     *   
+     *
      * @since 2.0
      */
     public static final String TAB_ID = "org.eclipse.cdt.dsf.gdb.launch.debuggerTab"; //$NON-NLS-1$
 
 	private final static String LOCAL_DEBUGGER_ID = "gdb";//$NON-NLS-1$
 	private final static String REMOTE_DEBUGGER_ID = "gdbserver";//$NON-NLS-1$
-	
+
 	protected ILaunchConfiguration fLaunchConfiguration;
 	protected ILaunchConfigurationWorkingCopy fWorkingCopy;
 	protected String fDebuggerId;
@@ -76,14 +78,14 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	private boolean fInitDefaults;
 	private Combo fDCombo;
 	private boolean fIsInitializing;
-	
+
 	protected boolean fAttachMode;
 	protected boolean fRemoteMode;
 	protected boolean fCoreMode;
-	
+
 	protected Button fStopInMain;
 	protected Text fStopInMainSymbol;
-	
+
 	private ScrolledComposite fContainer;
 
 	private Composite fContents;
@@ -93,7 +95,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
             contentsChanged();
         }
     };
-    
+
 	public CDebuggerTab(SessionType sessionType, boolean attach) {
 		if (sessionType == SessionType.REMOTE) {
 			fRemoteMode = true;
@@ -101,11 +103,11 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 			fCoreMode = true;
 		}
 		fAttachMode = attach;
-		 
+		
 		ICDebugConfiguration dc = CDebugCorePlugin.getDefault().getDefaultDefaultDebugConfiguration();
 		if (dc == null) {
-			CDebugCorePlugin.getDefault().getPluginPreferences().setDefault(ICDebugConstants.PREF_DEFAULT_DEBUGGER_TYPE,
-					                                                        LOCAL_DEBUGGER_ID);
+			CDebugCorePlugin.getDefault().getPluginPreferences().setDefault(
+					ICDebugConstants.PREF_DEFAULT_DEBUGGER_TYPE, LOCAL_DEBUGGER_ID);
 		}
 	}
 
@@ -120,12 +122,12 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		fContainer.setLayout(new FillLayout());
 		fContainer.setExpandHorizontal(true);
 		fContainer.setExpandVertical(true);
-		
+
 		fContents = new Composite(fContainer, SWT.NONE);
 		setControl(fContainer);
 		GdbUIPlugin.getDefault().getWorkbench().getHelpSystem().setHelp(getControl(),
 				ICDTLaunchHelpContextIds.LAUNCH_CONFIGURATION_DIALOG_DEBBUGER_TAB);
-		int numberOfColumns = (fAttachMode) ? 2 : 1;
+		int numberOfColumns = fAttachMode ? 2 : 1;
 		GridLayout layout = new GridLayout(numberOfColumns, false);
 		fContents.setLayout(layout);
 		GridData gd = new GridData(GridData.BEGINNING, GridData.CENTER, true, false);
@@ -134,10 +136,10 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		if (fAttachMode) {
 			createDebuggerCombo(fContents);
 		}
-		
+
 		createOptionsComposite(fContents);
 		createDebuggerGroup(fContents, 2);
-		
+
 		fContainer.setContent(fContents);
 	}
 
@@ -167,7 +169,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 			dynamicTab.setDefaults(config);
 			setInitializeDefault(false);
 		}
-		
+
 		if (fAttachMode && fRemoteMode) {
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE,
 					IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE_ATTACH);
@@ -189,12 +191,12 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 					ICDTLaunchConfigurationConstants.DEBUGGER_MODE_RUN);
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_ID, LOCAL_DEBUGGER_ID);
 		}
-		
+
 		if (!fAttachMode && !fCoreMode) {
+			IPreferenceStore preferences = GdbUIPlugin.getDefault().getPreferenceStore();
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN,
-					ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_DEFAULT);
+					preferences.getBoolean(IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN));
 		}
-		
 	}
 
 	public void initializeFrom(ILaunchConfiguration config) {
@@ -220,12 +222,13 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_ID, getDebuggerId());
 			ICDebuggerPage dynamicTab = getDynamicTab();
 			if (dynamicTab == null) {
-				config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_SPECIFIC_ATTRS_MAP, (Map<?,?>)null);
+				config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_SPECIFIC_ATTRS_MAP,
+						(Map<?, ?>) null);
 			} else {
 				dynamicTab.performApply(config);
 			}
 		}
-		
+
 		if (fAttachMode && fRemoteMode) {
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE,
 					IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE_ATTACH);
@@ -245,7 +248,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		if (!fAttachMode && !fCoreMode) {
 			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN,
 					fStopInMain.getSelection());
-			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL, 
+			config.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
 				    fStopInMainSymbol.getText());
 		}
 	}
@@ -263,7 +266,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 				return false;
 			}
 		}
-		
+
 		setErrorMessage(null);
 		setMessage(null);
 		if (getDebuggerId() == null) {
@@ -308,7 +311,6 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		if (!fAttachMode && !fCoreMode) {
 			fStopInMain = createCheckButton(optionsComp, LaunchMessages.getString("CDebuggerTab.Stop_at_main_on_startup")); //$NON-NLS-1$
 			fStopInMain.addSelectionListener(new SelectionAdapter() {
-
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					fStopInMainSymbol.setEnabled(fStopInMain.getSelection());
@@ -325,10 +327,10 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 				}
 			});
 			fStopInMainSymbol.getAccessible().addAccessibleListener(
-				new AccessibleAdapter() {                       
+				new AccessibleAdapter() {
 					@Override
 					public void getName(AccessibleEvent e) {
-                            e.result = LaunchMessages.getString("CDebuggerTab.Stop_at_main_on_startup"); //$NON-NLS-1$
+						e.result = LaunchMessages.getString("CDebuggerTab.Stop_at_main_on_startup"); //$NON-NLS-1$
 					}
 				}
 			);
@@ -342,7 +344,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.eclipse.debug.ui.ILaunchConfigurationTab#dispose()
 	 */
 	@Override
@@ -356,16 +358,16 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	protected void initializeCommonControls(ILaunchConfiguration config) {
 		try {
 			if (!fAttachMode && !fCoreMode) {
+				IPreferenceStore preferences = GdbUIPlugin.getDefault().getPreferenceStore();
 				fStopInMain.setSelection(config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN,
-						ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_DEFAULT));
+						preferences.getBoolean(IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN)));
 				fStopInMainSymbol.setText(config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_STOP_AT_MAIN_SYMBOL,
-						ICDTLaunchConfigurationConstants.DEBUGGER_STOP_AT_MAIN_SYMBOL_DEFAULT));
+						preferences.getString(IGdbDebugPreferenceConstants.PREF_DEFAULT_STOP_AT_MAIN_SYMBOL)));
 				fStopInMainSymbol.setEnabled(fStopInMain.getSelection());
 			} else if (fAttachMode) {
-				// In attach mode, figure out if we are doing a remote connect based on the currently
-				// chosen debugger
-				if (getDebuggerId().equals(REMOTE_DEBUGGER_ID)) fRemoteMode = true;
-				else fRemoteMode = false;
+				// In attach mode, figure out if we are doing a remote connect based on
+				// the currently chosen debugger.
+				fRemoteMode = getDebuggerId().equals(REMOTE_DEBUGGER_ID);
 			}
 		} catch (CoreException e) {
 		}
@@ -374,11 +376,11 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	protected void setInitializeDefault(boolean init) {
 		fInitDefaults = init;
 	}
-	
+
 	protected void contentsChanged() {
 		fContainer.setMinSize(fContents.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
-	
+
 	protected void loadDynamicDebugArea() {
 		Composite dynamicTabHolder = getDynamicTabHolder();
 		// Dispose of any current child widgets in the tab holder area
@@ -416,7 +418,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		dynamicTabHolder.layout(true);
 		contentsChanged();
 	}
-	
+
 	protected void setDebuggerId(String id) {
 		fDebuggerId = id;
 	}
@@ -430,11 +432,11 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	}
 
 	protected void setDynamicTab(ICDebuggerPage tab) {
-        if ( fDynamicTab instanceof ICDebuggerPageExtension )
-            ((ICDebuggerPageExtension)fDynamicTab).removeContentChangeListener( fContentListener );
+        if (fDynamicTab instanceof ICDebuggerPageExtension)
+            ((ICDebuggerPageExtension) fDynamicTab).removeContentChangeListener(fContentListener);
         fDynamicTab = tab;
-        if ( fDynamicTab instanceof ICDebuggerPageExtension )
-            ((ICDebuggerPageExtension)fDynamicTab).addContentChangeListener( fContentListener );
+        if (fDynamicTab instanceof ICDebuggerPageExtension)
+            ((ICDebuggerPageExtension) fDynamicTab).addContentChangeListener(fContentListener);
 	}
 
 	protected Composite getDynamicTabHolder() {
@@ -465,13 +467,13 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	/**
 	 * Overridden here so that any error message in the dynamic UI gets
 	 * returned.
-	 * 
+	 *
 	 * @see ILaunchConfigurationTab#getErrorMessage()
 	 */
 	@Override
 	public String getErrorMessage() {
 		ICDebuggerPage tab = getDynamicTab();
-		if ( (super.getErrorMessage() != null) || (tab == null)) {
+		if (super.getErrorMessage() != null || tab == null) {
 			return super.getErrorMessage();
 		}
 		return tab.getErrorMessage();
@@ -483,28 +485,28 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 	protected void handleDebuggerChanged() {
 		loadDynamicDebugArea();
 
-		// always set the newly created area with defaults
+		// Always set the newly created area with defaults
 		ILaunchConfigurationWorkingCopy wc = getLaunchConfigurationWorkingCopy();
 		if (getDynamicTab() == null) {
-			// remove any debug specfic args from the config
+			// Remove any debug-specific arguments from the configuration.
 			if (wc == null) {
 				if (getLaunchConfiguration().isWorkingCopy()) {
-					wc = (ILaunchConfigurationWorkingCopy)getLaunchConfiguration();
+					wc = (ILaunchConfigurationWorkingCopy) getLaunchConfiguration();
 				}
 			}
 			if (wc != null) {
-				wc.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_SPECIFIC_ATTRS_MAP, (Map<?,?>)null);
+				wc.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_SPECIFIC_ATTRS_MAP,
+						(Map<?, ?>) null);
 			}
 		} else {
 			if (wc == null) {
 				try {
 					if (getLaunchConfiguration().isWorkingCopy()) {
-						setLaunchConfigurationWorkingCopy((ILaunchConfigurationWorkingCopy)getLaunchConfiguration());
+						setLaunchConfigurationWorkingCopy((ILaunchConfigurationWorkingCopy) getLaunchConfiguration());
 					} else {
 						setLaunchConfigurationWorkingCopy(getLaunchConfiguration().getWorkingCopy());
 					}
 					wc = getLaunchConfigurationWorkingCopy();
-
 				} catch (CoreException e) {
 					return;
 				}
@@ -565,7 +567,7 @@ public class CDebuggerTab extends CLaunchConfigurationTab {
 		if (fDCombo == null) {
 			return;
 		}
-		
+
 		fDCombo.removeAll();
 		int select = -1;
 		for (int i = 0; i < names.length; i++) {

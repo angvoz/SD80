@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2010 Wind River Systems, Inc. and others.
+ * Copyright (c) 2007, 2011 Wind River Systems, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * and Eclipse Distribution License v1.0 which accompany this distribution.
@@ -18,7 +18,7 @@
 
 #include <config.h>
 
-#if SERVICE_Symbols && !ENABLE_SymbolsProxy && defined(_MSC_VER) && !ENABLE_ELF
+#if SERVICE_Symbols && !ENABLE_SymbolsProxy && defined(WIN32) && !ENABLE_ELF
 
 #include <errno.h>
 #include <assert.h>
@@ -31,17 +31,12 @@
 #include <framework/trace.h>
 #include <services/symbols.h>
 #include <services/stacktrace.h>
+#include <services/memorymap.h>
 #include <system/Windows/windbgcache.h>
 #include <system/Windows/context-win32.h>
 #if ENABLE_RCBP_TEST
 #  include <main/test.h>
 #endif
-
-#define SYM_SEARCH_PATH ""
-/* Path could contain "http://msdl.microsoft.com/download/symbols",
-   but access to Microsoft debug info server is too slow,
-   and dbghelp.dll caching is inadequate
-*/
 
 #ifndef MAX_SYM_NAME
 #  define MAX_SYM_NAME 2000
@@ -95,11 +90,11 @@ struct Symbol {
     unsigned frame;
     int sym_class;
     ULONG64 module;
-    ULONG index;
-    const TypeInfo * info;
-    const Symbol * base;
+    ULONG index;            /* The symbol index in debug info section */
+    const TypeInfo * info;  /* If not NULL, the symbol is basic type */
+    const Symbol * base;    /* If not NULL, the symbol is array or pointer with this base type */
     size_t length;
-    void * address;
+    ContextAddress address;
 };
 
 #include <services/symbols_alloc.h>
@@ -108,19 +103,25 @@ typedef struct SymbolCacheEntry {
     HANDLE process;
     ULONG64 pc;
     char name[MAX_SYM_NAME];
-    Symbol sym;
     ErrorReport * error;
+    int sym_class;
+    int frame_relative;
+    ULONG64 module;
+    ULONG index;
 } SymbolCacheEntry;
 
-#define SYMBOL_CACHE_SIZE 153
+#define SYMBOL_CACHE_SIZE (4 * MEM_USAGE_FACTOR - 1)
 static SymbolCacheEntry symbol_cache[SYMBOL_CACHE_SIZE];
 
 static char * tmp_buf = NULL;
 static int tmp_buf_size = 0;
 
-static int get_stack_frame(Context * ctx, int frame, IMAGEHLP_STACK_FRAME * stack_frame) {
+static int get_stack_frame(Context * ctx, int frame, ContextAddress ip, IMAGEHLP_STACK_FRAME * stack_frame) {
     memset(stack_frame, 0, sizeof(IMAGEHLP_STACK_FRAME));
-    if (frame != STACK_NO_FRAME && ctx->parent != NULL) {
+    if (frame == STACK_NO_FRAME) {
+        stack_frame->InstructionOffset = ip;
+    }
+    else if (ctx->parent != NULL) {
         uint64_t v = 0;
         StackFrame * frame_info;
         if (get_frame_info(ctx, frame, &frame_info) < 0) return -1;
@@ -145,7 +146,7 @@ static int get_sym_info(const Symbol * sym, DWORD index, SYMBOL_INFO ** res) {
     return 0;
 }
 
-static int get_type_info(const Symbol * sym, int info_tag, void * info) {
+static int get_type_info(const Symbol * sym, IMAGEHLP_SYMBOL_TYPE_INFO info_tag, void * info) {
     HANDLE process = get_context_handle(sym->ctx->parent == NULL ? sym->ctx : sym->ctx->parent);
     if (!SymGetTypeInfo(process, sym->module, sym->index, info_tag, info)) {
         set_win32_errno(GetLastError());
@@ -170,9 +171,6 @@ static void tag2symclass(Symbol * sym, int tag) {
         }
         sym->sym_class = SYM_CLASS_REFERENCE;
         break;
-    case SymTagPublicSymbol:
-        sym->sym_class = SYM_CLASS_FUNCTION;
-        break;
     case SymTagUDT:
     case SymTagEnum:
     case SymTagFunctionType:
@@ -193,14 +191,20 @@ static int is_frame_relative(SYMBOL_INFO * info) {
     return (info->Flags & SYMFLAG_FRAMEREL) || (info->Flags & SYMFLAG_REGREL);
 }
 
+static int is_register(SYMBOL_INFO * info) {
+    return info->Flags & SYMFLAG_REGISTER;
+}
+
 static void syminfo2symbol(Context * ctx, int frame, SYMBOL_INFO * info, Symbol * sym) {
     sym->module = info->ModBase;
     sym->index = info->Index;
     if (is_frame_relative(info)) {
         assert(frame >= 0);
+        assert(ctx != ctx->mem);
         sym->frame = frame - STACK_NO_FRAME;
     }
     else {
+        assert(sym->frame == 0);
         ctx = ctx->mem;
     }
     sym->ctx = ctx;
@@ -228,11 +232,11 @@ const char * symbol2id(const Symbol * sym) {
         assert(sym->ctx == sym->base->ctx);
         assert(sym->sym_class == SYM_CLASS_TYPE);
         strcpy(base, symbol2id(sym->base));
-        snprintf(buf, sizeof(buf), "PTR%"PRIX64".%s", (uint64_t)sym->length, base);
+        snprintf(buf, sizeof(buf), "@P%"PRIX64".%s", (uint64_t)sym->length, base);
     }
     else {
         int i = sym->info ? sym->info - basic_type_info + 1 : 0;
-        snprintf(buf, sizeof(buf), "SYM%"PRIX64".%lX.%X.%X.%s",
+        snprintf(buf, sizeof(buf), "@S%"PRIX64".%lX.%X.%X.%s",
             (uint64_t)sym->module, sym->index, sym->frame, i, sym->ctx->id);
     }
     return buf;
@@ -262,16 +266,16 @@ int id2symbol(const char * id, Symbol ** res) {
     size_t length = 0;
     const char * p;
 
-    if (id != NULL && id[0] == 'P' && id[1] == 'T' && id[2] == 'R') {
-        p = id + 3;
+    if (id != NULL && id[0] == '@' && id[1] == 'P') {
+        p = id + 2;
         length = (size_t)read_hex(&p);
         if (*p == '.') p++;
         if (id2symbol(p, (Symbol **)&base)) return -1;
         ctx = base->ctx;
     }
-    else if (id != NULL && id[0] == 'S' && id[1] == 'Y' && id[2] == 'M') {
+    else if (id != NULL && id[0] == '@' && id[1] == 'S') {
         unsigned idx = 0;
-        p = id + 3;
+        p = id + 2;
         module = (ULONG64)read_hex(&p);
         if (*p == '.') p++;
         index = (ULONG)read_hex(&p);
@@ -426,7 +430,7 @@ int get_symbol_name(const Symbol * sym, char ** name) {
         int err = 0;
         if (tmp_buf == NULL) {
             tmp_buf_size = 256;
-            tmp_buf = loc_alloc(tmp_buf_size);
+            tmp_buf = (char *)loc_alloc(tmp_buf_size);
         }
         for (;;) {
             len = WideCharToMultiByte(CP_UTF8, 0, ptr, -1, tmp_buf, tmp_buf_size - 1, NULL, NULL);
@@ -437,7 +441,7 @@ int get_symbol_name(const Symbol * sym, char ** name) {
                 return -1;
             }
             tmp_buf_size *= 2;
-            tmp_buf = loc_realloc(tmp_buf, tmp_buf_size);
+            tmp_buf = (char *)loc_realloc(tmp_buf, tmp_buf_size);
         }
         HeapFree(GetProcessHeap(), 0, ptr);
         tmp_buf[len] = 0;
@@ -489,8 +493,15 @@ int get_symbol_size(const Symbol * sym, ContextAddress * size) {
         *size = sym->info->size;
         return 0;
     }
-    if (get_type_tag(&type, &tag)) return -1;
-    if (get_type_info(&type, TI_GET_LENGTH, &res) < 0) return -1;
+    if (sym->sym_class == SYM_CLASS_REFERENCE || sym->sym_class == SYM_CLASS_FUNCTION) {
+        SYMBOL_INFO * info = NULL;
+        if (get_sym_info(sym, sym->index, &info) < 0) return -1;
+        res = info->Size;
+    }
+    else {
+        if (get_type_tag(&type, &tag)) return -1;
+        if (get_type_info(&type, TI_GET_LENGTH, &res) < 0) return -1;
+    }
 
     *size = (ContextAddress)res;
     return 0;
@@ -498,20 +509,22 @@ int get_symbol_size(const Symbol * sym, ContextAddress * size) {
 
 int get_symbol_type(const Symbol * sym, Symbol ** type) {
     DWORD tag = 0;
+    Symbol * res = alloc_symbol();
 
     assert(sym->magic == SYMBOL_MAGIC);
-    *type = alloc_symbol();
-    **type = *sym;
-    if (!(*type)->base && !(*type)->info) {
-        if (get_type_tag(*type, &tag)) return -1;
+    *res = *sym;
+    if (!res->base && !res->info) {
+        if (get_type_tag(res, &tag)) return -1;
     }
-    assert((*type)->sym_class == SYM_CLASS_TYPE);
+    assert(res->sym_class == SYM_CLASS_TYPE);
+    *type = res;
     return 0;
 }
 
 int get_symbol_base_type(const Symbol * sym, Symbol ** type) {
     DWORD tag = 0;
     DWORD index = 0;
+    Symbol * res = NULL;
 
     assert(sym->magic == SYMBOL_MAGIC);
     if (sym->base) {
@@ -522,40 +535,40 @@ int get_symbol_base_type(const Symbol * sym, Symbol ** type) {
         errno = ERR_INV_CONTEXT;
         return -1;
     }
-    *type = alloc_symbol();
-    **type = *sym;
-    if (get_type_tag(*type, &tag)) return -1;
-    if (get_type_info(*type, TI_GET_TYPE, &index) < 0) return -1;
-    (*type)->index = index;
-
+    res = alloc_symbol();
+    *res = *sym;
+    if (get_type_tag(res, &tag)) return -1;
+    if (get_type_info(res, TI_GET_TYPE, &index) < 0) return -1;
+    res->index = index;
+    *type = res;
     return 0;
 }
 
 int get_symbol_index_type(const Symbol * sym, Symbol ** type) {
     DWORD tag = 0;
     DWORD index = 0;
+    Symbol * res = alloc_symbol();
 
     assert(sym->magic == SYMBOL_MAGIC);
     if (sym->base) {
-        *type = alloc_symbol();
-        (*type)->ctx = sym->ctx;
-        (*type)->sym_class = SYM_CLASS_TYPE;
-        (*type)->info = basic_type_info + BST_UNSIGNED;
-        assert((*type)->info->size == sizeof(int));
-        assert((*type)->info->sign == 0);
-        assert((*type)->info->real == 0);
+        res->ctx = sym->ctx;
+        res->sym_class = SYM_CLASS_TYPE;
+        res->info = basic_type_info + BST_UNSIGNED;
+        assert(res->info->size == sizeof(int));
+        assert(res->info->sign == 0);
+        assert(res->info->real == 0);
+        *type = res;
         return 0;
     }
     if (sym->info) {
         errno = ERR_INV_CONTEXT;
         return -1;
     }
-    *type = alloc_symbol();
-    **type = *sym;
-    if (get_type_tag(*type, &tag)) return -1;
-    if (get_type_info(*type, TI_GET_ARRAYINDEXTYPEID, &index) < 0) return -1;
-    (*type)->index = index;
-
+    *res = *sym;
+    if (get_type_tag(res, &tag)) return -1;
+    if (get_type_info(res, TI_GET_ARRAYINDEXTYPEID, &index) < 0) return -1;
+    res->index = index;
+    *type = res;
     return 0;
 }
 
@@ -623,10 +636,11 @@ int get_symbol_children(const Symbol * sym, Symbol *** children, int * count) {
     }
     if (get_type_tag(&type, &tag)) return -1;
     if (get_type_info(&type, TI_GET_CHILDRENCOUNT, &cnt) < 0) return -1;
-    if (params == NULL) params = loc_alloc(sizeof(TI_FINDCHILDREN_PARAMS) + (FINDCHILDREN_BUF_SIZE - 1) * sizeof(ULONG));
+    if (params == NULL) params = (TI_FINDCHILDREN_PARAMS *)loc_alloc(
+        sizeof(TI_FINDCHILDREN_PARAMS) + (FINDCHILDREN_BUF_SIZE - 1) * sizeof(ULONG));
 
     if (buf_len < cnt) {
-        buf = loc_realloc(buf, sizeof(Symbol *) * cnt);
+        buf = (Symbol **)loc_realloc(buf, sizeof(Symbol *) * cnt);
         buf_len = cnt;
     }
     params->Start = 0;
@@ -663,7 +677,7 @@ int get_symbol_offset(const Symbol * sym, ContextAddress * offset) {
     return 0;
 }
 
-int get_symbol_value(const Symbol * sym, void ** value, size_t * size) {
+int get_symbol_value(const Symbol * sym, void ** value, size_t * size, int * big_endian) {
     static VARIANT data;
     VARTYPE vt;
     void * data_addr = &data.bVal;
@@ -711,6 +725,7 @@ int get_symbol_value(const Symbol * sym, void ** value, size_t * size) {
 
     *size = data_size;
     *value = data_addr;
+    *big_endian = 0;
 
     return 0;
 }
@@ -719,8 +734,8 @@ int get_symbol_address(const Symbol * sym, ContextAddress * addr) {
     SYMBOL_INFO * info = NULL;
 
     assert(sym->magic == SYMBOL_MAGIC);
-    if (sym->address != NULL) {
-        *addr = (ContextAddress)sym->address;
+    if (sym->address != 0) {
+        *addr = sym->address;
         return 0;
     }
     if (sym->base || sym->info) {
@@ -740,6 +755,25 @@ int get_symbol_address(const Symbol * sym, ContextAddress * addr) {
     return 0;
 }
 
+int get_symbol_register(const Symbol * sym, Context ** ctx, int * frame, RegisterDefinition ** reg) {
+    SYMBOL_INFO * info = NULL;
+
+    assert(sym->magic == SYMBOL_MAGIC);
+    if (sym->address != 0 || sym->base || sym->info) {
+        errno = ERR_INV_CONTEXT;
+        return -1;
+    }
+    if (get_sym_info(sym, sym->index, &info) < 0) return -1;
+    if (!is_register(info)) {
+        errno = ERR_INV_CONTEXT;
+        return -1;
+    }
+
+    /* TODO: map info.Register to regditer definition */
+    errno = ERR_UNSUPPORTED;
+    return -1;
+}
+
 int get_array_symbol(const Symbol * sym, ContextAddress length, Symbol ** ptr) {
     assert(sym->magic == SYMBOL_MAGIC);
     *ptr = alloc_symbol();
@@ -752,20 +786,33 @@ int get_array_symbol(const Symbol * sym, ContextAddress length, Symbol ** ptr) {
 
 static unsigned symbol_hash(HANDLE process, ULONG64 pc, PCSTR name) {
     int i;
-    unsigned h = (unsigned)(uintptr_t)process >> 4;
+    unsigned h = (unsigned)(uintptr_t)process;
+    h += h >> 8;
     h += (unsigned)(uintptr_t)pc;
     for (i = 0; name[i]; i++) h += name[i];
     h = h + h / SYMBOL_CACHE_SIZE;
     return h % SYMBOL_CACHE_SIZE;
 }
 
-static int find_cache_symbol(HANDLE process, ULONG64 pc, PCSTR name, Symbol * sym) {
+static int find_cache_symbol(Context * ctx, int frame, HANDLE process, ULONG64 pc, PCSTR name, Symbol * sym) {
     SymbolCacheEntry * entry = symbol_cache + symbol_hash(process, pc, name);
     assert(process != NULL);
     if (entry->process != process) return 0;
     if (entry->pc != pc) return 0;
     if (strcmp(entry->name, name)) return 0;
-    if (entry->error == NULL) *sym = entry->sym;
+    if (entry->error == NULL) {
+        if (entry->frame_relative) {
+            assert(frame >= 0);
+            sym->frame = frame - STACK_NO_FRAME;
+        }
+        else {
+            ctx = ctx->mem;
+        }
+        sym->ctx = ctx;
+        sym->sym_class = entry->sym_class;
+        sym->module = entry->module;
+        sym->index = entry->index;
+    }
     set_error_report_errno(entry->error);
     return 1;
 }
@@ -778,64 +825,104 @@ static void add_cache_symbol(HANDLE process, ULONG64 pc, PCSTR name, Symbol * sy
     strcpy(entry->name, name);
     release_error_report(entry->error);
     entry->error = get_error_report(error);
-    if (!error) entry->sym = *sym;
-    else memset(&entry->sym, 0, sizeof(Symbol));
+    if (!error) {
+        entry->frame_relative = sym->frame > 0;
+        entry->sym_class = sym->sym_class;
+        entry->module = sym->module;
+        entry->index = sym->index;
+    }
 }
 
-static int find_pe_symbol(Context * ctx, int frame, char * name, Symbol * sym) {
-    ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
-    SYMBOL_INFO * info = (SYMBOL_INFO *)buffer;
-    IMAGEHLP_STACK_FRAME stack_frame;
-    HANDLE process = get_context_handle(ctx->parent == NULL ? ctx : ctx->parent);
-    DWORD64 module;
+static int set_pe_context(Context * ctx, int frame, ContextAddress ip, HANDLE process, IMAGEHLP_STACK_FRAME * stack_frame) {
+    if (get_stack_frame(ctx, frame, ip, stack_frame) < 0) return -1;
 
-    if (frame == STACK_TOP_FRAME) frame = get_top_frame(ctx);
-    if (frame == STACK_TOP_FRAME) return -1;
-    if (get_stack_frame(ctx, frame, &stack_frame) < 0) return -1;
-    if (find_cache_symbol(process, stack_frame.InstructionOffset, name, sym)) return errno ? -1 : 0;
-
-    memset(info, 0, sizeof(SYMBOL_INFO));
-    info->SizeOfStruct = sizeof(SYMBOL_INFO);
-    info->MaxNameLen = MAX_SYM_NAME;
-
-    if (!SymSetContext(process, &stack_frame, NULL)) {
+    if (!SymSetContext(process, stack_frame, NULL)) {
         DWORD err = GetLastError();
         if (err == ERROR_SUCCESS) {
             /* Don't know why Windows do that */
         }
         else if (err == ERROR_MOD_NOT_FOUND && frame != STACK_NO_FRAME) {
             /* No local symbols data, search global scope */
-            if (get_stack_frame(ctx, STACK_NO_FRAME, &stack_frame) < 0) {
-                return -1;
-            }
-            if (!SymSetContext(process, &stack_frame, NULL)) {
-                DWORD err = GetLastError();
+            if (get_stack_frame(ctx, STACK_NO_FRAME, 0, stack_frame) < 0) return -1;
+            if (!SymSetContext(process, stack_frame, NULL)) {
+                err = GetLastError();
                 if (err != ERROR_SUCCESS) {
                     set_win32_errno(err);
                     return -1;
                 }
             }
         }
+        else if (err == ERROR_NOT_SUPPORTED) {
+            /* Compiled without debug info */
+            errno = ERR_SYM_NOT_FOUND;
+            return -1;
+        }
         else {
             set_win32_errno(err);
             return -1;
         }
     }
+    return 0;
+}
 
-    if (SymFromName(process, name, info)) {
+static int find_pe_symbol_by_name(Context * ctx, int frame, ContextAddress ip, char * name, Symbol * sym) {
+    HANDLE process = get_context_handle(ctx->parent == NULL ? ctx : ctx->parent);
+    ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
+    SYMBOL_INFO * info = (SYMBOL_INFO *)buffer;
+    IMAGEHLP_STACK_FRAME stack_frame;
+    DWORD err;
+
+    if (set_pe_context(ctx, frame, ip, process, &stack_frame) < 0) return -1;
+
+    memset(info, 0, sizeof(SYMBOL_INFO));
+    info->SizeOfStruct = sizeof(SYMBOL_INFO);
+    info->MaxNameLen = MAX_SYM_NAME;
+
+    if (find_cache_symbol(ctx, frame, process, stack_frame.InstructionOffset, name, sym)) return errno ? -1 : 0;
+
+    /* TODO: SymFromName() searches only main executable, need to search DLLs too */
+    if (SymFromName(process, name, info) && info->Tag != SymTagPublicSymbol) {
         syminfo2symbol(ctx, frame, info, sym);
         add_cache_symbol(process, stack_frame.InstructionOffset, name, sym, 0);
         return 0;
     }
-    module = SymGetModuleBase64(process, stack_frame.InstructionOffset);
-    if (module != 0 && SymGetTypeFromName(process, module, name, info)) {
-        syminfo2symbol(ctx, frame, info, sym);
-        add_cache_symbol(process, stack_frame.InstructionOffset, name, sym, 0);
-        return 0;
+    if (stack_frame.InstructionOffset != 0) {
+        DWORD64 module = SymGetModuleBase64(process, stack_frame.InstructionOffset);
+        if (module != 0 && SymGetTypeFromName(process, module, name, info)) {
+            syminfo2symbol(ctx, frame, info, sym);
+            add_cache_symbol(process, stack_frame.InstructionOffset, name, sym, 0);
+            return 0;
+        }
     }
-    if (set_win32_errno(GetLastError()) == 0) {
+    set_win32_errno(err = GetLastError());
+    if (err == 0 || err == ERROR_MOD_NOT_FOUND) {
+        add_cache_symbol(process, stack_frame.InstructionOffset, name, NULL, ERR_SYM_NOT_FOUND);
         errno = ERR_SYM_NOT_FOUND;
-        add_cache_symbol(process, stack_frame.InstructionOffset, name, NULL, errno);
+    }
+    return -1;
+}
+
+static int find_pe_symbol_by_addr(Context * ctx, int frame, ContextAddress addr, Symbol * sym) {
+    HANDLE process = get_context_handle(ctx->parent == NULL ? ctx : ctx->parent);
+    ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
+    SYMBOL_INFO * info = (SYMBOL_INFO *)buffer;
+    IMAGEHLP_STACK_FRAME stack_frame;
+    DWORD err;
+
+    if (set_pe_context(ctx, frame, 0, process, &stack_frame) < 0) return -1;
+
+    memset(info, 0, sizeof(SYMBOL_INFO));
+    info->SizeOfStruct = sizeof(SYMBOL_INFO);
+    info->MaxNameLen = MAX_SYM_NAME;
+
+    if (SymFromAddr(process, addr, NULL, info)) {
+        syminfo2symbol(ctx, frame, info, sym);
+        return 0;
+    }
+
+    set_win32_errno(err = GetLastError());
+    if (err == 0 || err == ERROR_MOD_NOT_FOUND) {
+        errno = ERR_SYM_NOT_FOUND;
     }
     return -1;
 }
@@ -855,19 +942,55 @@ static int find_basic_type_symbol(Context * ctx, char * name, Symbol * sym) {
     return -1;
 }
 
-int find_symbol(Context * ctx, int frame, char * name, Symbol ** sym) {
+int find_symbol_by_name(Context * ctx, int frame, ContextAddress ip, char * name, Symbol ** sym) {
+    int found = 0;
+
     *sym = alloc_symbol();
     (*sym)->ctx = ctx;
-    if (find_pe_symbol(ctx, frame, name, *sym) >= 0) return 0;
-    if (get_error_code(errno) != ERR_SYM_NOT_FOUND) return -1;
+    if (frame == STACK_TOP_FRAME && (frame = get_top_frame(ctx)) < 0) return -1;
+    if (find_pe_symbol_by_name(ctx, frame, ip, name, *sym) >= 0) found = 1;
+    else if (get_error_code(errno) != ERR_SYM_NOT_FOUND) return -1;
 #if ENABLE_RCBP_TEST
-    if (find_test_symbol(ctx, name, &(*sym)->address, &(*sym)->sym_class) >= 0) {
-        (*sym)->ctx = ctx->mem;
-        return 0;
+    if (!found) {
+        int sym_class = 0;
+        void * address = NULL;
+        if (find_test_symbol(ctx, name, &address, &sym_class) >= 0) found = 1;
+        else if (get_error_code(errno) != ERR_SYM_NOT_FOUND) return -1;
+        if (found) {
+            (*sym)->ctx = ctx->mem;
+            (*sym)->sym_class = sym_class;
+            (*sym)->address = (ContextAddress)address;
+        }
     }
 #endif
-    if (find_basic_type_symbol(ctx, name, *sym) >= 0) return 0;
+    if (!found) {
+        if (find_basic_type_symbol(ctx, name, *sym) >= 0) found = 1;
+        else if (get_error_code(errno) != ERR_SYM_NOT_FOUND) return -1;
+    }
+    if (!found) {
+        errno = ERR_SYM_NOT_FOUND;
+        return -1;
+    }
+    assert(frame >= 0 || (*sym)->ctx == ctx->mem);
+    assert((*sym)->ctx == ((*sym)->frame ? ctx : ctx->mem));
+    assert((*sym)->frame == ((*sym)->ctx == (*sym)->ctx->mem ? 0u : frame - STACK_NO_FRAME));
+    return 0;
+}
+
+int find_symbol_in_scope(Context * ctx, int frame, ContextAddress ip, Symbol * scope, char * name, Symbol ** sym) {
+    errno = ERR_SYM_NOT_FOUND;
     return -1;
+}
+
+int find_symbol_by_addr(Context * ctx, int frame, ContextAddress addr, Symbol ** sym) {
+    *sym = alloc_symbol();
+    (*sym)->ctx = ctx;
+    if (frame == STACK_TOP_FRAME && (frame = get_top_frame(ctx)) < 0) return -1;
+    if (find_pe_symbol_by_addr(ctx, frame, addr, *sym) < 0) return -1;
+    assert(frame >= 0 || (*sym)->ctx == ctx->mem);
+    assert((*sym)->ctx == ((*sym)->frame ? ctx : ctx->mem));
+    assert((*sym)->frame == ((*sym)->ctx == (*sym)->ctx->mem ? 0u : frame - STACK_NO_FRAME));
+    return 0;
 }
 
 typedef struct EnumerateSymbolsContext {
@@ -895,9 +1018,9 @@ int enumerate_symbols(Context * ctx, int frame, EnumerateSymbolsCallBack * call_
     symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     symbol->MaxNameLen = MAX_SYM_NAME;
 
-    if (get_stack_frame(ctx, frame, &stack_frame) < 0) {
-        return -1;
-    }
+    if (frame == STACK_TOP_FRAME) frame = get_top_frame(ctx);
+    if (frame == STACK_TOP_FRAME) return -1;
+    if (get_stack_frame(ctx, frame, 0, &stack_frame) < 0) return -1;
 
     if (!SymSetContext(process, &stack_frame, NULL)) {
         DWORD err = GetLastError();
@@ -936,88 +1059,53 @@ int get_next_stack_frame(StackFrame * frame, StackFrame * down) {
     return 0;
 }
 
-static void event_context_created(Context * ctx, void * client_data) {
-    if (ctx->parent != NULL) return;
-    assert(ctx->mem == ctx);
-    if (!SymInitialize(get_context_handle(ctx), SYM_SEARCH_PATH, FALSE)) {
-        set_win32_errno(GetLastError());
-        trace(LOG_ALWAYS, "SymInitialize() error: %d: %s",
-            errno, errno_to_str(errno));
-    }
-    if (!SymLoadModule64(get_context_handle(ctx), get_context_file_handle(ctx),
-            NULL, NULL, get_context_base_address(ctx), 0)) {
-        set_win32_errno(GetLastError());
-        trace(LOG_ALWAYS, "SymLoadModule() error: %d: %s",
-            errno, errno_to_str(errno));
-    }
-}
-
 static void event_context_exited(Context * ctx, void * client_data) {
     unsigned i;
     HANDLE handle = get_context_handle(ctx);
+    if (ctx->parent != NULL) return;
+    assert(handle != NULL);
     for (i = 0; i < SYMBOL_CACHE_SIZE; i++) {
-        if (symbol_cache[i].sym.ctx == ctx) {
+        if (symbol_cache[i].process == handle) {
             release_error_report(symbol_cache[i].error);
             memset(symbol_cache + i, 0, sizeof(SymbolCacheEntry));
         }
     }
-    if (ctx->parent != NULL) return;
+}
+
+static void event_module_loaded(Context * ctx, void * client_data) {
+    unsigned i;
+    HANDLE handle = get_context_handle(ctx);
+    assert(ctx->mem == ctx);
     assert(handle != NULL);
-    if (!SymUnloadModule64(handle, get_context_base_address(ctx))) {
-        set_win32_errno(GetLastError());
-        trace(LOG_ALWAYS, "SymUnloadModule() error: %d: %s",
-            errno, errno_to_str(errno));
-    }
-    if (!SymCleanup(handle)) {
-        set_win32_errno(GetLastError());
-        trace(LOG_ALWAYS, "SymCleanup() error: %d: %s",
-            errno, errno_to_str(errno));
+    for (i = 0; i < SYMBOL_CACHE_SIZE; i++) {
+        if (symbol_cache[i].process == handle && symbol_cache[i].error) symbol_cache[i].process = NULL;
     }
 }
 
-static void event_context_changed(Context * ctx, void * client_data) {
+static void event_module_unloaded(Context * ctx, void * client_data) {
+    unsigned i;
     HANDLE handle = get_context_handle(ctx);
-    if (is_context_module_loaded(ctx)) {
-        unsigned i;
-        assert(ctx->mem == ctx);
-        assert(handle != NULL);
-        if (!SymLoadModule64(handle, get_context_module_handle(ctx),
-                NULL, NULL, get_context_module_address(ctx), 0)) {
-            set_win32_errno(GetLastError());
-            trace(LOG_ALWAYS, "SymLoadModule() error: %d: %s",
-                errno, errno_to_str(errno));
-        }
-        for (i = 0; i < SYMBOL_CACHE_SIZE; i++) {
-            if (symbol_cache[i].process == handle && symbol_cache[i].error) symbol_cache[i].process = NULL;
-        }
-    }
-    if (is_context_module_unloaded(ctx)) {
-        unsigned i;
-        assert(ctx->mem == ctx);
-        assert(handle != NULL);
-        for (i = 0; i < SYMBOL_CACHE_SIZE; i++) {
-            if (symbol_cache[i].process == handle) symbol_cache[i].process = NULL;
-        }
-        if (!SymUnloadModule64(handle, get_context_module_address(ctx))) {
-            set_win32_errno(GetLastError());
-            trace(LOG_ALWAYS, "SymUnloadModule() error: %d: %s",
-                errno, errno_to_str(errno));
-        }
+    assert(ctx->mem == ctx);
+    assert(handle != NULL);
+    for (i = 0; i < SYMBOL_CACHE_SIZE; i++) {
+        if (symbol_cache[i].process == handle) symbol_cache[i].process = NULL;
     }
 }
 
 void ini_symbols_lib(void) {
-    static ContextEventListener listener = {
-        event_context_created,
+    static ContextEventListener ctx_listener = {
+        NULL,
         event_context_exited,
-        NULL,
-        NULL,
-        event_context_changed
     };
-    add_context_event_listener(&listener, NULL);
-    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS);
+    static MemoryMapEventListener map_listener = {
+        event_module_loaded,
+        NULL,
+        event_module_unloaded
+    };
+    add_context_event_listener(&ctx_listener, NULL);
+    add_memory_map_event_listener(&map_listener, NULL);
+    SymSetOptions(SymGetOptions() | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
 }
 
 
 #endif /* SERVICE_Symbols && defined(_MSC_VER) */
-

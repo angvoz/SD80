@@ -33,10 +33,12 @@
 #include <framework/waitpid.h>
 #include <framework/signames.h>
 #include <services/breakpoints.h>
+#include <services/memorymap.h>
 #include <system/VxWorks/context-vxworks.h>
 
 /* TODO: VxWorks RTP support */
 
+#include <moduleLib.h>
 #include <taskHookLib.h>
 #include <private/vxdbgLibP.h>
 
@@ -73,10 +75,11 @@ struct event_info {
     VXDBG_BP_INFO       bp_info;        /* breakpoint information */
 };
 
-VXDBG_CLNT_ID vxdbg_clnt_id = 0;
+static VXDBG_CLNT_ID vxdbg_clnt_id = 0;
 
 #define MAX_EVENTS 64
 static struct event_info events[MAX_EVENTS];
+static int events_cnt = 0;
 static int events_inp = 0;
 static int events_out = 0;
 static int events_buf_overflow = 0;
@@ -87,8 +90,8 @@ static pthread_t events_thread;
 static Context * parent_ctx = NULL;
 
 const char * context_suspend_reason(Context * ctx) {
-    if (EXT(ctx)->event == TRACE_EVENT_STEP) return "Step";
-    return "Suspended";
+    if (EXT(ctx)->event == TRACE_EVENT_STEP) return REASON_STEP;
+    return REASON_USER_REQUEST;
 }
 
 static struct event_info * event_info_alloc(int event) {
@@ -110,6 +113,7 @@ static struct event_info * event_info_alloc(int event) {
     memset(info, 0, sizeof(struct event_info));
     info->event = event;
     events_inp = nxt;
+    events_cnt++;
     return info;
 }
 
@@ -137,6 +141,9 @@ static void event_attach_done(void * x) {
             parent_ctx = create_context(pid2id(pid, 0));
             EXT(parent_ctx)->pid = pid;
             parent_ctx->mem = parent_ctx;
+            parent_ctx->mem_access |= MEM_ACCESS_INSTRUCTION;
+            parent_ctx->mem_access |= MEM_ACCESS_DATA;
+            parent_ctx->big_endian = big_endian_host();
             link_context(parent_ctx);
             send_context_created_event(parent_ctx);
         }
@@ -145,6 +152,7 @@ static void event_attach_done(void * x) {
         EXT(ctx)->pid = args->pid;
         EXT(ctx)->regs = (REG_SET *)loc_alloc(sizeof(REG_SET));
         ctx->mem = parent_ctx;
+        ctx->big_endian = parent_ctx->big_endian;
         (ctx->parent = parent_ctx)->ref_count++;
         list_add_first(&ctx->cldl, &parent_ctx->children);
         link_context(ctx);
@@ -164,11 +172,11 @@ static void event_attach_done(void * x) {
     loc_free(x);
 }
 
-int context_attach(pid_t pid, ContextAttachCallBack * done, void * data, int selfattach) {
+int context_attach(pid_t pid, ContextAttachCallBack * done, void * data, int mode) {
     AttachDoneArgs * args = (AttachDoneArgs *)loc_alloc(sizeof(AttachDoneArgs));
 
     assert(done != NULL);
-    assert(!selfattach);
+    assert((mode & CONTEXT_ATTACH_SELF) == 0);
     args->pid = pid;
     args->done = done;
     args->data = data;
@@ -182,6 +190,7 @@ int context_has_state(Context * ctx) {
 }
 
 int context_stop(Context * ctx) {
+    ContextExtensionVxWorks * ext = EXT(ctx);
     struct event_info * info;
     VXDBG_CTX vxdbg_ctx;
 
@@ -189,34 +198,43 @@ int context_stop(Context * ctx) {
     assert(ctx->parent != NULL);
     assert(!ctx->stopped);
     assert(!ctx->exited);
-    assert(!EXT(ctx)->regs_dirty);
+    assert(!ext->regs_dirty);
     if (ctx->pending_intercept) {
-        trace(LOG_CONTEXT, "context: stop ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
+        trace(LOG_CONTEXT, "context: stop ctx %#lx, id %#x", ctx, ext->pid);
     }
     else {
-        trace(LOG_CONTEXT, "context: temporary stop ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
+        trace(LOG_CONTEXT, "context: temporary stop ctx %#lx, id %#x", ctx, ext->pid);
     }
 
     taskLock();
-    if (taskIsStopped(EXT(ctx)->pid)) {
-        trace(LOG_CONTEXT, "context: already stopped ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
+    if (taskIsStopped(ext->pid)) {
+        /* Workaround for situation when a task was stopped without notifying TCF agent */
+        int n = 0;
+        SPIN_LOCK_ISR_TAKE(&events_lock);
+        n = events_cnt;
+        SPIN_LOCK_ISR_GIVE(&events_lock);
+        if (n > 0) {
+            trace(LOG_CONTEXT, "context: already stopped ctx %#lx, id %#x", ctx, ext->pid);
+            taskUnlock();
+            return 0;
+        }
     }
     else {
-        vxdbg_ctx.ctxId = EXT(ctx)->pid;
+        vxdbg_ctx.ctxId = ext->pid;
         vxdbg_ctx.ctxType = VXDBG_CTX_TASK;
         if (vxdbgStop(vxdbg_clnt_id, &vxdbg_ctx) != OK) {
             int error = errno;
             taskUnlock();
             if (error == S_vxdbgLib_INVALID_CTX) return 0;
             trace(LOG_ALWAYS, "context: can't stop ctx %#lx, id %#x: %s",
-                    ctx, EXT(ctx)->pid, errno_to_str(error));
+                    ctx, ext->pid, errno_to_str(error));
             return -1;
         }
     }
-    assert(taskIsStopped(EXT(ctx)->pid));
+    assert(taskIsStopped(ext->pid));
     info = event_info_alloc(EVENT_HOOK_STOP);
     if (info != NULL) {
-        info->stopped_ctx.ctxId = EXT(ctx)->pid;
+        info->stopped_ctx.ctxId = ext->pid;
         event_info_post(info);
     }
     taskUnlock();
@@ -224,28 +242,29 @@ int context_stop(Context * ctx) {
 }
 
 static int kill_context(Context * ctx) {
+    ContextExtensionVxWorks * ext = EXT(ctx);
+
     assert(ctx->stopped);
     assert(ctx->parent != NULL);
-    assert(ctx->pending_signals & (1 << SIGKILL));
 
-    ctx->pending_signals &= ~(1 << SIGKILL);
-    if (taskDelete(EXT(ctx)->pid) != OK) {
+    if (taskDelete(ext->pid) != OK) {
         int error = errno;
         trace(LOG_ALWAYS, "context: can't kill ctx %#lx, id %#x: %s",
-                ctx, EXT(ctx)->pid, errno_to_str(error));
+                ctx, ext->pid, errno_to_str(error));
         return -1;
     }
     send_context_started_event(ctx);
-    trace(LOG_CONTEXT, "context: killed ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
-    release_error_report(EXT(ctx)->regs_error);
-    loc_free(EXT(ctx)->regs);
-    EXT(ctx)->regs_error = NULL;
-    EXT(ctx)->regs = NULL;
+    trace(LOG_CONTEXT, "context: killed ctx %#lx, id %#x", ctx, ext->pid);
+    release_error_report(ext->regs_error);
+    loc_free(ext->regs);
+    ext->regs_error = NULL;
+    ext->regs = NULL;
     send_context_exited_event(ctx);
     return 0;
 }
 
 int context_continue(Context * ctx) {
+    ContextExtensionVxWorks * ext = EXT(ctx);
     VXDBG_CTX vxdbg_ctx;
 
     assert(is_dispatch_thread());
@@ -253,44 +272,38 @@ int context_continue(Context * ctx) {
     assert(ctx->stopped);
     assert(!ctx->pending_intercept);
     assert(!ctx->exited);
-    assert(!ctx->pending_step);
-    assert(taskIsStopped(EXT(ctx)->pid));
+    assert(taskIsStopped(ext->pid));
 
-    if (skip_breakpoint(ctx, 0)) return 0;
+    trace(LOG_CONTEXT, "context: continue ctx %#lx, id %#x", ctx, ext->pid);
 
-    trace(LOG_CONTEXT, "context: continue ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
-
-    if (EXT(ctx)->regs_dirty) {
-        if (taskRegsSet(EXT(ctx)->pid, EXT(ctx)->regs) != OK) {
+    if (ext->regs_dirty) {
+        if (taskRegsSet(ext->pid, ext->regs) != OK) {
             int error = errno;
             trace(LOG_ALWAYS, "context: can't set regs ctx %#lx, id %#x: %s",
-                    ctx, EXT(ctx)->pid, errno_to_str(error));
+                    ctx, ext->pid, errno_to_str(error));
             return -1;
         }
-        EXT(ctx)->regs_dirty = 0;
+        ext->regs_dirty = 0;
     }
 
-    if (ctx->pending_signals & (1 << SIGKILL)) {
-        return kill_context(ctx);
-    }
-
-    vxdbg_ctx.ctxId = EXT(ctx)->pid;
+    vxdbg_ctx.ctxId = ext->pid;
     vxdbg_ctx.ctxType = VXDBG_CTX_TASK;
     taskLock();
     if (vxdbgCont(vxdbg_clnt_id, &vxdbg_ctx) != OK) {
         int error = errno;
         taskUnlock();
         trace(LOG_ALWAYS, "context: can't continue ctx %#lx, id %#x: %s",
-                ctx, EXT(ctx)->pid, errno_to_str(error));
+                ctx, ext->pid, errno_to_str(error));
         return -1;
     }
-    assert(!taskIsStopped(EXT(ctx)->pid));
+    assert(!taskIsStopped(ext->pid));
     taskUnlock();
     send_context_started_event(ctx);
     return 0;
 }
 
 int context_single_step(Context * ctx) {
+    ContextExtensionVxWorks * ext = EXT(ctx);
     VXDBG_CTX vxdbg_ctx;
 
     assert(is_dispatch_thread());
@@ -298,40 +311,77 @@ int context_single_step(Context * ctx) {
     assert(ctx->parent != NULL);
     assert(ctx->stopped);
     assert(!ctx->exited);
-    assert(!ctx->pending_step);
-    assert(taskIsStopped(EXT(ctx)->pid));
+    assert(taskIsStopped(ext->pid));
 
-    if (skip_breakpoint(ctx, 1)) return 0;
+    trace(LOG_CONTEXT, "context: single step ctx %#lx, id %#x", ctx, ext->pid);
 
-    trace(LOG_CONTEXT, "context: single step ctx %#lx, id %#x", ctx, EXT(ctx)->pid);
-
-    if (EXT(ctx)->regs_dirty) {
-        if (taskRegsSet(EXT(ctx)->pid, EXT(ctx)->regs) != OK) {
+    if (ext->regs_dirty) {
+        if (taskRegsSet(ext->pid, ext->regs) != OK) {
             int error = errno;
             trace(LOG_ALWAYS, "context: can't set regs ctx %#lx, id %#x: %s",
-                    ctx, EXT(ctx)->pid, errno_to_str(error));
+                    ctx, ext->pid, errno_to_str(error));
             return -1;
         }
-        EXT(ctx)->regs_dirty = 0;
+        ext->regs_dirty = 0;
     }
 
-    if (ctx->pending_signals & (1 << SIGKILL)) {
-        return kill_context(ctx);
-    }
-
-    vxdbg_ctx.ctxId = EXT(ctx)->pid;
+    vxdbg_ctx.ctxId = ext->pid;
     vxdbg_ctx.ctxType = VXDBG_CTX_TASK;
     taskLock();
     if (vxdbgStep(vxdbg_clnt_id, &vxdbg_ctx, NULL, NULL) != OK) {
         int error = errno;
         taskUnlock();
         trace(LOG_ALWAYS, "context: can't step ctx %#lx, id %#x: %d",
-                ctx, EXT(ctx)->pid, errno_to_str(error));
+                ctx, ext->pid, errno_to_str(error));
         return -1;
     }
-    ctx->pending_step = 1;
     taskUnlock();
     send_context_started_event(ctx);
+    return 0;
+}
+
+static int context_terminate() {
+    ContextExtensionVxWorks * ext = EXT(ctx);
+    VXDBG_CTX vxdbg_ctx;
+
+    assert(is_dispatch_thread());
+    assert(ctx->parent != NULL);
+    assert(ctx->stopped);
+    assert(!ctx->pending_intercept);
+    assert(!ctx->exited);
+    assert(taskIsStopped(ext->pid));
+
+    trace(LOG_CONTEXT, "context: terminate ctx %#lx, id %#x", ctx, ext->pid);
+
+    if (ext->regs_dirty) {
+        taskRegsSet(ext->pid, ext->regs);
+        ext->regs_dirty = 0;
+    }
+
+    return kill_context(ctx);
+}
+
+int context_resume(Context * ctx, int mode, ContextAddress range_start, ContextAddress range_end) {
+    switch (mode) {
+    case RM_RESUME:
+        return context_continue(ctx);
+    case RM_STEP_INTO:
+        return context_single_step(ctx);
+    case RM_TERMINATE:
+        return context_terminate(ctx);
+    }
+    errno = ERR_UNSUPPORTED;
+    return -1;
+}
+
+int context_can_resume(Context * ctx, int mode) {
+    switch (mode) {
+    case RM_RESUME:
+        return 1;
+    case RM_STEP_INTO:
+    case RM_TERMINATE:
+        return context_has_state(ctx);
+    }
     return 0;
 }
 
@@ -346,6 +396,7 @@ int context_read_mem(Context * ctx, ContextAddress address, void * buf, size_t s
 #else
     bcopy((void *)address, buf, size);
 #endif
+    if (check_breakpoints_on_memory_read(ctx, address, buf, size) < 0) return -1;
     return 0;
 }
 
@@ -354,6 +405,7 @@ int context_write_mem(Context * ctx, ContextAddress address, void * buf, size_t 
         errno = ERR_INV_ADDRESS;
         return -1;
     }
+    if (check_breakpoints_on_memory_write(ctx, address, buf, size) < 0) return -1;
 #ifdef _WRS_PERSISTENT_SW_BP
     vxdbgMemWrite((void *)address, buf, size);
 #else
@@ -397,6 +449,115 @@ int context_read_reg(Context * ctx, RegisterDefinition * def, unsigned offs, uns
     return 0;
 }
 
+int context_get_canonical_addr(Context * ctx, ContextAddress addr,
+        Context ** canonical_ctx, ContextAddress * canonical_addr,
+        ContextAddress * block_addr, ContextAddress * block_size) {
+    /* Direct mapping, page size is irrelevant */
+    ContextAddress page_size = 0x100000;
+    assert(is_dispatch_thread());
+    *canonical_ctx = parent_ctx;
+    if (canonical_addr != NULL) *canonical_addr = addr;
+    if (block_addr != NULL) *block_addr = addr & ~(page_size - 1);
+    if (block_size != NULL) *block_size = page_size;
+    return 0;
+}
+
+Context * context_get_group(Context * ctx, int group) {
+    switch (group) {
+    case CONTEXT_GROUP_INTERCEPT:
+        return ctx;
+    }
+    return parent_ctx;
+}
+
+int context_get_supported_bp_access_types(Context * ctx) {
+    return 0;
+}
+
+int context_plant_breakpoint(ContextBreakpoint * bp) {
+    VXDBG_CTX vxdbg_ctx;
+    VXDBG_BP_ID bp_id = 0;
+    if (bp->access_types != CTX_BP_ACCESS_INSTRUCTION) {
+        errno = ERR_INV_FORMAT;
+        return -1;
+    }
+    if (bp->length != 1) {
+        errno = ERR_INV_FORMAT;
+        return -1;
+    }
+    memset(&vxdbg_ctx, 0, sizeof(vxdbg_ctx));
+    vxdbg_ctx.ctxType = VXDBG_CTX_TASK;
+    if (vxdbgBpAdd(vxdbg_clnt_id,
+            &vxdbg_ctx, 0, BP_ACTION_STOP | BP_ACTION_NOTIFY,
+            0, 0, (INSTR *)bp->address, 0, 0, &bp_id) != OK) return -1;
+    bp->id = bp_id;
+    return 0;
+}
+
+int context_unplant_breakpoint(ContextBreakpoint * bp) {
+    VXDBG_BP_DEL_INFO info;
+    memset(&info, 0, sizeof(info));
+    info.pClnt = vxdbg_clnt_id;
+    info.type = BP_BY_ID_DELETE;
+    info.info.id.bpId = bp->id;
+    if (vxdbgBpDelete(info) != OK) return -1;
+    return 0;
+}
+
+static void add_map_region(MemoryMap * map, void * addr, int size, unsigned flags, char * file, char * sect) {
+    MemoryRegion * r = NULL;
+    if (map->region_cnt >= map->region_max) {
+        map->region_max += 8;
+        map->regions = (MemoryRegion *)loc_realloc(map->regions, sizeof(MemoryRegion) * map->region_max);
+    }
+    r = map->regions + map->region_cnt++;
+    memset(r, 0, sizeof(MemoryRegion));
+    r->addr = (ContextAddress)addr;
+    r->size = (ContextAddress)size;
+    r->flags = flags;
+    if (file != NULL) r->file_name = loc_strdup(file);
+    if (sect != NULL) r->sect_name = loc_strdup(sect);
+}
+
+static int module_list_proc(MODULE_ID id, int args) {
+    MODULE_INFO info;
+    MemoryMap * map = (MemoryMap *)args;
+
+    memset(&info, 0, sizeof(info));
+    if (moduleInfoGet(id, &info) == OK) {
+        char * file = id->nameWithPath;
+        if (info.segInfo.textAddr != NULL && info.segInfo.textSize > 0) {
+            add_map_region(map, info.segInfo.textAddr, info.segInfo.textSize, MM_FLAG_R | MM_FLAG_X, file, ".text");
+        }
+        if (info.segInfo.dataAddr != NULL && info.segInfo.dataSize > 0) {
+            add_map_region(map, info.segInfo.dataAddr, info.segInfo.dataSize, MM_FLAG_R | MM_FLAG_W, file, ".data");
+        }
+        if (info.segInfo.bssAddr != NULL && info.segInfo.bssSize > 0) {
+            add_map_region(map, info.segInfo.bssAddr, info.segInfo.bssSize, MM_FLAG_R | MM_FLAG_W, file, ".bss");
+        }
+    }
+    return 0;
+}
+
+static void module_create_event(void * args) {
+    memory_map_event_module_loaded(parent_ctx);
+}
+
+static int module_create_func(MODULE_ID  id) {
+    post_event(module_create_event, NULL);
+    return 0;
+}
+
+int context_get_memory_map(Context * ctx, MemoryMap * map) {
+    static int hooks_done = 0;
+    if (!hooks_done) {
+        hooks_done = 1;
+        moduleCreateHookAdd(module_create_func);
+    }
+    moduleEach(module_list_proc, (int)map);
+    return 0;
+}
+
 unsigned context_word_size(Context * ctx) {
     return sizeof(void *);
 }
@@ -422,7 +583,6 @@ static void event_handler(void * arg) {
         memcpy(EXT(stopped_ctx)->regs, &info->regs, sizeof(REG_SET));
         EXT(stopped_ctx)->event = 0;
         stopped_ctx->signal = SIGTRAP;
-        stopped_ctx->pending_step = 0;
         stopped_ctx->stopped = 1;
         stopped_ctx->stopped_by_bp = info->bp_info_ok;
         stopped_ctx->stopped_by_exception = 0;
@@ -450,7 +610,6 @@ static void event_handler(void * arg) {
         memcpy(EXT(current_ctx)->regs, &info->regs, sizeof(REG_SET));
         EXT(current_ctx)->event = TRACE_EVENT_STEP;
         current_ctx->signal = SIGTRAP;
-        current_ctx->pending_step = 0;
         current_ctx->stopped = 1;
         current_ctx->stopped_by_bp = 0;
         current_ctx->stopped_by_exception = 0;
@@ -473,7 +632,6 @@ static void event_handler(void * arg) {
         }
         EXT(stopped_ctx)->event = 0;
         stopped_ctx->signal = SIGSTOP;
-        stopped_ctx->pending_step = 0;
         stopped_ctx->stopped = 1;
         stopped_ctx->stopped_by_bp = 0;
         stopped_ctx->stopped_by_exception = 0;
@@ -489,6 +647,7 @@ static void event_handler(void * arg) {
         EXT(stopped_ctx)->pid = (pid_t)info->stopped_ctx.ctxId;
         EXT(stopped_ctx)->regs = (REG_SET *)loc_alloc(sizeof(REG_SET));
         stopped_ctx->mem = current_ctx->mem;
+        stopped_ctx->big_endian = current_ctx->mem->big_endian;
         (stopped_ctx->creator = current_ctx)->ref_count++;
         (stopped_ctx->parent = current_ctx->parent)->ref_count++;
         assert(stopped_ctx->mem == stopped_ctx->parent->mem);
@@ -503,6 +662,9 @@ static void event_handler(void * arg) {
         break;
     }
     loc_free(info);
+    SPIN_LOCK_ISR_TAKE(&events_lock);
+    events_cnt--;
+    SPIN_LOCK_ISR_GIVE(&events_lock);
 }
 
 static void event_error(void * arg) {
@@ -573,7 +735,6 @@ static void waitpid_listener(int pid, int exited, int exit_code, int signal, int
              */
             assert(!stopped_ctx->stopped);
             assert(!stopped_ctx->exited);
-            stopped_ctx->pending_step = 0;
             trace(LOG_CONTEXT, "context: exited ctx %#lx, id %#x", stopped_ctx, EXT(stopped_ctx)->pid);
             release_error_report(EXT(stopped_ctx)->regs_error);
             loc_free(EXT(stopped_ctx)->regs);

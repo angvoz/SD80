@@ -18,7 +18,7 @@
 
 #include <config.h>
 
-#if (ENABLE_DebugContext && !ENABLE_ContextProxy) || SERVICE_Processes
+#if (ENABLE_DebugContext && !ENABLE_ContextProxy) || SERVICE_Processes || SERVICE_Terminals
 
 #include <assert.h>
 #include <errno.h>
@@ -57,6 +57,7 @@ typedef struct WaitPIDThread {
     DWORD thread;
     HANDLE handles[MAX_HANDLES];
     DWORD handle_cnt;
+    int shutdown;
     struct WaitPIDThread * next;
 } WaitPIDThread;
 
@@ -80,7 +81,7 @@ static void waitpid_event(void * args) {
 static DWORD WINAPI waitpid_thread_func(LPVOID x) {
     WaitPIDThread * thread = (WaitPIDThread *)x;
     check_error_win32(WaitForSingleObject(semaphore, INFINITE) != WAIT_FAILED);
-    for (;;) {
+    while (!thread->shutdown) {
         DWORD n = 0;
         HANDLE arr[MAX_HANDLES];
         DWORD cnt = thread->handle_cnt;
@@ -96,6 +97,7 @@ static DWORD WINAPI waitpid_thread_func(LPVOID x) {
             thread->handle_cnt--;
         }
     }
+    return 0;
 }
 
 static void init(void) {
@@ -112,12 +114,12 @@ void add_waitpid_process(int pid) {
         thread = (WaitPIDThread *)loc_alloc_zero(sizeof(WaitPIDThread));
         thread->next = threads;
         threads = thread;
-        check_error_win32((thread->handles[thread->handle_cnt++] = CreateSemaphore(NULL, 0, 1, NULL)) != NULL);
+        check_error_win32((thread->handles[thread->handle_cnt++] = CreateEvent(NULL, 0, 0, NULL)) != NULL);
         check_error_win32(CreateThread(NULL, 0, waitpid_thread_func, thread, 0, &thread->thread) != NULL);
     }
     check_error_win32((prs = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, FALSE, pid)) != NULL);
     thread->handles[thread->handle_cnt++] = prs;
-    check_error_win32(ReleaseSemaphore(thread->handles[0], 1, 0));
+    check_error_win32(SetEvent(thread->handles[0]));
     check_error_win32(ReleaseSemaphore(semaphore, 1, 0));
 }
 

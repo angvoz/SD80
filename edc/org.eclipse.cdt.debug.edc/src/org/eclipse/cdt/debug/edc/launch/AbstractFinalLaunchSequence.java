@@ -694,7 +694,7 @@ public abstract class AbstractFinalLaunchSequence extends Sequence {
 
 			for (int i = 0; i < numProcesses; i++) {
 				contexts[i] = getProcessContext(processes[i], service);
-				String procID = (String) contexts[i].getProperties().get(ProtocolConstants.PROP_OS_ID);
+				String procID = contexts[i].getProperties().get(ProtocolConstants.PROP_OS_ID).toString();
 				if (procID == null)
 					procID = "unknown";
 				ChooseProcessItem item = new ChooseProcessItem(procID, contexts[i].getName());

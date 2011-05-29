@@ -33,6 +33,16 @@ static unsigned listener_max = 0;
 
 LINK context_root = { NULL, NULL };
 
+const char * REASON_USER_REQUEST = "Suspended";
+const char * REASON_STEP = "Step";
+const char * REASON_BREAKPOINT = "Breakpoint";
+const char * REASON_EXCEPTION = "Exception";
+const char * REASON_CONTAINER = "Container";
+const char * REASON_WATCHPOINT = "Watchpoint";
+const char * REASON_SIGNAL = "Signal";
+const char * REASON_SHAREDLIB = "Shared Library";
+const char * REASON_ERROR = "Error";
+
 char * pid2id(pid_t pid, pid_t parent) {
     static char s[64];
     char * p = s + sizeof(s);
@@ -57,6 +67,7 @@ char * pid2id(pid_t pid, pid_t parent) {
 }
 
 pid_t id2pid(const char * id, pid_t * parent) {
+    /* TODO: (pid_t)0 is valid value in Windows, should use (pid_t)-1 to indicate an error */
     pid_t pid = 0;
     if (parent != NULL) *parent = 0;
     if (id == NULL) return 0;
@@ -136,6 +147,7 @@ void context_unlock(Context * ctx) {
         }
         ctx->event_notification = 0;
         list_remove(&ctx->ctxl);
+        loc_free(ctx->name);
         loc_free(ctx);
     }
 }
@@ -144,6 +156,32 @@ const char * context_state_name(Context * ctx) {
     if (ctx->exited) return "exited";
     if (ctx->stopped) return "stopped";
     return "running";
+}
+
+#if !ENABLE_ContextStateProperties
+int context_get_state_properties(Context * ctx, const char *** names, const char *** values, int * cnt) {
+    *cnt = 0;
+    return 0;
+}
+#endif
+
+void context_clear_memory_map(MemoryMap * map) {
+    unsigned i;
+    for (i = 0; i < map->region_cnt; i++) {
+        MemoryRegion * r = map->regions + i;
+        loc_free(r->file_name);
+        loc_free(r->sect_name);
+        loc_free(r->id);
+        while (r->attrs != NULL) {
+            MemoryRegionAttribute * x = r->attrs;
+            r->attrs = x->next;
+            loc_free(x->name);
+            loc_free(x->value);
+            loc_free(x);
+        }
+    }
+    memset(map->regions, 0, sizeof(MemoryRegion) * map->region_max);
+    map->region_cnt = 0;
 }
 
 void send_context_created_event(Context * ctx) {
@@ -177,6 +215,7 @@ void send_context_stopped_event(Context * ctx) {
     assert(ctx->ref_count > 0);
     assert(ctx->stopped != 0);
     assert(!ctx->event_notification);
+    assert(context_has_state(ctx));
     ctx->event_notification = 1;
     for (i = 0; i < listener_cnt; i++) {
         Listener * l = listeners + i;
@@ -190,9 +229,15 @@ void send_context_stopped_event(Context * ctx) {
 void send_context_started_event(Context * ctx) {
     unsigned i;
     assert(ctx->ref_count > 0);
+    assert(context_has_state(ctx));
     ctx->stopped = 0;
     ctx->stopped_by_bp = 0;
+    ctx->stopped_by_cb = NULL;
     ctx->stopped_by_exception = 0;
+    if (ctx->exception_description) {
+        loc_free(ctx->exception_description);
+        ctx->exception_description = NULL;
+    }
     ctx->event_notification++;
     for (i = 0; i < listener_cnt; i++) {
         Listener * l = listeners + i;
@@ -205,6 +250,7 @@ void send_context_started_event(Context * ctx) {
 void send_context_exited_event(Context * ctx) {
     unsigned i;
     assert(!ctx->event_notification);
+    assert(!ctx->exited);
     ctx->exiting = 0;
     ctx->pending_intercept = 0;
     ctx->exited = 1;

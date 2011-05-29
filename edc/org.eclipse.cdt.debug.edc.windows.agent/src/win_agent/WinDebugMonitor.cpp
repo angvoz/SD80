@@ -215,6 +215,7 @@ void WinDebugMonitor::StartProcessForDebug()
 {
 	STARTUPINFO			si;
 	memset(&si, 0, sizeof(si));
+    si.cb	       		= sizeof (si);
 	si.dwFlags	       	= STARTF_FORCEONFEEDBACK | STARTF_USESHOWWINDOW;
 	si.wShowWindow     	= SW_SHOWNORMAL;
 
@@ -617,15 +618,23 @@ bool WinDebugMonitor::ShouldDebugFirstChance(const DEBUG_EVENT& debugEvent) {
 	return false;
 }
 
+bool WinDebugMonitor::ShouldReportException(const DEBUG_EVENT& debugEvent)
+{
+	if (debugEvent.u.Exception.ExceptionRecord.ExceptionCode == EXCEPTION_MS_CPLUS)
+		return false;
+	return true;
+}
+
 void WinDebugMonitor::HandleException(DEBUG_EVENT& debugEvent)
 {
 	WinThread* thread = WinThread::GetThreadByID(debugEvent.dwProcessId, debugEvent.dwThreadId);
 	if (!thread)
 		assert(false);
-	if (thread && (handledFirstException_ || isAttach || ShouldDebugFirstChance(debugEvent)))
+	if (thread && (handledFirstException_ || isAttach || ShouldDebugFirstChance(debugEvent)) &&
+			ShouldReportException(debugEvent))
 		thread->HandleException(debugEvent);
 	else
-		ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
+		ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_EXCEPTION_NOT_HANDLED);
 	handledFirstException_ = true;
 }
 
@@ -654,14 +663,33 @@ void WinDebugMonitor::HandleDLLUnloadedEvent(DEBUG_EVENT& debugEvent)
 void WinDebugMonitor::HandleDebugStringEvent(DEBUG_EVENT& debugEvent)
 {
 	WinProcess* process = WinProcess::GetProcessByID(debugEvent.dwProcessId);
-	char debugStringBuffer[2048];
-	ReadProcessMemory(process->GetProcessHandle(), debugEvent.u.DebugString.lpDebugStringData, debugStringBuffer,
-		sizeof(debugStringBuffer),NULL);
 
-	// write console data, if console
-	LoggingService::WriteLoggingMessage(channel, debugStringBuffer, LoggingService::GetWindowsConsoleID());
+	if (debugEvent.u.DebugString.fUnicode == 0)
+	{
+		int debugStringLength = debugEvent.u.DebugString.nDebugStringLength;
+		char* debugStringBuffer = new char[debugStringLength + 1];
+		ReadProcessMemory(process->GetProcessHandle(), debugEvent.u.DebugString.lpDebugStringData, debugStringBuffer,
+				debugStringLength,NULL);
+		debugStringBuffer[debugStringLength] = 0;
 
-	LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", debugStringBuffer);
+		// convert from ansi to utf-8
+		wchar_t* wideChars = new wchar_t[debugStringLength];
+
+		// Covert to Unicode.
+		if (MultiByteToWideChar(CP_ACP, 0, debugStringBuffer, debugStringLength,
+				wideChars, debugStringLength) != 0)
+		{
+		    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wideChars, debugStringLength, NULL, 0, NULL, NULL);
+		    std::string strTo( size_needed, 0 );
+		    WideCharToMultiByte(CP_UTF8, 0, wideChars, debugStringLength, &strTo[0], size_needed, NULL, NULL);
+			// write console data, if console
+			LoggingService::WriteLoggingMessage(channel, strTo, LoggingService::GetWindowsConsoleID());
+			LogTrace("DebugProcessMonitor::HandleDebugStringEvent", "%s", strTo.c_str());
+		}
+
+		delete[] wideChars;
+		delete[] debugStringBuffer;
+	}
 
 	ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE);
 }

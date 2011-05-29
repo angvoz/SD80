@@ -448,9 +448,9 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 				final DataRequestMonitor<Boolean> preprocessDrm = new DataRequestMonitor<Boolean>(getExecutor(), null) {
 					@Override
 					protected void handleCompleted() {
-						boolean honorSuspend = getData();
+						Boolean honorSuspend = getData();
 						
-						if (honorSuspend) { // do suspend
+						if (honorSuspend!=null && honorSuspend) { // do suspend
 
 							// All the following must be done in DSF dispatch
 							// thread to ensure data integrity.
@@ -2695,14 +2695,8 @@ public class RunControl extends AbstractEDCService implements IRunControl2, ICac
 		
 		if (resume)
 			resume(context, rm);
-		else {
-			// fire a suspendEvent so that PC arrow can be updated in UI.
-			getSession().dispatchEvent(
-					((ExecutionDMC) context).createSuspendedEvent(StateChangeReason.USER_REQUEST, new HashMap<String, Object>()),
-					RunControl.this.getProperties());
-			
+		else
 			rm.done();
-		}
 	}
 
 	/**

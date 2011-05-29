@@ -21,6 +21,8 @@
 #ifndef D_streams
 #define D_streams
 
+#include <config.h>
+
 /*
  * MARKER_EOM - end of message
  * MARKER_EOS - end of stream
@@ -38,8 +40,7 @@ struct OutputStream {
     unsigned char * end;
     void (*write)(OutputStream * stream, int byte);
     void (*write_block)(OutputStream * stream, const char * bytes, size_t size);
-    int (*splice_block)(OutputStream * stream, int fd, size_t size, off_t * offset);
-    void (*flush)(OutputStream * stream);
+    ssize_t (*splice_block)(OutputStream * stream, int fd, size_t size, off_t * offset);
 };
 
 typedef struct InputStream InputStream;
@@ -51,6 +52,8 @@ struct InputStream {
     int (*peek)(InputStream * stream);
 };
 
+#if ENABLE_STREAM_MACROS
+
 #define read_stream(inp) (((inp)->cur < (inp)->end) ? *(inp)->cur++ : (inp)->read((inp)))
 #define peek_stream(inp) (((inp)->cur < (inp)->end) ? *(inp)->cur : (inp)->peek((inp)))
 
@@ -58,10 +61,15 @@ struct InputStream {
     if (_x_ > ESC && _s_->cur < _s_->end) *_s_->cur++ = (unsigned char)_x_; else _s_->write(_s_, _x_); }
 #define write_block_stream(out, b, size) (out)->write_block((out), (b), (size))
 #define splice_block_stream(out, fd, size, offset) (out)->splice_block((out), (fd), (size), (offset))
-#define flush_stream(out) (out)->flush((out))
+
+#endif
 
 extern int (read_stream)(InputStream * inp);
 extern int (peek_stream)(InputStream * inp);
+extern void (write_stream)(OutputStream * out, int b);
+extern void (write_block_stream)(OutputStream * out, const char * bytes, size_t size);
+extern ssize_t (splice_block_stream)(OutputStream * out, int fd, size_t size, off_t * offset);
+
 extern void write_string(OutputStream * out, const char * str);
 extern void write_stringz(OutputStream * out, const char * str);
 
@@ -81,6 +89,18 @@ typedef struct ByteArrayOutputStream {
 
 extern OutputStream * create_byte_array_output_stream(ByteArrayOutputStream * buf);
 extern void get_byte_array_output_stream_data(ByteArrayOutputStream * buf, char ** data, size_t * size);
+
+/*
+ * Implementation of an input stream that reads the data from a byte array.
+ */
+typedef struct ByteArrayInputStream {
+    InputStream inp;
+    char * buf;
+    size_t pos;
+    size_t max;
+} ByteArrayInputStream;
+
+extern InputStream * create_byte_array_input_stream(ByteArrayInputStream * buf, char * data, size_t size);
 
 /*
  * Implementation of an input stream that forwards all data being read

@@ -27,6 +27,9 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#if defined(__CYGWIN__)
+#  include <ctype.h>
+#endif
 #if !defined(WIN32) || defined(__CYGWIN__)
 #  include <utime.h>
 #  include <dirent.h>
@@ -42,7 +45,7 @@
 #include <framework/protocol.h>
 #include <services/filesystem.h>
 
-#define BUF_SIZE 0x1000
+#define BUF_SIZE (128 * MEM_USAGE_FACTOR)
 
 static const char * FILE_SYSTEM = "FileSystem";
 
@@ -113,7 +116,7 @@ struct IORequest {
 
 static unsigned long handle_cnt = 0;
 
-#define HANDLE_HASH_SIZE 0x100
+#define HANDLE_HASH_SIZE (4 * MEM_USAGE_FACTOR - 1)
 static LINK handle_hash[HANDLE_HASH_SIZE];
 static LINK file_info_ring = { NULL, NULL };
 
@@ -347,11 +350,28 @@ static void read_path(InputStream * inp, char * path, int size) {
     int i = 0;
     char buf[FILE_PATH_SIZE];
     json_read_string(inp, path, size);
-    while (path[i] != 0) {
+    if (path[0] == 0) strlcpy(path, get_user_home(), size);
+    for (i = 0; path[i] != 0; i++) {
         if (path[i] == '\\') path[i] = '/';
-        i++;
     }
-#ifdef WIN32
+#if defined(__CYGWIN__)
+    if (path[0] != '/' && !(path[0] != 0 && path[1] == ':' && path[2] == '/')) {
+        snprintf(buf, sizeof(buf), "%s/%s", get_user_home(), path);
+        strlcpy(path, buf, size);
+        for (i = 0; path[i] != 0; i++) {
+            if (path[i] == '\\') path[i] = '/';
+        }
+    }
+    if (path[0] != 0 && path[1] == ':' && path[2] == '/') {
+        if (path[3] == 0) {
+            snprintf(buf, sizeof(buf), "/cygdrive/%c", tolower((int)path[0]));
+        }
+        else {
+            snprintf(buf, sizeof(buf), "/cygdrive/%c/%s", tolower((int)path[0]), path + 3);
+        }
+        strlcpy(path, buf, size);
+    }
+#elif defined(WIN32)
     if (path[0] != 0 && path[1] == ':' && path[2] == '/') return;
 #elif defined(_WRS_KERNEL)
     {
@@ -362,13 +382,14 @@ static void read_path(InputStream * inp, char * path, int size) {
         }
     }
 #endif
-    if (path[0] == 0) {
-        strlcpy(path, get_user_home(), size);
-    }
-    else if (path[0] != '/') {
+    if (path[0] != '/') {
         snprintf(buf, sizeof(buf), "%s/%s", get_user_home(), path);
         strlcpy(path, buf, size);
+        for (i = 0; path[i] != 0; i++) {
+            if (path[i] == '\\') path[i] = '/';
+        }
     }
+    assert(path[0] == '/');
 }
 
 static void command_open(char * token, Channel * c) {
@@ -675,7 +696,7 @@ static void command_write(char * token, Channel * c) {
     char id[256];
     OpenFileInfo * h = NULL;
     int64_t offset;
-    unsigned long len = 0;
+    size_t len = 0;
     JsonReadBinaryState state;
 
     static size_t buf_size = 0;
@@ -690,7 +711,7 @@ static void command_write(char * token, Channel * c) {
 
     h = find_open_file_info(id);
     for (;;) {
-        int rd;
+        size_t rd;
         if (buf_size < len + BUF_SIZE) {
             buf_size += BUF_SIZE;
             buf = (char *)loc_realloc(buf, buf_size);
@@ -983,6 +1004,14 @@ static void command_realpath(char * token, Channel * c) {
     if (read_stream(&c->inp) != 0) exception(ERR_JSON_SYNTAX);
     if (read_stream(&c->inp) != MARKER_EOM) exception(ERR_JSON_SYNTAX);
 
+#if defined(__CYGWIN__)
+    if (strncmp(path, "/cygdrive/", 10) == 0) {
+        char buf[FILE_PATH_SIZE];
+        snprintf(buf, sizeof(buf), "%c:/%s", path[10], path + 12);
+        strlcpy(path, buf, sizeof(path));
+    }
+#endif
+
     real = canonicalize_file_name(path);
     if (real == NULL) err = errno;
 
@@ -1088,8 +1117,8 @@ static void command_copy(char * token, Channel * c) {
 
     while (err == 0 && pos < st.st_size) {
         char buf[BUF_SIZE];
-        int wr = 0;
-        int rd = read(fi, buf, sizeof(buf));
+        ssize_t wr = 0;
+        ssize_t rd = read(fi, buf, sizeof(buf));
         if (rd == 0) break;
         if (rd < 0) {
             err = errno;
@@ -1162,7 +1191,7 @@ static void command_roots(char * token, Channel * c) {
         for (disk = 0; disk <= 30; disk++) {
             if (disks & (1 << disk)) {
                 char path[32];
-                snprintf(path, sizeof(path), "%c:/", 'A' + disk);
+                snprintf(path, sizeof(path), "%c:\\", 'A' + disk);
                 if (cnt > 0) write_stream(&c->out, ',');
                 write_stream(&c->out, '{');
                 json_write_string(&c->out, "FileName");
@@ -1172,6 +1201,9 @@ static void command_roots(char * token, Channel * c) {
                     ULARGE_INTEGER total_number_of_bytes;
                     BOOL has_size = GetDiskFreeSpaceExA(path, NULL, &total_number_of_bytes, NULL);
                     memset(&st, 0, sizeof(st));
+#if defined(__CYGWIN__)
+                    snprintf(path, sizeof(path), "/cygdrive/%c", 'a' + disk);
+#endif
                     if (has_size && stat(path, &st) == 0) {
                         FileAttrs attrs;
                         fill_attrs(&attrs, &st);
@@ -1289,5 +1321,3 @@ void ini_file_system_service(Protocol * proto) {
 }
 
 #endif /* SERVICE_FileSystem */
-
-

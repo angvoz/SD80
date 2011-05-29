@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <assert.h>
+#include <string.h>
 #include <framework/tcf.h>
 #include <framework/peer.h>
 #include <framework/myalloc.h>
@@ -161,7 +162,7 @@ PeerServer * peer_server_add(PeerServer * n, unsigned int stale_delta) {
     assert(is_dispatch_thread());
     while ((s = *sp) != NULL) {
         if (strcmp(s->id, n->id) == 0) {
-            if ((s->flags & PS_FLAG_LOCAL) && !(n->flags & PS_FLAG_LOCAL) || is_same(s, n)) {
+            if (((s->flags & PS_FLAG_LOCAL) && !(n->flags & PS_FLAG_LOCAL)) || is_same(s, n)) {
                 /* Never replace local entries with discovered ones */
                 s->expiration_time = time(NULL) + stale_delta;
                 if (!(s->flags & PS_FLAG_LOCAL)) s->flags = n->flags;

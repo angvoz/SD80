@@ -63,7 +63,6 @@ void EventClientNotifier::SendContextAddedCallback(void* context) {
 	out.writeZero();
 
 	out.writeComplete();
-	out.flush();
 
 	std::string contextID = ((Context*) context)->GetID();
 
@@ -92,7 +91,6 @@ void EventClientNotifier::SendContextRemovedCallback(void* context) {
 	out.writeZero();
 
 	out.writeComplete();
-	out.flush();
 
 	LogTrace("EventClientNotifier::SendContextRemoved ", "context id: %d",
 			params->context->GetID().c_str());
@@ -132,7 +130,6 @@ void EventClientNotifier::SendExecutableEventCallback(void* params) {
 	out.writeZero();
 
 	out.writeComplete();
-	out.flush();
 
 #if ENABLE_Trace
 	PropertyValue* exe = 0;
@@ -182,7 +179,6 @@ void EventClientNotifier::SendContextSuspendedCallback(void* params_) {
 	out.writeZero();
 
 	out.writeComplete();
-	out.flush();
 
 	LogTrace("EventClientNotifier::SendContextSuspended ",
 			"context id: %s address: %X", params->context->GetID().c_str(),
@@ -217,7 +213,6 @@ void EventClientNotifier::SendContextExceptionCallback(void* params) {
 	out.writeZero();
 
 	out.writeComplete();
-	out.flush();
 
 	LogTrace("EventClientNotifier::SendContextException ", "context id: %s",
 			eventParams->context->GetID().c_str());

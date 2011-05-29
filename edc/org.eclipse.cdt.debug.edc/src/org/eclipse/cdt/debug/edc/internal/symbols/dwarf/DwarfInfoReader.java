@@ -1084,6 +1084,7 @@ public class DwarfInfoReader {
 	 * @param fileList list for file entries
 	 * @return new array of ILineEntry
 	 */
+	@SuppressWarnings("unused")
 	public Collection<ILineEntry> parseLineTable(IScope scope, AttributeList attributes, List<IPath> fileList) {
 		synchronized (provider) {
 			List<ILineEntry> lineEntries = new ArrayList<ILineEntry>();
@@ -1112,7 +1113,6 @@ public class DwarfInfoReader {
 					int length = data.getInt() + 4;
 	
 					// Skip the following till "opcode_base"
-					@SuppressWarnings("unused")
 					int version = data.getShort();
 					int prologue_length = data.getInt();
 					int minimum_instruction_length = data.get() & 0xff;
@@ -1177,7 +1177,6 @@ public class DwarfInfoReader {
 					int info_line = 1;
 					int info_column = 0;
 					boolean is_stmt = default_is_stmt;
-					@SuppressWarnings("unused")
 					int info_flags = 0;
 					long info_ISA = 0;
 	
@@ -1505,7 +1504,7 @@ public class DwarfInfoReader {
 		case DwarfConstants.DW_TAG_union_type:
 		//case DwarfConstants.DW_TAG_unspecified_parameters:
 		case DwarfConstants.DW_TAG_inheritance:
-		//case DwarfConstants.DW_TAG_ptr_to_member_type:
+		case DwarfConstants.DW_TAG_ptr_to_member_type:
 		//case DwarfConstants.DW_TAG_with_stmt:
 		case DwarfConstants.DW_TAG_base_type:
 		//case DwarfConstants.DW_TAG_catch_block:
@@ -1608,6 +1607,7 @@ public class DwarfInfoReader {
 			processInheritance(offset, attributeList, header, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_ptr_to_member_type:
+			processPtrToMemberType(offset, attributeList, entry.hasChildren);
 			break;
 		case DwarfConstants.DW_TAG_with_stmt:
 			break;
@@ -2826,6 +2826,22 @@ public class DwarfInfoReader {
 			byteSize = currentCUHeader.addressSize;
 		
 		PointerType type = new PointerType(name, currentParentScope, byteSize, null);
+		type.setType(getTypeOrReferenceOrVoid(attributeList));
+		registerType(offset, type, hasChildren);
+		storeTypeByName(name, type);
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceExit(null, EDCTrace.fixArg(type)); }
+	}
+
+	private void processPtrToMemberType(long offset, AttributeList attributeList, boolean hasChildren) {
+		if (EDCTrace.SYMBOL_READER_VERBOSE_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArg(offset)); }
+
+		String name = attributeList.getAttributeValueAsString(DwarfConstants.DW_AT_name);
+
+		// unnamed data types don't get stored by name
+		if (name.length() == 0)
+			name = "" + offset;
+		
+		PointerType type = new PointerType(name, currentParentScope, currentCUHeader.addressSize, null);
 		type.setType(getTypeOrReferenceOrVoid(attributeList));
 		registerType(offset, type, hasChildren);
 		storeTypeByName(name, type);

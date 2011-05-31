@@ -14,7 +14,10 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,29 +42,63 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.URIUtil;
+import org.eclipse.core.runtime.content.IContentType;
+import org.eclipse.core.runtime.content.IContentTypeManager;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser implements ILanguageSettingsEditableProvider {
+	private static final String PATTERN_GCC_COMMAND = "((gcc)|(g\\+\\+)|(c\\+\\+))"; //$NON-NLS-1$
+	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
+	private static final int PATTERN_OPTION_GROUP = 0;
+
+	@SuppressWarnings("nls")
 	private static int countGroups(String str) {
 		return str.replaceAll("[^\\(]","").length();
 	}
-	private static final String PATTERN_GCC_COMMAND = "((gcc)|(g\\+\\+)|(c\\+\\+))";
-	private static final String PATTERN_FILE_EXTENSIONS = "((cc)|(cpp)|(cxx)|(c)|(CC)|(CPP)|(CXX)|(C))";
+	
+	@SuppressWarnings("nls")
+	private String getPatternFileExtensions() {
+		IContentTypeManager manager = Platform.getContentTypeManager();
+		
+		Set<String> fileExts = new HashSet<String>();
+		
+		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource");
+		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource");
+		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		String pattern = "(";
+		for (String ext : fileExts) {
+			if (pattern.length()!=1)
+				pattern += "|";
+			pattern += "(" + Pattern.quote(ext) + ")";
+			ext = ext.toUpperCase();
+			if (!fileExts.contains(ext)) {
+				pattern += "|(" + Pattern.quote(ext) + ")";
+			}
+		}
+		pattern += ")";
+		
+		return pattern;
+	}
 
-	private static final String PATTERN_FILE_NAME   = "([^'\"\\s]*\\." + PATTERN_FILE_EXTENSIONS + ")";
-	private static final String PATTERN_FILE_NAME_INSIDE_QUOTES = "(.*\\." + PATTERN_FILE_EXTENSIONS + ")";
-	
-	/*package*/ static final Pattern PATTERN_COMPILE_UNQUOTED_FILE = Pattern.compile(
-			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + PATTERN_FILE_NAME + "(\\s.*)?[\r\n]*");
+	@SuppressWarnings("nls")
+	/*package*/ String getPatternCompileUnquotedFile() {
+		String patternFileName = "([^'\"\\s]*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + patternFileName + "(\\s.*)?[\r\n]*";
+	}
 	/*package*/ static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
-	
-	/*package*/ static final Pattern PATTERN_COMPILE_QUOTED_FILE = Pattern.compile(
-			"\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + PATTERN_FILE_NAME_INSIDE_QUOTES + "\\"+(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*");
+
+	@SuppressWarnings("nls")
+	/*package*/ String getPatternCompileQuotedFile() {
+		String patternFileName = "(.*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" +PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + patternFileName + "\\"+(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*";
+	}
 	/*package*/ static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
 	
-	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?");
-	private static final int PATTERN_OPTION_GROUP = 0;
 
 	@SuppressWarnings("nls")
 	private final OptionParser[] optionParsers = new OptionParser[] {
@@ -290,12 +327,14 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		errorParserManager = epm;
 		sourceFile = null;
 		parsedSourceFileName = null;
-		Matcher fileMatcher = PATTERN_COMPILE_UNQUOTED_FILE.matcher(line);
+		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
+		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
 
 		if (fileMatcher.matches()) {
 			parsedSourceFileName = fileMatcher.group(PATTERN_UNQUOTED_FILE_GROUP);
 		} else {
-			fileMatcher = PATTERN_COMPILE_QUOTED_FILE.matcher(line);
+			String patternCompileQuotedFile = getPatternCompileQuotedFile();
+			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
 			if (fileMatcher.matches()) {
 				parsedSourceFileName = fileMatcher.group(PATTERN_QUOTED_FILE_GROUP);
 			}

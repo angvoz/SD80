@@ -18,14 +18,15 @@ import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
 
 public class GCCBuildCommandPatternHighlighter extends RegexErrorParser implements IErrorParser2{
 	public GCCBuildCommandPatternHighlighter() {
+		GCCBuildCommandParser gccBuildCommandParser = new GCCBuildCommandParser();
 		{
-			String pat = GCCBuildCommandParser.PATTERN_COMPILE_UNQUOTED_FILE.pattern();
+			String pat = gccBuildCommandParser.getPatternCompileUnquotedFile();
 			String fileExpr = "$"+GCCBuildCommandParser.PATTERN_UNQUOTED_FILE_GROUP; //$NON-NLS-1$
 			String descExpr = "$0"; //$NON-NLS-1$
 			addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
 		}
 		{
-			String pat = GCCBuildCommandParser.PATTERN_COMPILE_QUOTED_FILE.pattern();
+			String pat = gccBuildCommandParser.getPatternCompileQuotedFile();
 			String fileExpr = "$"+GCCBuildCommandParser.PATTERN_QUOTED_FILE_GROUP; //$NON-NLS-1$
 			String descExpr = "$0"; //$NON-NLS-1$
 			addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));

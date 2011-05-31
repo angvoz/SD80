@@ -41,11 +41,16 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.content.IContentType;
+import org.eclipse.core.runtime.content.IContentTypeManager;
+import org.eclipse.core.runtime.content.IContentTypeSettings;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 public class GCCBuildCommandParserTest extends TestCase {
 	private static final String ELEM_TEST = "test";
+	private static final String LANG_CPP = "org.eclipse.cdt.core.g++";
 
 	// those attributes must match that in AbstractBuiltinSpecsDetector
 	private static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
@@ -223,7 +228,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			}
 	
 		};
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -DMACRO=VALUE file.cpp");
 		parser.shutdown();
@@ -257,7 +262,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 file.cpp");
 		parser.shutdown();
@@ -296,7 +301,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 file1.cpp");
 		parser.processLine("gcc-4.2 -I/path0 file2.cpp");
@@ -345,7 +350,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc"
 				// regular
@@ -417,7 +422,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -DMACRO0"
@@ -495,7 +500,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -UMACRO"
@@ -525,7 +530,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -include /include.file1"
@@ -576,7 +581,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -macros macro.file file.cpp");
 		parser.processLine("gcc "
@@ -621,7 +626,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -L/path0"
@@ -665,7 +670,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -ldomain file.cpp");
 		parser.shutdown();
@@ -697,7 +702,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			// create GCCBuildCommandParser
 			GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-			// parse fake line
+			// parse line
 			parser.startup(cfgDescription);
 			parser.processLine("gcc"
 					+ " -I/path0 "
@@ -772,7 +777,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 missing.cpp");
 		parser.shutdown();
@@ -805,7 +810,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 file0.cpp");
 		parser.processLine("gcc -I/path0 file1.cpp\n");
@@ -853,7 +858,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 'file with spaces 1.cpp'");
 		parser.processLine("gcc -I/path0 \"file with spaces 2.cpp\"");
@@ -908,7 +913,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 		parser.setExpandRelativePaths(true);
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -947,7 +952,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 		parser.setExpandRelativePaths(false);
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -983,7 +988,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		GCCBuildCommandParser parser = new GCCBuildCommandParser();
 		parser.setExpandRelativePaths(true);
 
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -IFolder"
@@ -1020,7 +1025,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ErrorParserManager epm = new ErrorParserManager(project, null);
 		epm.pushDirectoryURI(buildDir.getLocationURI());
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -1063,7 +1068,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		ErrorParserManager epm = new ErrorParserManager(project, null);
 		epm.pushDirectoryURI(buildDir.getLocationURI());
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -1102,7 +1107,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		URI uriBuildDir = new URI("file:///non-existing/path");
 		epm.pushDirectoryURI(uriBuildDir);
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -1145,7 +1150,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		URI uriBuildDir = new URI("file:///BuildDir");
 		epm.pushDirectoryURI(uriBuildDir);
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -1197,7 +1202,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		URI cfgBuildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(cfgDescription.getBuildSetting().getBuilderCWD());
 		ErrorParserManager epm = new ErrorParserManager(project, cfgBuildDirURI, null, null);
 		
-		// parse fake line
+		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
@@ -1211,6 +1216,72 @@ public class GCCBuildCommandParserTest extends TestCase {
 		{
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
 			assertEquals(new CIncludePathEntry(includeDir.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
+		}
+	}
+	
+	/**
+	 */
+	public void testContentTypeFileExtensions() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+
+		String languageId = LANG_CPP;
+		// add custom extension to C++ content type
+		IContentTypeManager manager = Platform.getContentTypeManager(); 
+		IContentType contentType = manager.findContentTypeFor("file.cpp");
+		contentType.addFileSpec("x++", IContentTypeSettings.FILE_EXTENSION_SPEC);
+		
+		IFile file=ResourceHelper.createFile(project, "file.x++");
+		contentType = manager.findContentTypeFor("file.x++");
+
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc -I/path0 file.x++");
+		parser.shutdown();
+
+		// check populated entries
+		IPath path0 = new Path("/path0").setDevice(project.getLocation().getDevice());
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
+			assertEquals(expected, entries.get(0));
+		}
+	}
+
+	/**
+	 */
+	public void testUpperCase() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		String languageId = LANG_CPP;
+		
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc -I/path0 FILE.CPP", epm);
+		parser.shutdown();
+		
+		// check populated entries
+		IPath path0 = new Path("/path0").setDevice(project.getLocation().getDevice());
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);
+			assertEquals(expected, entries.get(0));
 		}
 	}
 	

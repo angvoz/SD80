@@ -1303,16 +1303,16 @@ public class GCCBuildCommandParserTest extends TestCase {
 		
 		// parse line
 		parser.startup(cfgDescription);
-		//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"c:\Python25\Include" -c -o "bin.v2\libs\python\build\gcc-mingw-3.4.5\debug\link-static\threading-multi\numeric.o" "libs\python\src\numeric.cpp"
+		//    "g++"  -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads  -DBOOST_ALL_NO_LIB=1 -DBOOST_PYTHON_SOURCE -DBOOST_PYTHON_STATIC_LIB  -I"." -I"/Python25/Include" -c -o "bin.v2/libs/python/build/gcc-mingw-3.4.5/debug/link-static/threading-multi/numeric.o" "libs/python/src/numeric.cpp"
 		parser.processLine("   \"g++\"" +
 				" -ftemplate-depth-128 -O0 -fno-inline -Wall -g -mthreads" +
 				" -DBOOST_ALL_NO_LIB=1" +
 				" -DBOOST_PYTHON_SOURCE" +
 				" -DBOOST_PYTHON_STATIC_LIB" +
 				" -I\".\"" +
-				" -I\"c:\\Python1025\\Include\"" +
-				" -c -o \"bin.v2\\libs\\python\\build\\gcc-mingw-3.4.5\\debug\\link-static\\threading-multi\\numeric.o\"" +
-				" libs\\python\\src\\numeric.cpp");
+				" -I\"/Python1025/Include\"" +
+				" -c -o \"bin.v2/libs/python/build/gcc-mingw-3.4.5/debug/link-static/threading-multi/numeric.o\"" +
+				" libs/python/src/numeric.cpp");
 		parser.shutdown();
 		
 		// check populated entries
@@ -1322,7 +1322,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CMacroEntry("BOOST_PYTHON_SOURCE", "", 0), entries.get(1));
 			assertEquals(new CMacroEntry("BOOST_PYTHON_STATIC_LIB", "", 0), entries.get(2));
 			assertEquals(new CIncludePathEntry(project.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(3));
-			assertEquals(new CIncludePathEntry("C:/Python1025/Include", 0), entries.get(4));
+			assertEquals(new CIncludePathEntry(new Path("/Python1025/Include").setDevice(project.getLocation().getDevice()), 0), entries.get(4));
 			assertEquals(5, entries.size());
 		}
 	}

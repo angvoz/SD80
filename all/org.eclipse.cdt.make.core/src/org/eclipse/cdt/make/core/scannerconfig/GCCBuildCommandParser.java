@@ -172,7 +172,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			String name = parseStr(matcher, nameExpression);
 			
 			if (isExpandRelativePaths()) {
-				URI uri = getURI(new Path(name));
+				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFolder(uri);
 					if (path!=null) {
@@ -202,7 +202,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			String name = parseStr(matcher, nameExpression);
 			
 			if (isExpandRelativePaths()) {
-				URI uri = getURI(new Path(name));
+				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFile(uri);
 					if (path!=null) {
@@ -261,7 +261,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			String name = parseStr(matcher, nameExpression);
 
 			if (isExpandRelativePaths()) {
-				URI uri = getURI(new Path(name));
+				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFile(uri);
 					if (path!=null) {
@@ -291,7 +291,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			String name = parseStr(matcher, nameExpression);
 			
 			if (isExpandRelativePaths()) {
-				URI uri = getURI(new Path(name));
+				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFolder(uri);
 					if (path!=null) {
@@ -434,19 +434,45 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return (GCCBuildCommandParser) super.clone();
 	}
 
-	private URI getURI(IPath path) {
+	private URI getURI(String name) {
 		URI uri = null;
-		if (!path.isAbsolute()) {
-			if (buildDirURI!=null) {
-				uri = URIUtil.append(buildDirURI, path.toString());
-			}
+		if (new Path(name).isAbsolute()) {
+			uri = resolvePathFromBaseLocation(name, mappedRootPath);
 		} else {
-			path = mappedRootPath.append(path);
-			uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+			if (buildDirURI!=null) {
+				IPath buildLocation = org.eclipse.core.filesystem.URIUtil.toPath(buildDirURI);
+				uri = resolvePathFromBaseLocation(name, buildLocation);
+			}
+		}
+		
+		if (uri==null) {
+			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
 		}
 		return uri;
 	}
 
+	/**
+	 * The manipulations here are done to resolve "../" navigation for symbolic links
+	 * where "link/.." cannot be collapsed as it must follow real filesystem path.
+	 * {@link java.io.File#getCanonicalPath()} deals with that correctly
+	 * but {@link Path} or {@link URI} cannot handle that properly.
+	 */
+	private URI resolvePathFromBaseLocation(String name, IPath baseLocation) {
+		if (baseLocation!=null && !baseLocation.isEmpty())
+			name = baseLocation.toString()+'/'+name;
+		
+		try {
+			File file = new File(name);
+			file = file.getCanonicalFile();
+			return file.toURI();
+		} catch (IOException e) {
+			// if error just leave it as is
+		}
+		
+		URI uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
+		return uri;
+	}
+	
 	private IPath getFullWorkspacePathForFolder(URI uri) {
 		IPath path = null;
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();

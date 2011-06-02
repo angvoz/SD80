@@ -1175,12 +1175,86 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
+	public void testPathEntry_NavigateSymbolicLinkUpAbsolute() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		String languageId = LANG_CPP;
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		
+		// create link on the filesystem
+		IPath dir1 = ResourceHelper.createTemporaryFolder();
+		IPath dir2 = dir1.removeLastSegments(1);
+		IPath linkPath = dir1.append("linked");
+		ResourceHelper.createSymbolicLink(linkPath, dir2);
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		// "../" should navigate along filesystem path, not along the link itself
+		parser.processLine("gcc -I"+linkPath.toString()+"/.."+" file.cpp", epm);
+		parser.shutdown();
+		
+		// check populated entries
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry(dir2.removeLastSegments(1), 0);
+			assertEquals(expected, entries.get(0));
+		}
+	}
+	
+	/**
+	 */
+	public void testPathEntry_NavigateSymbolicLinkUpRelative() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		String languageId = LANG_CPP;
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		
+		// create link
+		IFolder folder = ResourceHelper.createFolder(project, "folder");
+		IFolder subfolder = ResourceHelper.createFolder(project, "folder/subfolder");
+		IPath linkPath = project.getLocation().append("linked");
+		ResourceHelper.createSymbolicLink(linkPath, subfolder.getLocation());
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = new GCCBuildCommandParser();
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		// "../" should navigate along filesystem path, not along the link itself
+		parser.processLine("gcc -Ilinked/.."+" file.cpp", epm);
+		parser.shutdown();
+		
+		// check populated entries
+		{
+			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+			CIncludePathEntry expected = new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
+			assertEquals(expected, entries.get(0));
+		}
+	}
+	
+	/**
+	 */
 	public void testPathEntry_BuildDirDefinedByConfiguration() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		// Create resources trying to confuse the parser
+		@SuppressWarnings("unused")
 		IFile fileInProjectRoot=ResourceHelper.createFile(project, "file.cpp");
+		@SuppressWarnings("unused")
 		IFolder includeDirInProjectRoot=ResourceHelper.createFolder(project, "include");
 		// Create resources meant to be found
 		IFolder buildDir=ResourceHelper.createFolder(project, "BuildDir");

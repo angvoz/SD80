@@ -458,18 +458,30 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	 * but {@link Path} or {@link URI} cannot handle that properly.
 	 */
 	private URI resolvePathFromBaseLocation(String name, IPath baseLocation) {
-		if (baseLocation!=null && !baseLocation.isEmpty())
-			name = baseLocation.toString()+'/'+name;
+		String pathName = name;
+		if (baseLocation!=null && !baseLocation.isEmpty()) {
+			String device = new Path(pathName).getDevice();
+			if (device!=null && device.length()>0) {
+				pathName = pathName.substring(device.length());
+			}
+			pathName = pathName.replace(File.separatorChar, '/');
+			
+			baseLocation = baseLocation.addTrailingSeparator();
+			if (pathName.startsWith("/")) {
+				pathName = pathName.substring(1);
+			}
+			pathName = baseLocation.toString()+pathName;
+		}
 		
 		try {
-			File file = new File(name);
+			File file = new File(pathName);
 			file = file.getCanonicalFile();
 			return file.toURI();
 		} catch (IOException e) {
 			// if error just leave it as is
 		}
 		
-		URI uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
+		URI uri = org.eclipse.core.filesystem.URIUtil.toURI(pathName);
 		return uri;
 	}
 	

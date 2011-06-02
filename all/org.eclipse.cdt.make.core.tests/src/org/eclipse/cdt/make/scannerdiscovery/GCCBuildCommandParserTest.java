@@ -897,6 +897,10 @@ public class GCCBuildCommandParserTest extends TestCase {
 	/**
 	 */
 	public void testPathEntry_DriveLetter() throws Exception {
+		// do not test on non-windows systems where drive letters are not supported
+		if (! Platform.getOS().equals(Platform.OS_WIN32))
+			return;
+
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -919,7 +923,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.shutdown();
 
 		// check populated entries
-		IPath path0 = new Path("/path").setDevice(project.getLocation().getDevice());
+		IPath path0 = new Path("C:\\path").setDevice(project.getLocation().getDevice());
 		{
 			List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
 			CIncludePathEntry expected = new CIncludePathEntry(path0, 0);

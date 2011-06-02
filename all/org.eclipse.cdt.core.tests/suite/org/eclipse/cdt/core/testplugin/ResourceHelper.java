@@ -539,7 +539,7 @@ public class ResourceHelper {
 	public static IResource createSymbolicLink(IProject project, String linkName, IPath realPath)
 		throws IOException, CoreException, UnsupportedOperationException {
 
-		if (isSymbolicLinkSupported()) {
+		if (!isSymbolicLinkSupported()) {
 			throw new UnsupportedOperationException("Windows links .lnk are not supported.");
 		}
 
@@ -574,7 +574,7 @@ public class ResourceHelper {
 	 * @throws IOException if execution of the command fails.
 	 */
 	public static void createSymbolicLink(IPath linkPath, IPath realPath) throws IOException {
-		if (isSymbolicLinkSupported()) {
+		if (!isSymbolicLinkSupported()) {
 			throw new UnsupportedOperationException("Windows links .lnk are not supported.");
 		}
 

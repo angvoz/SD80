@@ -28,6 +28,7 @@ import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.IPath;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -484,6 +485,36 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		assertEquals(expected2, entries.get(2));
 		assertEquals(expected3, entries.get(3));
 		assertEquals(4, entries.size());
+	}
+	
+	public void testGCCBuiltinSpecsDetector_Includes_SymbolicLinkUp() throws Exception {
+		// do not test on systems where symbolic links are not supported
+		if (!ResourceHelper.isSymbolicLinkSupported())
+			return;
+
+		// Create model project and folders to test
+		String projectName = getName();
+		@SuppressWarnings("unused")
+		IProject project = ResourceHelper.createCDTProject(projectName);
+		// create link on the filesystem
+		IPath dir1 = ResourceHelper.createTemporaryFolder();
+		IPath dir2 = dir1.removeLastSegments(1);
+		IPath linkPath = dir1.append("linked");
+		ResourceHelper.createSymbolicLink(linkPath, dir2);
+		
+		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		detector.startup(null, LANGUAGE_ID_C);
+		
+		detector.processLine("#include <...> search starts here:");
+		detector.processLine(" "+linkPath.toString()+"/..");
+		detector.processLine("End of search list.");
+		detector.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
+		CIncludePathEntry expected = new CIncludePathEntry(dir2.removeLastSegments(1), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		assertEquals(expected, entries.get(0));
+		assertEquals(1, entries.size());
 	}
 
 }

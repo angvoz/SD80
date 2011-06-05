@@ -125,7 +125,11 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	
 	private URI buildDirURI;
 	
-	// Where source tree starts if mapped (absolute location on FS)
+	/*
+	 * Where source tree starts if mapped. This kind of mapping applied automatically
+	 * in cases when the absolute path to the source file on the remote system is
+	 * simulated inside a project in the workspace.
+	 */
 	private URI mappedRootURI = null;
 
 	private abstract class OptionParser {
@@ -183,13 +187,9 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 						return new CIncludePathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 					}
 						
-					// try to map to filesystem
-
-					if (!URIUtil.isFileURI(uri)) {
-						// take chance that the path component maps to the path on the filesystem
-						String pathStr = EFSExtensionManager.getDefault().getPathFromURI(uri);
-						uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
-					}
+					// use EFSExtensionManager mapping
+					String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
+					uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
 					
 					path = getCanonicalFilesystemLocation(uri);
 					if (path!=null) {

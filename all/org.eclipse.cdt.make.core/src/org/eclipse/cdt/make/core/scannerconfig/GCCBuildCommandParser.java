@@ -13,6 +13,7 @@ package org.eclipse.cdt.make.core.scannerconfig;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -32,6 +33,7 @@ import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
+import org.eclipse.cdt.utils.EFSExtensionManager;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -122,7 +124,9 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private String parsedSourceFileName = null;
 	
 	private URI buildDirURI;
-	private IPath mappedRootPath = new Path("/");
+	
+	// Where source tree starts if mapped (absolute location on FS)
+	private URI mappedRootURI = null;
 
 	private abstract class OptionParser {
 		protected final Pattern pattern;
@@ -178,10 +182,23 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 					if (path!=null) {
 						return new CIncludePathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
 					}
+						
+					// try to map to filesystem
+
+					if (!URIUtil.isFileURI(uri)) {
+						// take chance that the path component maps to the path on the filesystem
+						String pathStr = EFSExtensionManager.getDefault().getPathFromURI(uri);
+						uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
+					}
 					
 					path = getCanonicalFilesystemLocation(uri);
-					if (path!=null)
+					if (path!=null) {
+						if (path.getDevice()==null) {
+							String device = sourceFile.getLocation().getDevice();
+							path = path.setDevice(device);
+						}
 						return new CIncludePathEntry(path, 0);
+					}
 				}
 			}
 			
@@ -350,17 +367,29 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			}
 		}
 
+
 		if (sourceFile!=null) {
 			buildDirURI = null;
-			mappedRootPath = new Path("/");
+			mappedRootURI = null;
+			mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(sourceFile.getLocationURI(), "/");
 			if (sourceFile!=null && parsedSourceFileName!=null && errorParserManager!=null) {
+				URI cwdURI = null;
 				IPath parsedSrcPath = new Path(parsedSourceFileName);
-				if (parsedSrcPath.isAbsolute())
-					mappedRootPath = getMappedRoot(sourceFile, parsedSrcPath);
+				if (parsedSrcPath.isAbsolute()) {
+					mappedRootURI = getMappedRoot(sourceFile, parsedSrcPath);
+				} else {
+					cwdURI = findBaseLocationURI(sourceFile.getLocationURI(), parsedSourceFileName);
+				}
+				if (cwdURI==null) {
+					cwdURI = errorParserManager.getWorkingDirectoryURI();
+				}
 
-				IPath cwdPath = errorParserManager.getWorkingDirectory();
-				if (cwdPath!=null) {
-					buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(mappedRootPath.append(cwdPath));
+				
+				String cwdPath = EFSExtensionManager.getDefault().getPathFromURI(cwdURI);
+				if (cwdPath!=null && mappedRootURI!=null) {
+					buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
+				} else {
+					buildDirURI = cwdURI;
 				}
 			}
 			
@@ -404,10 +433,45 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return false;
 	}
 	
-	private IPath getMappedRoot(IResource sourceFile, IPath parsedSrcPath) {
+	private URI findBaseLocationURI(URI fileURI, String relativeFileName) {
+		URI cwdURI = null;
+		String path = fileURI.getPath();
+		
+		String[] segments = relativeFileName.split("[/\\\\]"); //$NON-NLS-1$
+		
+		// start removing segments from the end of the path
+		for (int i=segments.length-1;i>=0;i--) {
+			String lastSegment = segments[i];
+			if (lastSegment.length()>0 && !lastSegment.equals(".")) { //$NON-NLS-1$
+				if (lastSegment.equals("..")) { //$NON-NLS-1$
+					// navigating ".." in the other direction is ambiguous, bailing out
+					return null;
+				} else {
+					if (path.endsWith("/"+lastSegment)) { //$NON-NLS-1$
+						int pos = path.lastIndexOf(lastSegment);
+						path = path.substring(0, pos);
+						continue;
+					} else {
+						// ouch, relativeFileName does not match fileURI, bailing out
+						return null;
+					}
+				}
+			}
+		}
+		
+		try {
+			cwdURI = new URI(fileURI.getScheme(), fileURI.getUserInfo(), fileURI.getHost(), fileURI.getPort(), path, fileURI.getQuery(), fileURI.getFragment());
+		} catch (URISyntaxException e) {
+			// It should be valid URI here or something is wrong
+			MakeCorePlugin.log(e);
+		}
+		
+		return cwdURI;
+	}
+
+	private URI getMappedRoot(IResource sourceFile, IPath parsedSrcPath) {
+		URI fileURI = sourceFile.getLocationURI();
 		IPath mappedRootPath = new Path("/");
-		// try to figure CWD from file currently compiling (if found in workspace)
-		// consider "gcc -I./relative/to/build/dir -c relative/src/file.cpp"
 		IPath absPath = sourceFile.getLocation();
 		int absSegmentsCount = absPath.segmentCount();
 		int relSegmentsCount = parsedSrcPath.segmentCount();
@@ -418,7 +482,9 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				mappedRootPath = absPath.removeLastSegments(relSegmentsCount);
 			}
 		}
-		return mappedRootPath;
+		
+		URI mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(fileURI, mappedRootPath.toString());
+		return mappedRootURI;
 	}
 
 	@Override
@@ -434,57 +500,21 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return (GCCBuildCommandParser) super.clone();
 	}
 
+
 	private URI getURI(String name) {
 		URI uri = null;
-		if (new Path(name).isAbsolute()) {
-			uri = resolvePathFromBaseLocation(name, mappedRootPath);
-		} else {
-			if (buildDirURI!=null) {
-				IPath buildLocation = org.eclipse.core.filesystem.URIUtil.toPath(buildDirURI);
-				uri = resolvePathFromBaseLocation(name, buildLocation);
-			}
+		// canonicalize absolute path, in particular replace all '\' with '/' for Windows paths
+		Path path = new Path(name);
+		String pathStr = path.toString();
+		if (path.isAbsolute()) {
+			uri = EFSExtensionManager.getDefault().append(mappedRootURI, pathStr);
+		} else if (buildDirURI!=null) {
+			uri = EFSExtensionManager.getDefault().append(buildDirURI, pathStr);
 		}
 		
-		if (uri==null) {
-			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
-		}
 		return uri;
 	}
 
-	/**
-	 * The manipulations here are done to resolve "../" navigation for symbolic links
-	 * where "link/.." cannot be collapsed as it must follow real filesystem path.
-	 * {@link java.io.File#getCanonicalPath()} deals with that correctly
-	 * but {@link Path} or {@link URI} cannot handle that properly.
-	 */
-	private URI resolvePathFromBaseLocation(String name, IPath baseLocation) {
-		String pathName = name;
-		if (baseLocation!=null && !baseLocation.isEmpty()) {
-			String device = new Path(pathName).getDevice();
-			if (device!=null && device.length()>0) {
-				pathName = pathName.substring(device.length());
-			}
-			pathName = pathName.replace(File.separatorChar, '/');
-			
-			baseLocation = baseLocation.addTrailingSeparator();
-			if (pathName.startsWith("/")) {
-				pathName = pathName.substring(1);
-			}
-			pathName = baseLocation.toString()+pathName;
-		}
-		
-		try {
-			File file = new File(pathName);
-			file = file.getCanonicalFile();
-			return file.toURI();
-		} catch (IOException e) {
-			// if error just leave it as is
-		}
-		
-		URI uri = org.eclipse.core.filesystem.URIUtil.toURI(pathName);
-		return uri;
-	}
-	
 	private IPath getFullWorkspacePathForFolder(URI uri) {
 		IPath path = null;
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
@@ -514,7 +544,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		try {
 			File file = new java.io.File(uri);
 			path = new Path(file.getCanonicalPath());
-		} catch (IOException e) {
+		} catch (Exception e) {
 			MakeCorePlugin.log(e);
 		}
 		return path;

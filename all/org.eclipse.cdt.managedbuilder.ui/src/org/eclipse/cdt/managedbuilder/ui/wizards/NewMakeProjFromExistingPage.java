@@ -19,6 +19,8 @@ import java.util.Map;
 import org.eclipse.cdt.managedbuilder.core.IToolChain;
 import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
 import org.eclipse.cdt.managedbuilder.internal.ui.Messages;
+import org.eclipse.cdt.ui.CUIPlugin;
+import org.eclipse.cdt.ui.newui.CDTPrefUtil;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -39,7 +41,7 @@ import org.eclipse.swt.widgets.Text;
 
 /**
  * Page to select existing code location and toolchain.
- * 
+ *
  * @since 7.0
  */
 public class NewMakeProjFromExistingPage extends WizardPage {
@@ -51,12 +53,15 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 	IWorkspaceRoot root;
 	List tcList;
 	Map<String, IToolChain> tcMap = new HashMap<String, IToolChain>();
-	
+
+    private Button checkBoxTryNewSD;
+
+
 	protected NewMakeProjFromExistingPage() {
 		super(Messages.NewMakeProjFromExistingPage_0);
 		setTitle(Messages.NewMakeProjFromExistingPage_1);
 		setDescription(Messages.NewMakeProjFromExistingPage_2);
-		
+
 		root = ResourcesPlugin.getWorkspace().getRoot();
 	}
 
@@ -65,11 +70,26 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		GridLayout layout = new GridLayout();
 		comp.setLayout(layout);
 		comp.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-		
+
 		addProjectNameSelector(comp);
 		addSourceSelector(comp);
 		addLanguageSelector(comp);
 		addToolchainSelector(comp);
+
+		checkBoxTryNewSD = new Button(comp, SWT.CHECK);
+		checkBoxTryNewSD.setText(org.eclipse.cdt.internal.ui.newui.Messages.CDTMainWizardPage_TrySD80);
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+		gd.horizontalSpan = 2;
+		checkBoxTryNewSD.setLayoutData(gd);
+
+
+		// restore settings from preferences
+		boolean isTryNewSD = true;
+		boolean contains = CUIPlugin.getDefault().getPreferenceStore().contains(CDTPrefUtil.KEY_NEWSD);
+		if (contains) {
+			isTryNewSD = CDTPrefUtil.getBool(CDTPrefUtil.KEY_NEWSD);
+		}
+		checkBoxTryNewSD.setSelection(isTryNewSD);
 
 		setControl(comp);
 	}
@@ -81,7 +101,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		group.setLayout(layout);
 		group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		group.setText(Messages.NewMakeProjFromExistingPage_3);
-		
+
 		projectName = new Text(group, SWT.BORDER);
 		projectName.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		projectName.addModifyListener(new ModifyListener() {
@@ -90,7 +110,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 			}
 		});
 	}
-	
+
 	public void validateProjectName() {
 		String name = projectName.getText();
 		IProject project = root.getProject(name);
@@ -99,7 +119,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		else
 			setErrorMessage(null);
 	}
-	
+
 	public void addSourceSelector(Composite parent) {
 		Group group = new Group(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
@@ -107,7 +127,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		group.setLayout(layout);
 		group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		group.setText(Messages.NewMakeProjFromExistingPage_5);
-		
+
 		location = new Text(group, SWT.BORDER);
 		location.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		location.addModifyListener(new ModifyListener() {
@@ -116,7 +136,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 			}
 		});
 		validateSource();
-		
+
 		Button browse = new Button(group, SWT.NONE);
 		browse.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true));
 		browse.setText(Messages.NewMakeProjFromExistingPage_6);
@@ -128,12 +148,12 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 				if (dir != null)
 					location.setText(dir);
 			}
-			
+
 			public void widgetDefaultSelected(SelectionEvent e) {
 			}
 		});
 	}
-	
+
 	void validateSource() {
 		File file= new File(location.getText());
 		if (file.isDirectory()) {
@@ -142,7 +162,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		} else
 			setErrorMessage(Messages.NewMakeProjFromExistingPage_8);
 	}
-	
+
 	public void addLanguageSelector(Composite parent) {
 		Group group = new Group(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
@@ -150,47 +170,47 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		group.setLayout(layout);
 		group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		group.setText(Messages.NewMakeProjFromExistingPage_9);
-		
+
 		// TODO, should be a way to dynamically list these
 		langc = new Button(group, SWT.CHECK);
 		langc.setText("C"); //$NON-NLS-1$
 		langc.setSelection(true);
-		
+
 		langcpp = new Button(group, SWT.CHECK);
 		langcpp.setText("C++"); //$NON-NLS-1$
 		langcpp.setSelection(true);
 	}
-	
+
 	public void addToolchainSelector(Composite parent) {
 		Group group = new Group(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
 		group.setLayout(layout);
 		group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		group.setText(Messages.NewMakeProjFromExistingPage_10);
-		
+
 		tcList = new List(group, SWT.SINGLE);
 		group.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
 		tcList.add(Messages.NewMakeProjFromExistingPage_11);
-		
+
 		IToolChain[] toolChains = ManagedBuildManager.getRealToolChains();
 		for (IToolChain toolChain : toolChains) {
 			if (toolChain.isAbstract() || toolChain.isSystemObject())
 				continue;
 			tcMap.put(toolChain.getUniqueRealName(), toolChain);
 		}
-		
+
 		ArrayList<String> names = new ArrayList<String>(tcMap.keySet());
 		Collections.sort(names);
 		for (String name : names)
 			tcList.add(name);
-		
+
 		tcList.setSelection(0); // select <none>
 	}
-	
+
 	public String getProjectName() {
 		return projectName.getText();
 	}
-	
+
 	public String getLocation() {
 		return location.getText();
 	}
@@ -198,14 +218,17 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 	public boolean isC() {
 		return langc.getSelection();
 	}
-	
+
 	public boolean isCPP() {
 		return langcpp.getSelection();
 	}
-	
+
 	public IToolChain getToolChain() {
 		String[] selection = tcList.getSelection();
 		return selection.length != 0 ? tcMap.get(selection[0]) : null;
 	}
 
+	public boolean isTryingNewSD() {
+		return checkBoxTryNewSD.getSelection();
+	}
 }

@@ -37,6 +37,7 @@
 	<copy file="${builder}/../maps/cdt.map" todir="${buildDirectory}/maps"/>
 	<replace file="${buildDirectory}/maps/cdt.map">
 		<replacefilter token="@cdtTag@" value="${cdtTag}"/>
+		<replacefilter token="@cdtRepo@" value="${cdtRepo}"/>
 	</replace>
 </target>
 

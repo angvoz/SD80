@@ -26,14 +26,28 @@ import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfil
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
+import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
+import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
+import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
+import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.resources.RefreshScopeManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
+import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoConsoleParser;
@@ -114,6 +128,23 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 						break;
 				}
 
+				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
+				final String pathFromURI = EFSExtensionManager.getDefault().getPathFromURI(workingDirectoryURI);
+				if(pathFromURI == null) {
+					throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderCorePlugin.PLUGIN_ID, ManagedMakeMessages.getString("ManagedMakeBuilder.message.error"), null)); //$NON-NLS-1$
+				}
+				
+				IPath workingDirectory = new Path(pathFromURI);
+
+				// Set the environment
+				Map<String, String> envMap = getEnvironment(builder);
+				String[] env = getEnvStrings(envMap);
+
+				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					AbstractBuiltinSpecsDetector.runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
+				}
+
 				consoleHeader[1] = configuration.getName();
 				consoleHeader[2] = project.getName();
 				buf.append(NEWLINE);
@@ -135,14 +166,6 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 				if (markers != null)
 					workspace.deleteMarkers(markers);
 
-				URI workingDirectoryURI = ManagedBuildManager.getBuildLocationURI(configuration, builder);
-				final String pathFromURI = EFSExtensionManager.getDefault().getPathFromURI(workingDirectoryURI);
-				if(pathFromURI == null) {
-					throw new CoreException(new Status(IStatus.ERROR, ManagedBuilderCorePlugin.PLUGIN_ID, ManagedMakeMessages.getString("ManagedMakeBuilder.message.error"), null)); //$NON-NLS-1$
-				}
-				
-				IPath workingDirectory = new Path(pathFromURI);
-
 				String[] targets = getTargets(kind, builder);
 				if (targets.length != 0 && targets[targets.length - 1].equals(builder.getCleanBuildTarget()))
 					isClean = true;
@@ -153,9 +176,6 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 				// Print the command for visual interaction.
 				launcher.showCommand(true);
 
-				// Set the environment
-				Map<String, String> envMap = getEnvironment(builder);
-				String[] env = getEnvStrings(envMap);
 				String[] buildArguments = targets;
 
 				String[] newArgs = CommandLineUtil.argumentsToArray(builder.getBuildArguments());
@@ -175,9 +195,15 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 				OutputStream stderr = streamMon;
 
 				// Sniff console output for scanner info
-				ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null);
-				OutputStream consoleOut = (sniffer == null ? stdout : sniffer.getOutputStream());
-				OutputStream consoleErr = (sniffer == null ? stderr : sniffer.getErrorStream());
+				OutputStream consoleOut = stdout;
+				OutputStream consoleErr = stderr;
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					ConsoleOutputSniffer sniffer = createBuildOutputSniffer(stdout, stderr, project, configuration, workingDirectory, markerGenerator, null, epm);
+					if (sniffer!=null) {
+						consoleOut = sniffer.getOutputStream();
+						consoleErr = sniffer.getErrorStream();
+					}
+				}
 				Process p = launcher.execute(buildCommand, buildArguments, env, workingDirectory, monitor);
 				if (p != null) {
 					try {
@@ -193,11 +219,19 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 						errMsg = launcher.getErrorMessage();
 					monitor.subTask(ManagedMakeMessages.getResourceString("MakeBuilder.Updating_project")); //$NON-NLS-1$
 
+					// AG: FIXME
+//					try {
+//						LanguageSettingsManager.serialize(cfgDescription);
+//					} catch (CoreException e) {
+//						// TODO Auto-generated catch block
+//						e.printStackTrace();
+//					}
+
 					try {
 						// Do not allow the cancel of the refresh, since the builder is external
 						// to Eclipse, files may have been created/modified and we will be out-of-sync.
 						// The caveat is for huge projects, it may take sometimes at every build.
-						
+
 						// TODO should only refresh output folders
 						//project.refreshLocal(IResource.DEPTH_INFINITE, null);
 						
@@ -233,7 +267,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 					consoleErr.write(buf.toString().getBytes());
 					consoleErr.flush();
 				}
-				
+
 				buf = new StringBuffer(NEWLINE);
 				buf.append(ManagedMakeMessages.getResourceString("ManagedMakeBuilder.message.build.finished")).append(NEWLINE); //$NON-NLS-1$
 				consoleOut.write(buf.toString().getBytes());
@@ -245,6 +279,11 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 				consoleOut.close();
 				consoleErr.close();
 				cos.close();
+				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
+					LanguageSettingsManager_TBD.serializeWorkspaceProviders();
+					ICProjectDescription prjDescription = CCorePlugin.getDefault().getProjectDescription(project, false);
+					LanguageSettingsProvidersSerializer.serializeLanguageSettings(prjDescription);
+				}
 			}
 		} catch (Exception e) {
 			ManagedBuilderCorePlugin.log(e);
@@ -310,15 +349,15 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 				envMap.put(var.getName(), var.getValue());
 			}
 		}
-		
+
 		// Add variables from build info
 		Map<String, String> builderEnv = builder.getExpandedEnvironment();
 		if (builderEnv != null)
 			envMap.putAll(builderEnv);
-		
+
 		return envMap;
 	}
-	
+
 	protected static String[] getEnvStrings(Map<String, String> env) {
 		// Convert into env strings
 		List<String> strings= new ArrayList<String>(env.size());
@@ -327,20 +366,21 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 			buffer.append('=').append(entry.getValue());
 			strings.add(buffer.toString());
 		}
-		
+
 		return strings.toArray(new String[strings.size()]);
 	}
-	
+
 	private ConsoleOutputSniffer createBuildOutputSniffer(OutputStream outputStream,
 			OutputStream errorStream,
 			IProject project,
 			IConfiguration cfg,
 			IPath workingDirectory,
 			IMarkerGenerator markerGenerator,
-			IScannerInfoCollector collector){
+			IScannerInfoCollector collector,
+			ErrorParserManager epm){
 		ICfgScannerConfigBuilderInfo2Set container = CfgScannerConfigProfileManager.getCfgScannerConfigBuildInfo(cfg);
 		Map<CfgInfoContext, IScannerConfigBuilderInfo2> map = container.getInfoMap();
-		List<IScannerInfoConsoleParser> clParserList = new ArrayList<IScannerInfoConsoleParser>();
+		List<IConsoleParser> clParserList = new ArrayList<IConsoleParser>();
 
 		if(container.isPerRcTypeDiscovery()){
 			for (IResourceInfo rcInfo : cfg.getResourceInfos()) {
@@ -370,9 +410,25 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 			contributeToConsoleParserList(project, map, new CfgInfoContext(cfg), workingDirectory, markerGenerator, collector, clParserList);
 		}
 
+		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
+		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
+		for (ILanguageSettingsProvider lsProvider : lsProviders) {
+			if (lsProvider instanceof IConsoleParser && !(lsProvider instanceof AbstractBuiltinSpecsDetector)) {
+				try {
+					if (lsProvider instanceof AbstractBuildCommandParser) {
+						((AbstractBuildCommandParser)lsProvider).startup(cfgDescription);
+					}
+					clParserList.add((IConsoleParser)lsProvider);
+				} catch (CoreException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
 		if(clParserList.size() != 0){
-			return new ConsoleOutputSniffer(outputStream, errorStream,
-					clParserList.toArray(new IScannerInfoConsoleParser[clParserList.size()]));
+			IConsoleParser[] parsers = clParserList.toArray(new IConsoleParser[clParserList.size()]);
+			return new ConsoleOutputSniffer(outputStream, errorStream, parsers, epm);
 		}
 
 		return null;
@@ -385,7 +441,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 			IPath workingDirectory,
 			IMarkerGenerator markerGenerator,
 			IScannerInfoCollector collector,
-			List<IScannerInfoConsoleParser> parserList){
+			List<IConsoleParser> parserList){
 		IScannerConfigBuilderInfo2 info = map.get(context);
 		InfoContext ic = context.toInfoContext();
 		boolean added = false;
@@ -416,5 +472,4 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 
 		return added;
 	}
-
 }

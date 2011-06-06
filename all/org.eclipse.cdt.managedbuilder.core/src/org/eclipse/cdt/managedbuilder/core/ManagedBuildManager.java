@@ -49,6 +49,9 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.eclipse.cdt.core.AbstractCExtension;
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.CoreModelUtil;
 import org.eclipse.cdt.core.parser.IScannerInfo;
@@ -143,12 +146,13 @@ import org.w3c.dom.ProcessingInstruction;
 /**
  * This is the main entry point for getting at the build information
  * for the managed build system.
- * 
+ *
  * @noextend This class is not intended to be subclassed by clients.
  * @noinstantiate This class is not intended to be instantiated by clients.
  */
 public class ManagedBuildManager extends AbstractCExtension {
 
+	public static final String MBS_LANGUAGE_SETTINGS_PROVIDER = "org.eclipse.cdt.managedbuilder.core.LanguageSettingsProvider";
 //	private static final QualifiedName buildInfoProperty = new QualifiedName(ManagedBuilderCorePlugin.getUniqueIdentifier(), "managedBuildInfo");	//$NON-NLS-1$
 	private static final String ROOT_NODE_NAME = "ManagedProjectBuildInfo";	//$NON-NLS-1$
 	public  static final String SETTINGS_FILE_NAME = ".cdtbuild";	//$NON-NLS-1$
@@ -563,7 +567,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	/**
 	 * @return the base extension configuration from the manifest (plugin.xml)
 	 *  or {@code null} if not found.
-	 *  
+	 *
 	 * @since 8.0
 	 */
 	public static IConfiguration getExtensionConfiguration(IConfiguration cfg) {
@@ -732,7 +736,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	/**
 	 * @param resource to find the target
 	 * @param id - ID of the target
-	 * 
+	 *
 	 * @return the result of a best-effort search to find a target with the
 	 * specified ID, or {@code null} if one is not found.
 	 */
@@ -819,7 +823,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	/**
 	 * Gets the currently selected target.  This is used while the project
 	 * property pages are displayed.
-	 * 
+	 *
 	 * @return target configuration.
 	 */
 	public static IConfiguration getSelectedConfiguration(IProject project) {
@@ -3512,7 +3516,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	/**
 	 * Generic routine for checking the availability of converters for the given
 	 * Build Object.
-	 * 
+	 *
 	 * @return true if there are converters for the given Build Object.
 	 * Returns false if there are no converters.
 	 */
@@ -4494,7 +4498,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 	/**
 	 * Build the specified build configurations.
-	 * 
+	 *
 	 * @param configs - configurations to build
 	 * @param builder - builder to retrieve build arguments
 	 * @param monitor - progress monitor
@@ -4504,10 +4508,10 @@ public class ManagedBuildManager extends AbstractCExtension {
 	public static void buildConfigurations(IConfiguration[] configs, IBuilder builder, IProgressMonitor monitor, boolean allBuilders) throws CoreException{
 		buildConfigurations(configs, builder, monitor, allBuilders, IncrementalProjectBuilder.FULL_BUILD);
 	}
-	
+
 	/**
 	 * Build the specified build configurations.
-	 * 
+	 *
 	 * @param configs - configurations to build
 	 * @param builder - builder to retrieve build arguments
 	 * @param monitor - progress monitor
@@ -4517,7 +4521,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	 *    <li>{@link IncrementalProjectBuilder#CLEAN_BUILD}</li>
 	 *    <li>{@link IncrementalProjectBuilder#INCREMENTAL_BUILD}</li>
 	 *    <li>{@link IncrementalProjectBuilder#FULL_BUILD}</li>
-	 * 
+	 *
 	 * @since 7.0
 	 */
 	public static void buildConfigurations(IConfiguration[] configs, IBuilder builder, IProgressMonitor monitor,
@@ -4558,7 +4562,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 	/**
 	 * Build the specified build configurations for a given project.
-	 * 
+	 *
 	 * @param project - project the configurations belong to
 	 * @param configs - configurations to build
 	 * @param builder - builder to retrieve build arguments
@@ -4569,7 +4573,7 @@ public class ManagedBuildManager extends AbstractCExtension {
 	 *    <li>{@link IncrementalProjectBuilder#CLEAN_BUILD}</li>
 	 *    <li>{@link IncrementalProjectBuilder#INCREMENTAL_BUILD}</li>
 	 *    <li>{@link IncrementalProjectBuilder#FULL_BUILD}</li>
-	 * 
+	 *
 	 * @throws CoreException
 	 */
 	private static void buildConfigurations(final IProject project, final IConfiguration[] configs,
@@ -4591,18 +4595,18 @@ public class ManagedBuildManager extends AbstractCExtension {
 					ticks = ticks*configs.length;
 				}
 				monitor.beginTask(project.getName(), ticks);
-				
+
 				if (buildKind==IncrementalProjectBuilder.CLEAN_BUILD) {
 					// It is not possible to pass arguments to clean() method of a builder
 					// So we iterate setting active configuration
 					IManagedBuildInfo buildInfo = ManagedBuildManager.getBuildInfo(project);
 					IConfiguration savedCfg = buildInfo.getDefaultConfiguration();
-					
+
 					try {
 						for (IConfiguration config : configs) {
 							if (monitor.isCanceled())
 								break;
-							
+
 							buildInfo.setDefaultConfiguration(config);
 							buildProject(project, null, allBuilders, buildKind, monitor);
 						}
@@ -4621,13 +4625,13 @@ public class ManagedBuildManager extends AbstractCExtension {
 
 			private void buildProject(IProject project, Map<String, String> args, boolean allBuilders, int buildKind, IProgressMonitor monitor)
 					throws CoreException {
-				
+
 				if (allBuilders) {
 					ICommand[] commands = project.getDescription().getBuildSpec();
 					for (ICommand command : commands) {
 						if (monitor.isCanceled())
 							break;
-						
+
 						String builderName = command.getBuilderName();
 						Map<String, String> newArgs = null;
 						if (buildKind!=IncrementalProjectBuilder.CLEAN_BUILD) {
@@ -4712,6 +4716,88 @@ public class ManagedBuildManager extends AbstractCExtension {
 			return false; // OS or ARCH does not fit
 		}
 		return true; // no target platform - nothing to check.
+	}
+
+	private static String getLanguageSettingsProvidersStr(IToolChain toolchain) {
+		for (;toolchain!=null;toolchain=toolchain.getSuperClass()) {
+			String providersIdsStr = toolchain.getDefaultLanguageSettingsProvidersIds();
+			if (providersIdsStr!=null) {
+				return providersIdsStr;
+			}
+		}
+		return "";
+	}
+
+	private static String getLanguageSettingsProvidersStr(IConfiguration cfg) {
+		for (;cfg!=null;cfg=cfg.getParent()) {
+			String providersIdsStr = cfg.getDefaultLanguageSettingsProvidersIds();
+			if (providersIdsStr!=null) {
+				return providersIdsStr;
+			}
+		}
+		return "";
+	}
+
+	public static List<ILanguageSettingsProvider> getLanguageSettingsProviders(IConfiguration cfg) {
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+
+		String providersIdsStr = getLanguageSettingsProvidersStr(cfg);
+		if (providersIdsStr!=null) {
+			if (providersIdsStr.contains("${Toolchain}")) {
+				IToolChain toolchain = cfg.getToolChain();
+				String toolchainProvidersIds = getLanguageSettingsProvidersStr(toolchain);
+				if (toolchainProvidersIds==null) {
+					toolchainProvidersIds="";
+				}
+				providersIdsStr = providersIdsStr.replaceAll("\\$\\{Toolchain\\}", toolchainProvidersIds);
+			}
+			List<String> providersIds = Arrays.asList(providersIdsStr.split(String.valueOf(LanguageSettingsManager_TBD.PROVIDER_DELIMITER)));
+			for (String id : providersIds) {
+				id = id.trim();
+				ILanguageSettingsProvider provider = null;
+				if (id.startsWith("*")) {
+					id = id.substring(1);
+					provider = LanguageSettingsManager.getWorkspaceProvider(id);
+				} else if (id.startsWith("-")) {
+					id = id.substring(1);
+					for (ILanguageSettingsProvider pr : providers) {
+						if (pr.getId().equals(id)) {
+							providers.remove(pr);
+							// Has to break as the collection is invalidated
+							// TODO: remove all elements or better use unique list
+							break;
+						}
+					}
+				} else if (id.length()>0){
+					provider = LanguageSettingsManager.getExtensionProviderCopy(id);
+				}
+				if (provider!=null) {
+					providers.add(provider);
+				}
+			}
+		}
+
+		if (providers.isEmpty()) {
+			// Add MBS provider for unsuspecting toolchains (backward compatibility)
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getWorkspaceProvider(MBS_LANGUAGE_SETTINGS_PROVIDER);
+			providers.add(provider);
+		}
+
+		if (!isProviderThere(providers, LanguageSettingsManager_TBD.PROVIDER_UI_USER)) {
+			ILanguageSettingsProvider provider = LanguageSettingsManager.getExtensionProviderCopy(LanguageSettingsManager_TBD.PROVIDER_UI_USER);
+			providers.add(0, provider);
+		}
+
+		return providers;
+	}
+
+	private static boolean isProviderThere(List<ILanguageSettingsProvider> providers, String id) {
+		for (ILanguageSettingsProvider provider : providers) {
+			if (provider.getId().equals(id)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }

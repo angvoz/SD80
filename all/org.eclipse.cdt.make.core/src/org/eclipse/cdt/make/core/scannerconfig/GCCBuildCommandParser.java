@@ -47,7 +47,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.URIUtil;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.content.IContentTypeManager;
 
@@ -184,25 +183,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFolder(uri);
-					if (path!=null) {
+					if (path!=null)
 						return new CIncludePathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					}
 						
-					// use EFSExtensionManager mapping
-					String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
-					uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
-					
-					path = getCanonicalFilesystemLocation(uri);
-					if (path!=null) {
-						if (path.getDevice()==null) {
-							IPath sourceFilelocation = sourceFile.getLocation();
-							if (sourceFilelocation!=null) {
-								String device = sourceFilelocation.getDevice();
-								path = path.setDevice(device);
-							}
-						}
+					path = getFilesystemLocation(uri);
+					if (path!=null)
 						return new CIncludePathEntry(path, 0);
-					}
 				}
 			}
 			
@@ -226,11 +212,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFile(uri);
-					if (path!=null) {
+					if (path!=null)
 						return new CIncludeFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					}
 					
-					path = getCanonicalFilesystemLocation(uri);
+					path = getFilesystemLocation(uri);
 					if (path!=null)
 						return new CIncludeFileEntry(path, 0);
 				}
@@ -285,11 +270,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFile(uri);
-					if (path!=null) {
+					if (path!=null)
 						return new CMacroFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					}
 					
-					path = getCanonicalFilesystemLocation(uri);
+					path = getFilesystemLocation(uri);
 					if (path!=null)
 						return new CMacroFileEntry(path, 0);
 				}
@@ -315,15 +299,15 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 				URI uri = getURI(name);
 				if (uri!=null) {
 					IPath path = getFullWorkspacePathForFolder(uri);
-					if (path!=null) {
+					if (path!=null)
 						return new CLibraryPathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					}
 					
-					path = getCanonicalFilesystemLocation(uri);
+					path = getFilesystemLocation(uri);
 					if (path!=null)
 						return new CLibraryPathEntry(path, 0);
 				}
 			}
+			
 			return new CLibraryPathEntry(name, 0);
 		}
 	}
@@ -521,7 +505,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 
 		if (uri==null) {
-			// if everything else fails
+			// if everything fails
 			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
 		}
 		return uri;
@@ -587,14 +571,18 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return path;
 	}
 	
-	private IPath getCanonicalFilesystemLocation(URI uri) {
-		IPath path = null;
+	private IPath getFilesystemLocation(URI uri) {
+		// EFSExtensionManager mapping
+		String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
+		uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
+		
 		try {
 			File file = new java.io.File(uri);
-			path = new Path(file.getCanonicalPath());
+			String canonicalPathStr = file.getCanonicalPath();
+			return new Path(canonicalPathStr);
 		} catch (Exception e) {
 			MakeCorePlugin.log(e);
 		}
-		return path;
+		return null;
 	}
 }

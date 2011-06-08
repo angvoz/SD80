@@ -1058,13 +1058,13 @@ public class GCCBuildCommandParserTest extends TestCase {
 		IFolder buildDir=ResourceHelper.createFolder(project, "BuildDir");
 		IFolder folder=ResourceHelper.createFolder(project, "BuildDir/Folder");
 		IFile file=ResourceHelper.createFile(project, "BuildDir/file.cpp");
+		@SuppressWarnings("unused")
 		IFile fakeFile=ResourceHelper.createFile(project, "file.cpp");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
 		
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
-		
 		ErrorParserManager epm = new ErrorParserManager(project, null);
 		epm.pushDirectoryURI(buildDir.getLocationURI());
 		
@@ -1179,8 +1179,6 @@ public class GCCBuildCommandParserTest extends TestCase {
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
 
 		ErrorParserManager epm = new ErrorParserManager(project, null);
-		// FIXME
-//		URI uriBuildDir = new URI("file:///non-existing/path");
 		URI uriBuildDir = new URI("file:/non-existing/path");
 		epm.pushDirectoryURI(uriBuildDir);
 
@@ -1538,6 +1536,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create folder structure
 		@SuppressWarnings("unused")
 		IFolder buildDir=ResourceHelper.createEfsFolder(project, "BuildDir", new URI("mem:/MappedEfsProject/BuildDir"));
+		@SuppressWarnings("unused")
 		IFolder folder=ResourceHelper.createEfsFolder(project, "BuildDir/Folder", new URI("mem:/MappedEfsProject/BuildDir/Folder"));
 		IFile file=ResourceHelper.createEfsFile(project, "BuildDir/file.cpp", new URI("mem:/MappedEfsProject/BuildDir/file.cpp"));
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);

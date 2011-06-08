@@ -67,7 +67,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private URI buildDirURI;
 
 	@SuppressWarnings("nls")
-	private final AbstractOptionParser[] optionParsers = new AbstractOptionParser[] {
+	private static final AbstractOptionParser[] optionParsers = new AbstractOptionParser[] {
 			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2"),
 			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1"),
 			new IncludeFileOptionParser("-include\\s*([\"'])(.*)\\1", "$2"),
@@ -84,7 +84,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			new LibraryFileOptionParser("-l\\s*([^\\s\"']*)", "lib$1.a"),
 	};
 
-	private abstract class AbstractOptionParser {
+	private static abstract class AbstractOptionParser {
 		protected final Pattern pattern;
 		protected final String patternStr;
 		private String nameExpression;
@@ -102,9 +102,10 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			this(pattern, nameExpression, null);
 		}
 		
-		@SuppressWarnings("nls")
 		public int getKind() {
-			return createEntry("dummy", "dummy", 0).getKind();
+			@SuppressWarnings("nls")
+			int entry = createEntry("dummy", "dummy", 0).getKind();
+			return entry;
 		}
 		
 		public abstract ICLanguageSettingEntry createEntry(String name, String value, int flag);
@@ -112,8 +113,8 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		/**
 		 * TODO: explain
 		 */
-		@SuppressWarnings("nls")
 		private String extractOption(String input) {
+			@SuppressWarnings("nls")
 			String option = input.replaceFirst("("+patternStr+").*", "$1");
 			return option;
 		}
@@ -126,7 +127,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		
 	}
 
-	private class IncludePathOptionParser extends AbstractOptionParser {
+	private static class IncludePathOptionParser extends AbstractOptionParser {
 		public IncludePathOptionParser(String pattern, String nameExpression) {
 			super(pattern, nameExpression);
 		}
@@ -137,7 +138,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		
 	}
 
-	private class IncludeFileOptionParser extends AbstractOptionParser {
+	private static class IncludeFileOptionParser extends AbstractOptionParser {
 		public IncludeFileOptionParser(String pattern, String nameExpression) {
 			super(pattern, nameExpression);
 		}
@@ -147,7 +148,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 	}
 
-	private class MacroOptionParser extends AbstractOptionParser {
+	private static class MacroOptionParser extends AbstractOptionParser {
 		private int undefFlag = 0;
 
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
@@ -163,7 +164,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 	}
 
-	private class MacroFileOptionParser extends AbstractOptionParser {
+	private static class MacroFileOptionParser extends AbstractOptionParser {
 		public MacroFileOptionParser(String pattern, String nameExpression) {
 			super(pattern, nameExpression);
 		}
@@ -173,7 +174,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 	}
 
-	private class LibraryPathOptionParser extends AbstractOptionParser {
+	private static class LibraryPathOptionParser extends AbstractOptionParser {
 		public LibraryPathOptionParser(String pattern, String nameExpression) {
 			super(pattern, nameExpression);
 		}
@@ -183,7 +184,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 	}
 
-	private class LibraryFileOptionParser extends AbstractOptionParser {
+	private static class LibraryFileOptionParser extends AbstractOptionParser {
 		public LibraryFileOptionParser(String pattern, String nameExpression) {
 			super(pattern, nameExpression);
 		}
@@ -226,7 +227,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		if (sourceFile!=null) {
 			buildDirURI = null;
 			mappedRootURI = null;
-			mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(sourceFile.getLocationURI(), "/");
+			mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(sourceFile.getLocationURI(), "/"); //$NON-NLS-1$
 			if (sourceFile!=null && parsedSourceFileName!=null && errorParserManager!=null) {
 				URI cwdURI = null;
 				IPath parsedSrcPath = new Path(parsedSourceFileName);
@@ -368,7 +369,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 
 	private URI getMappedRoot(IResource sourceFile, IPath parsedSrcPath) {
 		URI fileURI = sourceFile.getLocationURI();
-		IPath mappedRootPath = new Path("/");
+		IPath mappedRootPath = new Path("/"); //$NON-NLS-1$
 		IPath absPath = sourceFile.getLocation();
 		int absSegmentsCount = absPath.segmentCount();
 		int relSegmentsCount = parsedSrcPath.segmentCount();
@@ -436,7 +437,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			pathName = pathName.replace(File.separatorChar, '/');
 			
 			baseLocation = baseLocation.addTrailingSeparator();
-			if (pathName.startsWith("/")) {
+			if (pathName.startsWith("/")) { //$NON-NLS-1$
 				pathName = pathName.substring(1);
 			}
 			pathName = baseLocation.toString()+pathName;
@@ -497,23 +498,14 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return null;
 	}
 	
-	@SuppressWarnings("nls")
 	private static int countGroups(String str) {
-		return str.replaceAll("[^\\(]","").length();
+		@SuppressWarnings("nls")
+		int count = str.replaceAll("[^\\(]","").length();
+		return count;
 	}
 	
 	@SuppressWarnings("nls")
-	private String getPatternFileExtensions() {
-		IContentTypeManager manager = Platform.getContentTypeManager();
-		
-		Set<String> fileExts = new HashSet<String>();
-		
-		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource");
-		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-		
-		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource");
-		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-		
+	private String expressionLogicalOr(Set<String> fileExts) {
 		String pattern = "(";
 		for (String ext : fileExts) {
 			if (pattern.length()!=1)
@@ -525,6 +517,21 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			}
 		}
 		pattern += ")";
+		return pattern;
+	}
+	
+	private String getPatternFileExtensions() {
+		IContentTypeManager manager = Platform.getContentTypeManager();
+		
+		Set<String> fileExts = new HashSet<String>();
+		
+		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource"); //$NON-NLS-1$
+		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource"); //$NON-NLS-1$
+		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		String pattern = expressionLogicalOr(fileExts);
 		
 		return pattern;
 	}

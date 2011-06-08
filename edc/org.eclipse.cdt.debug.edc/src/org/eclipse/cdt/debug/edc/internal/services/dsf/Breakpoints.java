@@ -140,7 +140,15 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 
 	private ISourceLocator sourceLocator;
 
-    private Map<ICBreakpoint, IMarker> fBreakpointMarkers = new HashMap<ICBreakpoint, IMarker>();
+	/**
+	 * Breakpoint problem markers added by EDC. Note these markers have life-span
+	 * of a debug session, namely they are removed at end of a debug session or
+	 * removed when corresponding breakpoint is removed by user.
+	 * 
+	 * Currently the markers are only used for breakpoint conditions, though it should
+	 * be easy to extend the scope.....06/07/2011.
+	 */
+    private Map<IBreakpointDMContext, IMarker> fBreakpointMarkers = new HashMap<IBreakpointDMContext, IMarker>();
 
 	static private long nextBreakpointID = 1;
 
@@ -755,7 +763,8 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 	}
 
 	public void removeBreakpoint(final IBreakpointDMContext dmc, RequestMonitor rm) {
-		// Remove user breakpoint.
+		// Remove user breakpoint in the target. 
+		// This is called when user remove a breakpoint or when debug session ends.
 		//
 		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceEntry(null, EDCTrace.fixArgs(new Object[] { dmc })); }
 
@@ -775,11 +784,21 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		disableBreakpoint(userBreakpoints.get(dmc), new RequestMonitor(getExecutor(), rm) {
 
 			@Override
-			protected void handleSuccess() {
+			protected void handleCompleted() {
+				// Regardless of success or failure of removing the bp on target, we'll do following.
+				//
+				// If user removes a breakpoint in UI, the platform won't keep the BP in UI just because 
+				// of failure in removing the bp on target. However, any error passed by the "rm" will
+				// be displayed in Error Log view. 
+			
 				// Remove it from our record.
 				userBreakpoints.remove(dmc);
 
-				super.handleSuccess();
+				// Remove problem marker if any. 
+				// Note this may be called when the debug session is shut down.
+				removeBreakpointProblemMarker(dmc);
+				
+				super.handleCompleted();
 			}
 		});
 
@@ -1055,7 +1074,16 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 		if (EDCTrace.BREAKPOINTS_TRACE_ON) { EDCTrace.getTrace().traceExit(null); }
 	}
 
-	protected void addBreakpointProblemMarker(final ICBreakpoint breakpoint, final String description, final int severity) {
+	protected void addBreakpointProblemMarker(final IBreakpointDMContext targetBP,
+			final String description, final int severity) {
+		BreakpointsMediator2 bmService = getService(BreakpointsMediator2.class);
+		if (bmService == null)
+			return;
+		
+		final IBreakpoint breakpoint = bmService.getPlatformBreakpoint(null, targetBP);
+		if (breakpoint == null)
+			return;
+
         if (! (breakpoint instanceof ICLineBreakpoint))
         	return;
 
@@ -1064,7 +1092,7 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
             protected IStatus run(IProgressMonitor monitor) {
             	// If we have already have a problem marker on this breakpoint
             	// we should remove it first.
-                IMarker marker = fBreakpointMarkers.remove(breakpoint);
+                IMarker marker = fBreakpointMarkers.remove(targetBP);
                 if (marker != null) {
                     try {
                         marker.delete();
@@ -1087,16 +1115,22 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
                     problem_marker.setAttribute(IMarker.LINE_NUMBER, line_number);
 
                     // And save the baby
-                    fBreakpointMarkers.put(breakpoint, problem_marker);
+                    fBreakpointMarkers.put(targetBP, problem_marker);
                 } catch (CoreException e) {
                 }
                 
                 return Status.OK_STATUS;
             }
         }.schedule();
-    }
-
-    protected void removeBreakpointProblemMarker(final ICBreakpoint breakpoint) {
+	}
+	
+	/**
+	 * Remove problem marker added for the given target breakpoint.
+	 * Note this may be called when debug session is shutdown.
+	 *  
+	 * @param breakpoint
+	 */
+    protected void removeBreakpointProblemMarker(final IBreakpointDMContext breakpoint) {
 
         final IMarker marker = fBreakpointMarkers.remove(breakpoint);
         if (marker == null)
@@ -1165,9 +1199,9 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 					 */
 					String vstr = value.getFormattedValue();
 					if (! vstr.equals("true") && ! vstr.equals("false")) //$NON-NLS-1$ //$NON-NLS-2$
-						reportBreakpointProblem(bp.getContext(), "Breakpoint condition failed to resolve to boolean: " + vstr);
+						addBreakpointProblemMarker(bp.getContext(), "Breakpoint condition failed to resolve to boolean: " + vstr, IMarker.SEVERITY_WARNING);
 					else // remove any problem marker
-						reportBreakpointProblem(bp.getContext(), "");
+						removeBreakpointProblemMarker(bp.getContext());
 					
 					if (!vstr.equals("false"))
 					{
@@ -1181,27 +1215,5 @@ public class Breakpoints extends AbstractEDCService implements IBreakpoints, IDS
 				}
 			}
 		});
-	}
-
-	/**
-	 * Report breakpoint problem in breakpoint marker.
-	 * 
-	 * @param targetBP
-	 * @param description - empty string indicates removing problem marker. 
-	 */
-	protected void reportBreakpointProblem(IBreakpointDMContext targetBP, String description) {
-		BreakpointsMediator2 bmService = getService(BreakpointsMediator2.class);
-		if (bmService == null) {
-			assert false;
-			return;
-		}
-		IBreakpoint platformBP = bmService.getPlatformBreakpoint(null, targetBP);
-		if (platformBP == null)
-			return;
-		
-		if (description.length() > 0)
-			addBreakpointProblemMarker((ICBreakpoint)platformBP, description, IMarker.SEVERITY_WARNING);
-		else
-			removeBreakpointProblemMarker((ICBreakpoint)platformBP);
 	}
 }

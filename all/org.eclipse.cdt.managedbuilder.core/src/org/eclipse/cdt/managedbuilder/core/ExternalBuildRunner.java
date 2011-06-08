@@ -413,12 +413,13 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 		ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(cfg);
 		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider lsProvider : lsProviders) {
-			if (lsProvider instanceof IConsoleParser && !(lsProvider instanceof AbstractBuiltinSpecsDetector)) {
+			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(lsProvider);
+			if (rawProvider instanceof IConsoleParser && !(rawProvider instanceof AbstractBuiltinSpecsDetector)) {
 				try {
-					if (lsProvider instanceof AbstractBuildCommandParser) {
-						((AbstractBuildCommandParser)lsProvider).startup(cfgDescription);
+					if (rawProvider instanceof AbstractBuildCommandParser) {
+						((AbstractBuildCommandParser)rawProvider).startup(cfgDescription);
 					}
-					clParserList.add((IConsoleParser)lsProvider);
+					clParserList.add((IConsoleParser)rawProvider);
 				} catch (CoreException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

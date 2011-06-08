@@ -1222,7 +1222,6 @@ public class GCCBuildCommandParserTest extends TestCase {
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
 
 		ErrorParserManager epm = new ErrorParserManager(project, null);
-//		URI uriBuildDir = new URI("file:///BuildDir");
 		URI uriBuildDir = new URI("file:/BuildDir");
 		epm.pushDirectoryURI(uriBuildDir);
 

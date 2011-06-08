@@ -8,7 +8,7 @@
       <errorparser
             class="org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandPatternHighlighter"
             id="org.eclipse.cdt.core.tests.make.core.GCCBuildCommandPatternHighlighter"
-            name="Test Plugin BOP Patterns Highlighter">
+            name="Test Plugin GCC BOP Patterns Highlighter">
       </errorparser>
    </extension>
 </plugin>

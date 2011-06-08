@@ -67,7 +67,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private URI buildDirURI;
 
 	@SuppressWarnings("nls")
-	private static final AbstractOptionParser[] optionParsers = new AbstractOptionParser[] {
+	private static final AbstractOptionParser[] optionParsers = {
 			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2"),
 			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1"),
 			new IncludeFileOptionParser("-include\\s*([\"'])(.*)\\1", "$2"),

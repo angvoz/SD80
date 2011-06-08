@@ -551,6 +551,11 @@
             icon="icons/obj16/log_obj.gif"
             class="org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser">
       </class-association>
+      <class-association
+            class="org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandParser"
+            icon="icons/obj16/log_obj.gif"
+            page="org.eclipse.cdt.make.internal.ui.preferences.GCCBuildCommandParserOptionPage">
+      </class-association>
    </extension>
    <extension
          point="org.eclipse.cdt.core.CBuildConsole">

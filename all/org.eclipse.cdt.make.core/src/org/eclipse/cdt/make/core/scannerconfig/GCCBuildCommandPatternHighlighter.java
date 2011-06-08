@@ -14,29 +14,37 @@ import org.eclipse.cdt.core.IErrorParser2;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
 import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 
 
 public class GCCBuildCommandPatternHighlighter extends RegexErrorParser implements IErrorParser2{
+	// ID of the parser taken from the extension point
+	private static final String GCC_BUILD_COMMAND_PARSER_EXT = "org.eclipse.cdt.make.core.build.command.parser.gcc"; //$NON-NLS-1$
+
 	public GCCBuildCommandPatternHighlighter() {
-		GCCBuildCommandParser gccBuildCommandParser = new GCCBuildCommandParser();
+		init(GCC_BUILD_COMMAND_PARSER_EXT);
+	}
+
+	private GCCBuildCommandPatternHighlighter(String id, String name) {
+		super(id, name);
+	}
+	
+	protected void init(String buildCommandParserId) {
+		GCCBuildCommandParser gccBuildCommandParser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(buildCommandParserId);
 		{
 			String pat = gccBuildCommandParser.getPatternCompileUnquotedFile();
-			String fileExpr = "$"+GCCBuildCommandParser.PATTERN_UNQUOTED_FILE_GROUP; //$NON-NLS-1$
+			String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternUnquotedFile(); //$NON-NLS-1$
 			String descExpr = "$0"; //$NON-NLS-1$
 			addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
 		}
 		{
 			String pat = gccBuildCommandParser.getPatternCompileQuotedFile();
-			String fileExpr = "$"+GCCBuildCommandParser.PATTERN_QUOTED_FILE_GROUP; //$NON-NLS-1$
+			String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternQuotedFile(); //$NON-NLS-1$
 			String descExpr = "$0"; //$NON-NLS-1$
 			addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
 		}
 	}
 	
-	private GCCBuildCommandPatternHighlighter(String id, String name) {
-		super(id, name);
-	}
-
 
 	@Override
 	public Object clone() throws CloneNotSupportedException {

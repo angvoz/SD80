@@ -51,59 +51,23 @@ import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.content.IContentTypeManager;
 
 public class GCCBuildCommandParser extends AbstractBuildCommandParser implements ILanguageSettingsEditableProvider {
-	private static final String PATTERN_GCC_COMMAND = "((gcc)|(g\\+\\+)|(c\\+\\+))"; //$NON-NLS-1$
 	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
 	private static final int PATTERN_OPTION_GROUP = 0;
 
-	@SuppressWarnings("nls")
-	private static int countGroups(String str) {
-		return str.replaceAll("[^\\(]","").length();
-	}
+	private ErrorParserManager errorParserManager = null;
+	private IResource sourceFile = null;
+	private String parsedSourceFileName = null;
 	
-	@SuppressWarnings("nls")
-	private String getPatternFileExtensions() {
-		IContentTypeManager manager = Platform.getContentTypeManager();
-		
-		Set<String> fileExts = new HashSet<String>();
-		
-		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource");
-		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-		
-		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource");
-		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-		
-		String pattern = "(";
-		for (String ext : fileExts) {
-			if (pattern.length()!=1)
-				pattern += "|";
-			pattern += "(" + Pattern.quote(ext) + ")";
-			ext = ext.toUpperCase();
-			if (!fileExts.contains(ext)) {
-				pattern += "|(" + Pattern.quote(ext) + ")";
-			}
-		}
-		pattern += ")";
-		
-		return pattern;
-	}
+	/*
+	 * Where source tree starts if mapped. This kind of mapping applied automatically
+	 * in cases when the absolute path to the source file on the remote system is
+	 * simulated inside a project in the workspace.
+	 */
+	private URI mappedRootURI = null;
+	private URI buildDirURI;
 
 	@SuppressWarnings("nls")
-	/*package*/ String getPatternCompileUnquotedFile() {
-		String patternFileName = "([^'\"\\s]*\\." + getPatternFileExtensions() + ")";
-		return "\\s*\"?" + PATTERN_GCC_COMMAND + "\"?.*\\s" + patternFileName + "(\\s.*)?[\r\n]*";
-	}
-	/*package*/ static final int PATTERN_UNQUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+1;
-
-	@SuppressWarnings("nls")
-	/*package*/ String getPatternCompileQuotedFile() {
-		String patternFileName = "(.*\\." + getPatternFileExtensions() + ")";
-		return "\\s*\"?" +PATTERN_GCC_COMMAND + "\"?.*\\s"+"(['\"])" + patternFileName + "\\"+(countGroups(PATTERN_GCC_COMMAND)+1)+"(\\s.*)?[\r\n]*";
-	}
-	/*package*/ static final int PATTERN_QUOTED_FILE_GROUP = countGroups(PATTERN_GCC_COMMAND)+2;
-	
-
-	@SuppressWarnings("nls")
-	private final OptionParser[] optionParsers = new OptionParser[] {
+	private final AbstractOptionParser[] optionParsers = new AbstractOptionParser[] {
 			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2"),
 			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1"),
 			new IncludeFileOptionParser("-include\\s*([\"'])(.*)\\1", "$2"),
@@ -119,45 +83,39 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			new LibraryPathOptionParser("-L\\s*([^\\s\"']*)", "$1"),
 			new LibraryFileOptionParser("-l\\s*([^\\s\"']*)", "lib$1.a"),
 	};
-	private ErrorParserManager errorParserManager = null;
-	private IResource sourceFile = null;
-	private String parsedSourceFileName = null;
-	
-	private URI buildDirURI;
-	
-	/*
-	 * Where source tree starts if mapped. This kind of mapping applied automatically
-	 * in cases when the absolute path to the source file on the remote system is
-	 * simulated inside a project in the workspace.
-	 */
-	private URI mappedRootURI = null;
 
-	private abstract class OptionParser {
+	private abstract class AbstractOptionParser {
 		protected final Pattern pattern;
 		protected final String patternStr;
+		private String nameExpression;
+		private String valueExpression;
 
-		public OptionParser(String pattern) {
+		public AbstractOptionParser(String pattern, String nameExpression, String valueExpression) {
 			this.patternStr = pattern;
+			this.nameExpression = nameExpression;
+			this.valueExpression = valueExpression;
+
 			this.pattern = Pattern.compile(pattern);
 		}
 
-		public abstract ICLanguageSettingEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager);
+		public AbstractOptionParser(String pattern, String nameExpression) {
+			this(pattern, nameExpression, null);
+		}
+		
+		@SuppressWarnings("nls")
+		public int getKind() {
+			return createEntry("dummy", "dummy", 0).getKind();
+		}
+		
+		public abstract ICLanguageSettingEntry createEntry(String name, String value, int flag);
 
 		/**
 		 * TODO: explain
 		 */
+		@SuppressWarnings("nls")
 		private String extractOption(String input) {
 			String option = input.replaceFirst("("+patternStr+").*", "$1");
 			return option;
-		}
-
-		protected ICLanguageSettingEntry parse(String input, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String option = extractOption(input);
-			Matcher matcher = pattern.matcher(option);
-			if (matcher.matches()) {
-				return createEntry(matcher, sourceFile, parsedSourceFileName, errorParserManager);
-			}
-			return null;
 		}
 
 		protected String parseStr(Matcher matcher, String str) {
@@ -168,165 +126,74 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		
 	}
 
-	private class IncludePathOptionParser extends OptionParser {
-		private String nameExpression;
-
+	private class IncludePathOptionParser extends AbstractOptionParser {
 		public IncludePathOptionParser(String pattern, String nameExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
+			super(pattern, nameExpression);
 		}
 		@Override
-		public CIncludePathEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-			
-			if (isExpandRelativePaths()) {
-				URI uri = getURI(name);
-				if (uri!=null) {
-					IPath path = getFullWorkspacePathForFolder(uri);
-					if (path!=null)
-						return new CIncludePathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-						
-					path = getFilesystemLocation(uri);
-					if (path!=null)
-						return new CIncludePathEntry(path, 0);
-				}
-			}
-			
-			return new CIncludePathEntry(name, 0);
+		public CIncludePathEntry createEntry(String name, String value, int flag) {
+			return new CIncludePathEntry(value, flag);
 		}
 		
 	}
 
-	private class IncludeFileOptionParser extends OptionParser {
-		private String nameExpression;
-
+	private class IncludeFileOptionParser extends AbstractOptionParser {
 		public IncludeFileOptionParser(String pattern, String nameExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
+			super(pattern, nameExpression);
 		}
 		@Override
-		public CIncludeFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-			
-			if (isExpandRelativePaths()) {
-				URI uri = getURI(name);
-				if (uri!=null) {
-					IPath path = getFullWorkspacePathForFile(uri);
-					if (path!=null)
-						return new CIncludeFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					
-					path = getFilesystemLocation(uri);
-					if (path!=null)
-						return new CIncludeFileEntry(path, 0);
-				}
-			}
-			
-			return new CIncludeFileEntry(name, 0);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CIncludeFileEntry(value, flag);
 		}
-
 	}
 
-	private class MacroOptionParser extends OptionParser {
-		private String nameExpression;
-		private String valueExpression;
-		private int flag = 0;
+	private class MacroOptionParser extends AbstractOptionParser {
+		private int undefFlag = 0;
 
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
-			this.valueExpression = valueExpression;
+			super(pattern, nameExpression, valueExpression);
 		}
-		
 		public MacroOptionParser(String pattern, String nameExpression, int flag) {
-			super(pattern);
-			this.nameExpression = nameExpression;
-			this.valueExpression = null;
-			this.flag = flag;
+			super(pattern, nameExpression);
+			this.undefFlag = flag;
 		}
-		
 		@Override
-		public CMacroEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-			String value = null;
-			if ((flag&ICSettingEntry.UNDEFINED) != ICSettingEntry.UNDEFINED)
-				value = parseStr(matcher, valueExpression);
-			return new CMacroEntry(name, value, flag);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CMacroEntry(name, value, flag | undefFlag);
 		}
-
 	}
 
-	private class MacroFileOptionParser extends OptionParser {
-		private String nameExpression;
-
+	private class MacroFileOptionParser extends AbstractOptionParser {
 		public MacroFileOptionParser(String pattern, String nameExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
+			super(pattern, nameExpression);
 		}
 		@Override
-		public CMacroFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-
-			if (isExpandRelativePaths()) {
-				URI uri = getURI(name);
-				if (uri!=null) {
-					IPath path = getFullWorkspacePathForFile(uri);
-					if (path!=null)
-						return new CMacroFileEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					
-					path = getFilesystemLocation(uri);
-					if (path!=null)
-						return new CMacroFileEntry(path, 0);
-				}
-			}
-			
-			return new CMacroFileEntry(name, 0);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CMacroFileEntry(value, flag);
 		}
-
 	}
 
-	private class LibraryPathOptionParser extends OptionParser {
-		private String nameExpression;
-
+	private class LibraryPathOptionParser extends AbstractOptionParser {
 		public LibraryPathOptionParser(String pattern, String nameExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
+			super(pattern, nameExpression);
 		}
 		@Override
-		public CLibraryPathEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-			
-			if (isExpandRelativePaths()) {
-				URI uri = getURI(name);
-				if (uri!=null) {
-					IPath path = getFullWorkspacePathForFolder(uri);
-					if (path!=null)
-						return new CLibraryPathEntry(path, ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED);
-					
-					path = getFilesystemLocation(uri);
-					if (path!=null)
-						return new CLibraryPathEntry(path, 0);
-				}
-			}
-			
-			return new CLibraryPathEntry(name, 0);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CLibraryPathEntry(value, flag);
 		}
 	}
 
-	private class LibraryFileOptionParser extends OptionParser {
-		private String nameExpression;
-
+	private class LibraryFileOptionParser extends AbstractOptionParser {
 		public LibraryFileOptionParser(String pattern, String nameExpression) {
-			super(pattern);
-			this.nameExpression = nameExpression;
+			super(pattern, nameExpression);
 		}
 		@Override
-		public CLibraryFileEntry createEntry(Matcher matcher, IResource sourceFile, String parsedSourceFileName, ErrorParserManager errorParserManager) {
-			String name = parseStr(matcher, nameExpression);
-			return new CLibraryFileEntry(name, 0);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CLibraryFileEntry(value, flag);
 		}
-
 	}
 
+	
 	@Override
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
@@ -336,12 +203,12 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
 
 		if (fileMatcher.matches()) {
-			parsedSourceFileName = fileMatcher.group(PATTERN_UNQUOTED_FILE_GROUP);
+			parsedSourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
 		} else {
 			String patternCompileQuotedFile = getPatternCompileQuotedFile();
 			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
 			if (fileMatcher.matches()) {
-				parsedSourceFileName = fileMatcher.group(PATTERN_QUOTED_FILE_GROUP);
+				parsedSourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
 			}
 		}
 
@@ -396,8 +263,50 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			while (optionMatcher.find()) {
 				String option = optionMatcher.group(PATTERN_OPTION_GROUP).trim();
 
-				for (OptionParser optionParser : optionParsers) {
-					ICLanguageSettingEntry entry = optionParser.parse(option, sourceFile, parsedSourceFileName, errorParserManager);
+				for (AbstractOptionParser optionParser : optionParsers) {
+					ICLanguageSettingEntry entry = null;
+					
+					String opt = optionParser.extractOption(option);
+					Matcher matcher = optionParser.pattern.matcher(opt);
+					if (matcher.matches()) {
+						String name = optionParser.parseStr(matcher, optionParser.nameExpression);
+						String value = null;
+						int flag = 0;
+
+						int kind = optionParser.getKind();
+						switch (kind) {
+						case ICSettingEntry.MACRO:
+							value = optionParser.parseStr(matcher, optionParser.valueExpression);
+							break;
+						case ICSettingEntry.INCLUDE_PATH:
+						case ICSettingEntry.INCLUDE_FILE:
+						case ICSettingEntry.MACRO_FILE:
+						case ICSettingEntry.LIBRARY_PATH:
+							if (isExpandRelativePaths()) {
+								URI uri = getURI(name);
+								if (uri!=null) {
+									IPath path = getFullWorkspacePath(uri, kind);
+									if (path!=null) {
+										name = path.toString();
+										flag = ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
+									} else {
+										path = getFilesystemLocation(uri);
+										if (path!=null) {
+											name = path.toString();
+										}
+									}
+								}
+							}
+							value = name;
+							break;
+						case ICSettingEntry.LIBRARY_FILE:
+							value = name;
+							break;
+						} 
+
+						entry = optionParser.createEntry(name, value, flag);
+					}
+
 					if (entry!=null && !entries.contains(entry)) {
 						entries.add(entry);
 						break;
@@ -492,7 +401,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		URI uri = null;
 		
 		Path path = new Path(name);
-		URI baseURI = path.isAbsolute() ? mappedRootURI : buildDirURI;
+		URI baseURI = path.isAbsolute() ? mappedRootURI :  buildDirURI;
 		
 		if (buildDirURI.getScheme().equals(EFS.SCHEME_FILE)) {
 			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
@@ -545,32 +454,34 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return uri;
 	}
 
-	
-	
-	private IPath getFullWorkspacePathForFolder(URI uri) {
+	private IPath getFullWorkspacePath(URI uri, int kind) {
 		IPath path = null;
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IContainer[] folders = root.findContainersForLocationURI(uri);
-		if (folders.length>0) {
-			IContainer container = folders[0];
-			if ((container instanceof IProject || container instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
-				path = container.getFullPath();
+		
+		switch (kind) {
+		case ICSettingEntry.INCLUDE_PATH:
+		case ICSettingEntry.LIBRARY_PATH:
+			IContainer[] folders = root.findContainersForLocationURI(uri);
+			if (folders.length>0) {
+				IContainer container = folders[0];
+				if ((container instanceof IProject || container instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
+					path = container.getFullPath();
+				}
 			}
+			break;
+		case ICSettingEntry.INCLUDE_FILE:
+		case ICSettingEntry.MACRO_FILE:
+			IFile[] files = root.findFilesForLocationURI(uri);
+			if (files.length>0) {
+				IFile file = files[0];
+				path = file.getFullPath();
+			}
+			break;
 		}
+
 		return path;
 	}
 
-	private IPath getFullWorkspacePathForFile(URI uri) {
-		IPath path = null;
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IFile[] files = root.findFilesForLocationURI(uri);
-		if (files.length>0) {
-			IFile file = files[0];
-			path = file.getFullPath();
-		}
-		return path;
-	}
-	
 	private IPath getFilesystemLocation(URI uri) {
 		// EFSExtensionManager mapping
 		String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
@@ -585,4 +496,63 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 		return null;
 	}
+	
+	@SuppressWarnings("nls")
+	private static int countGroups(String str) {
+		return str.replaceAll("[^\\(]","").length();
+	}
+	
+	@SuppressWarnings("nls")
+	private String getPatternFileExtensions() {
+		IContentTypeManager manager = Platform.getContentTypeManager();
+		
+		Set<String> fileExts = new HashSet<String>();
+		
+		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource");
+		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource");
+		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+		
+		String pattern = "(";
+		for (String ext : fileExts) {
+			if (pattern.length()!=1)
+				pattern += "|";
+			pattern += "(" + Pattern.quote(ext) + ")";
+			ext = ext.toUpperCase();
+			if (!fileExts.contains(ext)) {
+				pattern += "|(" + Pattern.quote(ext) + ")";
+			}
+		}
+		pattern += ")";
+		
+		return pattern;
+	}
+
+	@SuppressWarnings("nls")
+	protected String getGccCommandPattern() {
+		String parameter = getCustomParameter();
+		return "(" + parameter + ")";
+	}
+	
+	@SuppressWarnings("nls")
+	/*package*/ String getPatternCompileUnquotedFile() {
+		String patternFileName = "([^'\"\\s]*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" + getGccCommandPattern() + "\"?.*\\s" + patternFileName + "(\\s.*)?[\r\n]*";
+	}
+
+	@SuppressWarnings("nls")
+	/*package*/ String getPatternCompileQuotedFile() {
+		String patternFileName = "(.*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" +getGccCommandPattern() + "\"?.*\\s"+"(['\"])" + patternFileName + "\\"+(countGroups(getGccCommandPattern())+1)+"(\\s.*)?[\r\n]*";
+	}
+
+	/*package*/ int getGroupForPatternUnquotedFile() {
+		return countGroups(getGccCommandPattern())+1;
+	}
+
+	/*package*/ int getGroupForPatternQuotedFile() {
+		return countGroups(getGccCommandPattern())+2;
+	}
+	
 }

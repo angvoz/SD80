@@ -57,14 +57,6 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	private ErrorParserManager errorParserManager = null;
 	private IResource sourceFile = null;
 	private String parsedSourceFileName = null;
-	
-	/*
-	 * Where source tree starts if mapped. This kind of mapping applied automatically
-	 * in cases when the absolute path to the source file on the remote system is
-	 * simulated inside a project in the workspace.
-	 */
-	private URI mappedRootURI = null;
-	private URI buildDirURI;
 
 	@SuppressWarnings("nls")
 	private static final AbstractOptionParser[] optionParsers = {
@@ -198,62 +190,43 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 	@Override
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
-		sourceFile = null;
-		parsedSourceFileName = null;
-		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
-		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
-
-		if (fileMatcher.matches()) {
-			parsedSourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
-		} else {
-			String patternCompileQuotedFile = getPatternCompileQuotedFile();
-			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
-			if (fileMatcher.matches()) {
-				parsedSourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
-			}
-		}
-
-		if (parsedSourceFileName!=null) {
-			// TODO: move to AbstractBuildCommandParser
-			if (epm!=null) {
-				sourceFile = epm.findFileName(parsedSourceFileName);
-			} else {
-				IProject project = getProject();
-				sourceFile = project.findMember(parsedSourceFileName);
-			}
-		}
-
+		parsedSourceFileName = parseSourceFileName(line);
+		sourceFile = findSourceFile(parsedSourceFileName);
 
 		if (sourceFile!=null) {
-			buildDirURI = null;
-			mappedRootURI = null;
-			mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(sourceFile.getLocationURI(), "/"); //$NON-NLS-1$
-			if (sourceFile!=null && parsedSourceFileName!=null && errorParserManager!=null) {
-				URI cwdURI = null;
-				IPath parsedSrcPath = new Path(parsedSourceFileName);
+			IPath parsedSrcPath = new Path(parsedSourceFileName);
+			URI buildDirURI = null;
+			URI cwdURI = null;
+			
+			/*
+			 * Where source tree starts if mapped. This kind of mapping applied automatically
+			 * in cases when the absolute path to the source file on the remote system is
+			 * simulated inside a project in the workspace.
+			 */
+			URI mappedRootURI = null;
+			
+			if (isExpandRelativePaths()) {
 				if (parsedSrcPath.isAbsolute()) {
 					mappedRootURI = getMappedRoot(sourceFile, parsedSrcPath);
 				} else {
+					mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(sourceFile.getLocationURI(), "/"); //$NON-NLS-1$
+				}
+				
+				if (!parsedSrcPath.isAbsolute()) {
 					cwdURI = findBaseLocationURI(sourceFile.getLocationURI(), parsedSourceFileName);
 				}
-				if (cwdURI==null) {
+				if (cwdURI==null && errorParserManager!=null) {
 					cwdURI = errorParserManager.getWorkingDirectoryURI();
 				}
-
-				
-				String cwdPath = EFSExtensionManager.getDefault().getPathFromURI(cwdURI);
+	
+				String cwdPath = cwdURI!=null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
 				if (cwdPath!=null && mappedRootURI!=null) {
 					buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
 				} else {
 					buildDirURI = cwdURI;
 				}
-			}
-			
-			if (buildDirURI==null) {
-				if (errorParserManager!=null) {
-					// backing to ErrorParserManager if CWD not found
-					buildDirURI = errorParserManager.getWorkingDirectoryURI();
-				} else if (sourceFile!=null) {
+				
+				if (buildDirURI==null) {
 					// FIXME - take build dir from configuration
 					buildDirURI = sourceFile.getProject().getLocationURI();
 				}
@@ -284,7 +257,8 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 						case ICSettingEntry.MACRO_FILE:
 						case ICSettingEntry.LIBRARY_PATH:
 							if (isExpandRelativePaths()) {
-								URI uri = getURI(name);
+								URI baseURI = new Path(name).isAbsolute() ? mappedRootURI :  buildDirURI;
+								URI uri = getURI(name, baseURI);
 								if (uri!=null) {
 									IPath path = getFullWorkspacePath(uri, kind);
 									if (path!=null) {
@@ -329,6 +303,37 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			
 		}
 		return false;
+	}
+
+	// TODO: move to AbstractBuildCommandParser
+	private IResource findSourceFile(String parsedSourceFileName) {
+		IResource sourceFile = null;
+		if (parsedSourceFileName!=null) {
+			if (errorParserManager!=null) {
+				sourceFile = errorParserManager.findFileName(parsedSourceFileName);
+			} else {
+				IProject project = getProject();
+				sourceFile = project.findMember(parsedSourceFileName);
+			}
+		}
+		return sourceFile;
+	}
+
+	private String parseSourceFileName(String line) {
+		String sourceFileName = null;
+		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
+		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
+
+		if (fileMatcher.matches()) {
+			sourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
+		} else {
+			String patternCompileQuotedFile = getPatternCompileQuotedFile();
+			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
+			if (fileMatcher.matches()) {
+				sourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
+			}
+		}
+		return sourceFileName;
 	}
 	
 	private URI findBaseLocationURI(URI fileURI, String relativeFileName) {
@@ -398,20 +403,18 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		return (GCCBuildCommandParser) super.clone();
 	}
 
-	private URI getURI(String name) {
+	private URI getURI(String name, URI baseURI) {
 		URI uri = null;
 		
-		Path path = new Path(name);
-		URI baseURI = path.isAbsolute() ? mappedRootURI :  buildDirURI;
-		
-		if (buildDirURI.getScheme().equals(EFS.SCHEME_FILE)) {
+		if (baseURI.getScheme().equals(EFS.SCHEME_FILE)) {
+			// location on the local filesystem
 			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
 			// careful not to use 'path' here but 'name' as we want to properly navigate symlinks
 			uri = resolvePathFromBaseLocation(name, baseLocation);
 		} else {
 			// use canonicalized path here, in particular replace all '\' with '/' for Windows paths
+			Path path = new Path(name);
 			uri = EFSExtensionManager.getDefault().append(baseURI, path.toString());
-			
 		}
 
 		if (uri==null) {

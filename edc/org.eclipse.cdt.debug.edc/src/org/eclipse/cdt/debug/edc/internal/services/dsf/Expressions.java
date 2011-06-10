@@ -65,13 +65,16 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
 import org.eclipse.cdt.dsf.debug.service.IExpressions2;
 import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
+import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.utils.Addr64;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 
 public class Expressions extends AbstractEDCService implements IEDCExpressions {
 
@@ -1052,6 +1055,45 @@ public class Expressions extends AbstractEDCService implements IEDCExpressions {
 			String exprName = expr.getExpression();
 			IType typePointedTo = TypeUtils.getStrippedType(exprType.getType());
 
+			// Try to resolve opaque pointer. 
+			// Note this may take some time depending on symbol file size. 
+			// ........05/19/11
+			//
+			if (TypeUtils.isOpaqueType(typePointedTo)) {
+				final Symbols symService = getService(Symbols.class);
+				assert symService != null;
+				
+				final ISymbolDMContext symCtx = DMContexts.getAncestorOfType(expr, ISymbolDMContext.class);
+				if (symCtx != null) {
+					final ICompositeType[] resolved = {null};
+					final IType original = typePointedTo;
+					Job j = new Job("Resolving opaque type" + original.getName()) {
+						@Override
+						protected IStatus run(IProgressMonitor monitor) {
+							monitor.beginTask("Resolving opaque type: " + original.getName(), IProgressMonitor.UNKNOWN);
+							resolved[0] = symService.resolveOpaqueType(symCtx, (ICompositeType)original);
+							monitor.done();
+							return Status.OK_STATUS;
+						}};
+						
+					j.schedule();
+					try {
+						j.join();
+					} catch (InterruptedException e) {
+						// ignore
+					}
+					
+					if (resolved[0] != null) {
+						typePointedTo = resolved[0];
+						
+						// Make the pointer type points to the resolved type
+						// so that we won't need to resolve the opaque type again
+						// and again.
+						exprType.setType(resolved[0]);
+					}
+				}
+			}
+			
 			// If expression name already starts with "&" (e.g. "&struct"), indirect it first
 			boolean indirected = false;
 			

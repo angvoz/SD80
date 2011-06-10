@@ -11,6 +11,7 @@
 package org.eclipse.cdt.debug.edc.internal.services.dsf;
 
 import java.lang.ref.WeakReference;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,10 +19,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.cdt.core.IAddress;
+import org.eclipse.cdt.debug.edc.internal.EDCDebugger;
+import org.eclipse.cdt.debug.edc.internal.EDCTrace;
+import org.eclipse.cdt.debug.edc.internal.services.dsf.Modules.ModuleDMC;
+import org.eclipse.cdt.debug.edc.internal.symbols.ICompositeType;
 import org.eclipse.cdt.debug.edc.internal.symbols.dwarf.EDCSymbolReader;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.DebugInfoProviderFactory;
 import org.eclipse.cdt.debug.edc.internal.symbols.files.ExecutableSymbolicsReaderFactory;
 import org.eclipse.cdt.debug.edc.services.AbstractEDCService;
+import org.eclipse.cdt.debug.edc.services.IEDCDMContext;
+import org.eclipse.cdt.debug.edc.services.IEDCExecutionDMC;
 import org.eclipse.cdt.debug.edc.services.IEDCModuleDMContext;
 import org.eclipse.cdt.debug.edc.services.IEDCModules;
 import org.eclipse.cdt.debug.edc.services.IEDCSymbols;
@@ -37,13 +44,17 @@ import org.eclipse.cdt.debug.edc.symbols.IModuleLineEntryProvider;
 import org.eclipse.cdt.debug.edc.symbols.IModuleScope;
 import org.eclipse.cdt.debug.edc.symbols.IScope;
 import org.eclipse.cdt.debug.edc.symbols.ISymbol;
+import org.eclipse.cdt.debug.edc.symbols.IType;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IModules.IModuleDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.ISymbols;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.debug.core.model.ISourceLocator;
 
 public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols {
@@ -249,6 +260,82 @@ public class Symbols extends AbstractEDCService implements ISymbols, IEDCSymbols
 		readerCache.clear();
 	}
 
+	/**
+	 * Given an opaque composite type, search the symbol context for definition
+	 * of the type.
+	 * 
+	 * A C/C++ opaque type is usually used in opaque pointer, e.g.
+	 * 
+	 * <pre>
+	 * typedef class PrivateType* OpaquePTR;
+	 * </pre>
+	 * 
+	 * The actual definition of the "PrivateType" is usually in another
+	 * library/DLL with or without debug info.<br>
+	 * <br>
+	 * This method will search all modules loaded in the symbol context (usually
+	 * a process) until it finds a non-opaque type with the same name as the
+	 * given opaque type. If a loaded module has no debug info, it will just be
+	 * skipped.
+	 * 
+	 * @param symCtx
+	 *            the symbol context (usually a process)
+	 * @param type
+	 *            the opaque composite type
+	 * @return a defined type; null if no defined type is found or the given
+	 *         type is not opaque.
+	 */
+	public ICompositeType resolveOpaqueType(ISymbolDMContext symCtx, ICompositeType type) {
+		ICompositeType result = null;
+		if (type == null || ! type.isOpaque()) {
+			return result;
+		}
+	
+		if (EDCTrace.SYMBOL_READER_TRACE_ON) { 
+			EDCTrace.getTrace().traceEntry(null, "Resolve opaque type \"" + type.getName() + "\" in " + EDCTrace.fixArg(symCtx)); 
+		}
+		
+		IModuleDMContext[] moduleList = null;
+
+		Modules modulesService = getService(Modules.class);
+		assert(modulesService != null);
+		
+		if (symCtx instanceof IEDCExecutionDMC) {
+			String symContextID = ((IEDCDMContext) symCtx).getID();
+			moduleList = modulesService.getModulesForContext(symContextID);
+		} else if (symCtx instanceof IModuleDMContext) {
+			moduleList = new IModuleDMContext[1];
+			moduleList[0] = (IModuleDMContext) symCtx;
+		} else {
+			// should not happen
+			Status s = new Status(IStatus.ERROR, EDCDebugger.PLUGIN_ID, REQUEST_FAILED, MessageFormat.format(
+					"Unknown class implementing ISymbolDMContext : {0}", symCtx.getClass().getName()), null);
+			
+			if (EDCTrace.SYMBOL_READER_TRACE_ON)
+				EDCTrace.getTrace().traceExit(null,	s);
+			return result;
+		}
+
+		for (IModuleDMContext module : moduleList) {
+			ModuleDMC mdmc = (ModuleDMC) module;
+			EDCSymbolReader reader = (EDCSymbolReader)mdmc.getSymbolReader();
+
+			if (reader == null || reader.getDebugInfoProvider() == null) // no debug info 
+				continue;
+			
+			Collection<IType> types = reader.getDebugInfoProvider().getTypesByName(type.getName());
+			for (IType t : types) {
+				if (t instanceof ICompositeType && ! ((ICompositeType)t).isOpaque()) {
+					result = (ICompositeType)t;
+					break;
+				}
+			}
+			
+		}
+		
+		return result;
+	}
+	
 	/**
 	 * A wrapper method that calls into symbol reader to get runtime address(es)
 	 * for a given function name. 

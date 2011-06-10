@@ -1247,7 +1247,110 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(new CIncludePathEntry(buildDir.getFullPath().append("MissingFolder2"), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(4));
 		}
 	}
+	
+	/**
+	 */
+	public void testPathEntry_MappedFolderInProject() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		IFile file=ResourceHelper.createFile(project, "BuildDir/file.cpp");
+		IFolder mappedFolder=ResourceHelper.createFolder(project, "Mapped/Folder");
+		IFolder folder=ResourceHelper.createFolder(project, "Mapped/Folder/Subfolder");
+		@SuppressWarnings("unused")
+		IFolder amFolder1=ResourceHelper.createFolder(project, "One/Ambiguous/Folder");
+		@SuppressWarnings("unused")
+		IFolder amFolder2=ResourceHelper.createFolder(project, "Another/Ambiguous/Folder");
+		
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I/Folder/Subfolder"
+				+ " -I/Mapped/Folder"
+				+ " -I/Ambiguous/Folder"
+				+ " -I/Missing/Folder"
+				+ " file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+			assertEquals(new CIncludePathEntry(mappedFolder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(1));
+		}
+		{
+			IPath path = new Path("/Ambiguous/Folder").setDevice(file.getLocation().getDevice());
+			assertEquals(new CIncludePathEntry(path, 0), entries.get(2));
+		}
+		{
+			IPath path = new Path("/Missing/Folder").setDevice(file.getLocation().getDevice());
+			assertEquals(new CIncludePathEntry(path, 0), entries.get(3));
+		}
+	}
 
+	/**
+	 */
+	public void testPathEntry_MappedFolderInAnotherProject() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		// create files and folders
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		// another project
+		IProject anotherProject = ResourceHelper.createCDTProjectWithConfig(projectName+"-another");
+		IFolder folder=ResourceHelper.createFolder(anotherProject, "Mapped/Folder/Subfolder");
+		@SuppressWarnings("unused")
+		IFolder amFolder1=ResourceHelper.createFolder(anotherProject, "One/Ambiguous/Folder");
+		@SuppressWarnings("unused")
+		IFolder amFolder2=ResourceHelper.createFolder(anotherProject, "Another/Ambiguous/Folder");
+
+		
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I/Folder/Subfolder"
+				+ " -I/Ambiguous/Folder"
+				+ " -I/Missing/Folder"
+				+ " file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(folder.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+		}
+		{
+			IPath path = new Path("/Ambiguous/Folder").setDevice(file.getLocation().getDevice());
+			assertEquals(new CIncludePathEntry(path, 0), entries.get(1));
+		}
+		{
+			IPath path = new Path("/Missing/Folder").setDevice(file.getLocation().getDevice());
+			assertEquals(new CIncludePathEntry(path, 0), entries.get(2));
+		}
+	}
+	
 	/**
 	 */
 	public void testPathEntry_NavigateSymbolicLinkUpAbsolute() throws Exception {

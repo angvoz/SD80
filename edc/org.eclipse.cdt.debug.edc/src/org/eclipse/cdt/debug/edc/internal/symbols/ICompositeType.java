@@ -114,4 +114,9 @@ public interface ICompositeType extends IType, IAggregate {
 	 */
 	public String getBaseName();
 
+	/**
+	 * Is this an opaque type  ?
+	 * @return true or false
+	 */
+	public boolean isOpaque();
 }

@@ -16,6 +16,7 @@ import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsCasting2;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInheritance;
 import org.eclipse.cdt.debug.edc.debugger.tests.ExpressionsInvalidExpressions;
+import org.eclipse.cdt.debug.edc.debugger.tests.OpaqueTypeResolving;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTests;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlag;
 import org.eclipse.cdt.debug.edc.debugger.tests.RegisterFrameTestsBlackFlagRVCT;
@@ -54,6 +55,7 @@ import org.junit.runners.Suite;
 						SnapshotTests.class,
 						K9SystemViewTest.class,
 						RegisterView.class,
+						OpaqueTypeResolving.class,
 						SnapshotMetaDataTests.class })
 
 public class AllEDCTests {

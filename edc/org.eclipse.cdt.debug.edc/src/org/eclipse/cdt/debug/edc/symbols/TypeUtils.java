@@ -304,4 +304,14 @@ public class TypeUtils {
 		return type.getName() + getFullTypeName(type.getType());
 	}
 
+	/**
+	 * Check if a type is an opaque type.
+	 * 
+	 * @param type
+	 * @return true if the type is an opaque composite type; false otherwise.
+	 * @since 2.0
+	 */
+	public static boolean isOpaqueType(IType type) {
+		return (type != null && type instanceof ICompositeType && ((ICompositeType)type).isOpaque());
+	}
 }

@@ -396,4 +396,36 @@ public class CompositeType extends MayBeQualifiedType implements ICompositeType 
 
 		unknownOffsetFields = null;
 	}
+
+	public boolean isOpaque() {
+		/*
+		 * Opaque pointer:
+		 * - Source:
+				struct PrivateStruct* struct_op;
+		 * -- Dwarf from GNU C++ 3.4.5 (mingw-vista special r3):
+				 <1><654>: Abbrev Number: 6 (DW_TAG_structure_type)
+				    <655>   DW_AT_name        : PrivateStruct	
+				    <663>   DW_AT_declaration : 1	
+		 * RVCT Dwarf for an opaque type:
+			  454f6b:   62  = 0x13 (DW_TAG_structure_type)
+			  454f6c:     DW_AT_name PrivateStruct
+		 
+		 * 
+		 * Intentional empty structure/class:
+		 * Source:
+				class EmptyClass {
+				};
+		 * -- Dwarf from GNU C++ 3.4.5 (mingw-vista special r3):
+		 *    Note the non-zero bype_size:
+				 <1><172>: Abbrev Number: 13 (DW_TAG_structure_type)
+				    <173>   DW_AT_sibling     : <0x1da>	
+				    <177>   DW_AT_name        : (indirect string, offset: 0x23): EmptyStruct	
+				    <17b>   DW_AT_byte_size   : 1	
+				    <17c>   DW_AT_decl_file   : 1	
+				    <17d>   DW_AT_decl_line   : 22
+				    ...	
+		 * 
+		 */
+		return getByteSize() <= 0;
+	}
 }

@@ -3337,6 +3337,12 @@ public class DwarfInfoReader {
 		if (name.length() == 0)
 			return;
 
+		// Don't store opaque types as they are not useful in user-defined
+		// type casting nor in opaque type resolution. And storing it would
+		// screw up opaque type resolution.
+		if (type instanceof ICompositeType && ((ICompositeType)type).isOpaque())
+			return;
+		
 		List<IType> typeList = provider.typesByName.get(name);
 		if (typeList == null) {
 			typeList = new ArrayList<IType>();

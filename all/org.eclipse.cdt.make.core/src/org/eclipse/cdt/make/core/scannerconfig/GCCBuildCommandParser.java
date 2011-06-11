@@ -17,7 +17,9 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,6 +31,7 @@ import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
 import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.ILanguageSettingsEditableProvider;
@@ -334,6 +337,7 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 			return null;
 		}
 
+		// prefer the current project
 		IProject project = getProject();
 		List<IResource> result = findPathInFolder(path, project);
 		int size = result.size();
@@ -344,14 +348,32 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		}
 
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		
+		// then prefer referenced projects
+		ICConfigurationDescription cfgDescription = getConfigurationDescription();
+		Map<String,String> refs = cfgDescription.getReferenceInfo();
+		Set<String> referencedProjectsNames = new LinkedHashSet<String>(refs.keySet());
+		for (String prjName : referencedProjectsNames) {
+			IProject prj = root.getProject(prjName);
+			if (prj.isOpen()) {
+				result.addAll(findPathInFolder(path, prj));
+			}
+		}
+		size = result.size();
+		if (size==1) { // found the one
+			return result.get(0);
+		} else if (size>1) { // ambiguous
+			return null;
+		}
+
+		// then check all other projects in workspace
 		IProject[] projects = root.getProjects();
 		for (IProject prj : projects) {
-			if (!prj.equals(project) && prj.isOpen()) {
+			if (!prj.equals(project) && !referencedProjectsNames.contains(prj.getName()) && prj.isOpen()) {
 				result.addAll(findPathInFolder(path, prj));
 			}
 			
 		}
-		
 		size = result.size();
 		if (size==1) { // found the one
 			return result.get(0);
@@ -360,20 +382,6 @@ public class GCCBuildCommandParser extends AbstractBuildCommandParser implements
 		// not found or ambiguous
 		return null;
 	}
-
-//	private List<IResource> findPathInProject(IPath path, IProject project) {
-//		List<IResource> paths = new ArrayList<IResource>();
-//		try {
-//			for (IResource res : project.members()) {
-//				if (res instanceof IFolder) {
-//					paths.addAll(findPathInFolder(path, (IFolder) res));
-//				}
-//			}
-//		} catch (CoreException e) {
-//			// ignore
-//		}
-//		return paths;
-//	}
 
 	private List<IResource> findPathInFolder(IPath path, IContainer folder) {
 		List<IResource> paths = new ArrayList<IResource>();

@@ -12,7 +12,11 @@ package org.eclipse.cdt.make.scannerdiscovery;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import junit.framework.TestCase;
 
@@ -122,6 +126,35 @@ public class GCCBuildCommandParserTest extends TestCase {
 		}
 	}
 
+	private void setReference(IProject project, final IProject projectReferenced) throws CoreException {
+		{
+			CoreModel coreModel = CoreModel.getDefault();
+			ICProjectDescriptionManager mngr = coreModel.getProjectDescriptionManager();
+			// project description
+			ICProjectDescription projectDescription = mngr.getProjectDescription(project);
+			assertNotNull(projectDescription);
+			assertEquals(1, projectDescription.getConfigurations().length);
+			// configuration description
+			ICConfigurationDescription[] cfgDescriptions = projectDescription.getConfigurations();
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+				
+			final ICConfigurationDescription cfgDescriptionReferenced = getConfigurationDescriptions(projectReferenced)[0];
+			cfgDescription.setReferenceInfo(new HashMap<String, String>() {{ put(projectReferenced.getName(), cfgDescriptionReferenced.getId()); }});
+			coreModel.setProjectDescription(project, projectDescription);
+		}
+		
+		{
+			// doublecheck that it's set as expected
+			ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+			ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+			Map<String,String> refs = cfgDescription.getReferenceInfo();
+			assertEquals(1, refs.size());
+			Set<String> referencedProjectsNames = new LinkedHashSet<String>(refs.keySet());
+			assertEquals(projectReferenced.getName(), referencedProjectsNames.toArray()[0]);
+		}
+
+	}
+	
 
 	public void testAbstractBuildCommandParser_CloneAndEquals() throws Exception {
 		// create instance to compare to
@@ -1261,9 +1294,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 		IFolder mappedFolder=ResourceHelper.createFolder(project, "Mapped/Folder");
 		IFolder folder=ResourceHelper.createFolder(project, "Mapped/Folder/Subfolder");
 		@SuppressWarnings("unused")
-		IFolder amFolder1=ResourceHelper.createFolder(project, "One/Ambiguous/Folder");
+		IFolder ambiguousFolder1=ResourceHelper.createFolder(project, "One/Ambiguous/Folder");
 		@SuppressWarnings("unused")
-		IFolder amFolder2=ResourceHelper.createFolder(project, "Another/Ambiguous/Folder");
+		IFolder ambiguousFolder2=ResourceHelper.createFolder(project, "Another/Ambiguous/Folder");
 		
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
@@ -1314,9 +1347,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 		IProject anotherProject = ResourceHelper.createCDTProjectWithConfig(projectName+"-another");
 		IFolder folder=ResourceHelper.createFolder(anotherProject, "Mapped/Folder/Subfolder");
 		@SuppressWarnings("unused")
-		IFolder amFolder1=ResourceHelper.createFolder(anotherProject, "One/Ambiguous/Folder");
+		IFolder ambiguousFolder1=ResourceHelper.createFolder(anotherProject, "One/Ambiguous/Folder");
 		@SuppressWarnings("unused")
-		IFolder amFolder2=ResourceHelper.createFolder(anotherProject, "Another/Ambiguous/Folder");
+		IFolder ambiguousFolder2=ResourceHelper.createFolder(anotherProject, "Another/Ambiguous/Folder");
 
 		
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
@@ -1351,6 +1384,60 @@ public class GCCBuildCommandParserTest extends TestCase {
 		}
 	}
 	
+	/**
+	 */
+	public void testPathEntry_MappedFolderInReferencedProject() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		
+		// create main project
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		IFile file=ResourceHelper.createFile(project, "file.cpp");
+		
+		// create another project (non-referenced)
+		IProject anotherProject = ResourceHelper.createCDTProjectWithConfig(projectName+"-another");
+		@SuppressWarnings("unused")
+		IFolder folderInAnotherProject=ResourceHelper.createFolder(anotherProject, "Mapped/Folder/Subfolder");
+		
+		// create referenced project
+		IProject referencedProject = ResourceHelper.createCDTProjectWithConfig(projectName+"-referenced");
+		IFolder folderInReferencedProject=ResourceHelper.createFolder(referencedProject, "Mapped/Folder/Subfolder");
+		@SuppressWarnings("unused")
+		IFolder ambiguousFolder1=ResourceHelper.createFolder(referencedProject, "One/Ambiguous/Folder");
+		@SuppressWarnings("unused")
+		IFolder ambiguousFolder2=ResourceHelper.createFolder(referencedProject, "Another/Ambiguous/Folder");
+		
+		setReference(project, referencedProject);
+
+		// get cfgDescription and language to work with
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
+		String languageId = ls.getLanguageId();
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
+		ErrorParserManager epm = new ErrorParserManager(project, null);
+		
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc "
+				+ " -I/Folder/Subfolder"
+				+ " -I/Ambiguous/Folder"
+				+ " file.cpp",
+				epm);
+		parser.shutdown();
+		
+		// check populated entries
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
+		{
+			assertEquals(new CIncludePathEntry(folderInReferencedProject.getFullPath(), ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED), entries.get(0));
+
+			IPath path = new Path("/Ambiguous/Folder").setDevice(file.getLocation().getDevice());
+			assertEquals(new CIncludePathEntry(path, 0), entries.get(1));
+		}
+	}
+
 	/**
 	 */
 	public void testPathEntry_NavigateSymbolicLinkUpAbsolute() throws Exception {

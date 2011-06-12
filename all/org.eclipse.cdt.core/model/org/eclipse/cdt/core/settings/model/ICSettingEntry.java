@@ -54,6 +54,13 @@ public interface ICSettingEntry {
 	 */
 	int UNDEFINED = 1 << 5;
 
+	/**
+	 * Flag {@code FRAMEWORKS_MAC} applies for path entries. Such a path entry will be treated
+	 * in a special way to imitate resolving paths by Apple's version of gcc, see bug 69529.
+	 * .
+	 */
+	int FRAMEWORKS_MAC = 1 << 6;
+
 	int INCLUDE_PATH = 1;
 	int INCLUDE_FILE = 1 << 1;
 	int MACRO = 1 << 2;

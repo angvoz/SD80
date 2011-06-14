@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.cdt.core.LanguageSettingsProvider">
+      <provider
+            class="org.eclipse.cdt.make.xlc.core.scannerconfig.XlcBuiltinSpecsDetector"
+            id="org.eclipse.cdt.make.xlc.core.xlc.specs.detector"
+            name="CDT XLC Builtin Compiler Settings"
+            parameter="${COMMAND} -E -V -P -w ${INPUTS}">
+         <language-scope id="org.eclipse.cdt.core.gcc"/>
+         <language-scope id="org.eclipse.cdt.core.g++"/>
+      </provider>
+   </extension>
+
+</plugin>

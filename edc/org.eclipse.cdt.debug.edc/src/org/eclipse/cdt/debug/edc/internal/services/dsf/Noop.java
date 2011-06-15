@@ -8,7 +8,7 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.Status;
 
 /**
- * Implementation of the no-op service used for testing
+ * Implementation of the no-op service used for testing and ACPM experiment code.
  *
  */
 public class Noop extends AbstractEDCService implements INoop {
@@ -45,6 +45,24 @@ public class Noop extends AbstractEDCService implements INoop {
 				rm.done();
 			}
 		}.start();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.eclipse.cdt.debug.edc.internal.services.dsf.INoop#longNoop(int, org.eclipse.cdt.dsf.concurrent.DataRequestMonitor)
+	 */
+	public void longNoop(int delay, DataRequestMonitor<Boolean> rm) {
+		try {
+			for (int i = 0; i < delay; i++) {
+				Thread.sleep(1000);
+				if (rm.isCanceled()) {
+					rm.setStatus(Status.CANCEL_STATUS);
+					rm.done();
+					return;
+				}
+			}
+		} catch (InterruptedException e) {}
+		rm.setData(true);
+		rm.done();
 	}
 
 	/* (non-Javadoc)

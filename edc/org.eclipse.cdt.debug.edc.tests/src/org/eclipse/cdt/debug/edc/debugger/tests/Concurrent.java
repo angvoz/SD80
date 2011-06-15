@@ -23,6 +23,7 @@ import org.eclipse.cdt.debug.edc.launch.EDCLaunch;
 import org.eclipse.cdt.debug.edc.services.Stack;
 import org.eclipse.cdt.debug.edc.services.Stack.StackFrameDMC;
 import org.eclipse.cdt.debug.edc.tests.TestUtils;
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
@@ -44,7 +45,7 @@ public class Concurrent extends BaseLaunchTest {
 	 * problems as it tries to operate within a session that has been shut down.
 	 */
 	@Test
-	public void testShutdown() throws Throwable {
+	public void testEDCThreadAtShutdown_1() throws Throwable {
 		TestUtils.showDebugPerspective();	
 		launch = createLaunch();
 		assertNotNull(launch);
@@ -62,7 +63,7 @@ public class Concurrent extends BaseLaunchTest {
 			public void run() {
 				try {
 					RequestMonitor rm = new RequestMonitor(service.getExecutor(), null);
-					service.longNoopUsingServiceTracker(5, rm);
+					service.longNoopUsingServiceTracker(3, rm);
 					successful.set(true);
 					synchronized (semaphore) {
 						semaphore.notify();
@@ -92,7 +93,7 @@ public class Concurrent extends BaseLaunchTest {
 		// Wait until the EDC service thread either completes or encounters an
 		// exception
 		synchronized (semaphore) {
-			semaphore.wait(10 * 1000);
+			semaphore.wait(8 * 1000);
 		}
 
 		// If it ran into an exception, fail the test
@@ -104,6 +105,161 @@ public class Concurrent extends BaseLaunchTest {
 		
 		// A sanity check that the thread completed successfully
 		assertTrue(successful.get());
+	}
+	
+	/**
+	 * This test validates that the EDC service threads are given a chance to
+	 * complete before the DSF session proceeds with its shutdown. Note the request
+	 * monitor should be completed properly.
+	 */
+	@Test
+	public void testEDCThreadAtShutdown_2() throws Throwable {
+		TestUtils.showDebugPerspective();	
+		launch = createLaunch();
+		assertNotNull(launch);
+		session = TestUtils.waitForSession(launch);
+		assertNotNull(session);
+		final ExecutionDMC threadDMC = TestUtils.waitForSuspendedThread(session);
+		assertNotNull(threadDMC);
+		TestUtils.waitForStackFrame(session, threadDMC);
+		final INoop service = TestUtils.getService(session, INoop.class);
+		final String semaphore = new String();
+		final AtomicBoolean successful = new AtomicBoolean(false);
+		final Throwable[] exception = new Throwable[1];
+		
+		Runnable runnable = new Runnable() {
+			public void run() {
+				try {
+					DataRequestMonitor<Boolean> drm = new DataRequestMonitor<Boolean>(service.getExecutor(), null) {
+						@Override
+						protected void handleCompleted() {
+							successful.set(getData());
+
+							synchronized (semaphore) {
+								semaphore.notify();
+							}
+						}};
+						
+					service.longNoop(3, drm);
+				}
+				catch (Throwable exc) {
+					synchronized (exception) {
+						exception[0] = exc;
+					}
+					synchronized (semaphore) {
+						semaphore.notify();
+					}
+				}
+			}
+		};
+
+		// Kick off some work on an EDC service thread. Its logic will encounter
+		// an exception if the DSF session shuts down while they're running
+		EDCLaunch.getThreadPool(service.getSession().getId()).execute(runnable);
+
+		// Tell the DSF session to shut down
+		TestUtils.shutdownDebugSession(launch, session);
+		
+		// Avoid a redundant shutdown by the @After method 
+		testDidShutdown = true;
+
+		// Wait until the EDC service thread either completes or encounters an
+		// exception
+		synchronized (semaphore) {
+			semaphore.wait(4 * 1000);
+		}
+
+		// If it ran into an exception, fail the test
+		synchronized (exception) {
+			if (exception[0] != null) {
+				throw exception[0];
+			}
+		}
+		
+		// A sanity check that the thread and request monitor completed successfully
+		assertTrue(successful.get());
+	}
+	
+	/**
+	 * This test validates that a non EDC service thread is not given a chance to
+	 * complete before the DSF session proceeds with its shutdown. 
+	 */
+	@Test
+	public void testNonEDCThreadAtShutdown() throws Throwable {
+		TestUtils.showDebugPerspective();	
+		launch = createLaunch();
+		assertNotNull(launch);
+		session = TestUtils.waitForSession(launch);
+		assertNotNull(session);
+		final ExecutionDMC threadDMC = TestUtils.waitForSuspendedThread(session);
+		assertNotNull(threadDMC);
+		TestUtils.waitForStackFrame(session, threadDMC);
+		final INoop service = TestUtils.getService(session, INoop.class);
+		final String semaphore = new String();
+		final AtomicBoolean successful = new AtomicBoolean(false);
+		final Throwable[] exception = new Throwable[1];
+		
+		final Runnable runnable = new Runnable() {
+			public void run() {
+				try {
+					DataRequestMonitor<Boolean> drm = new DataRequestMonitor<Boolean>(service.getExecutor(), null) {
+						
+						@Override
+						protected void handleRejectedExecutionException() {
+							// Executor is shutting down
+							synchronized (exception) {
+								exception[0] = new Exception("Executor has been shut down.");
+							}								
+							synchronized (semaphore) {
+								semaphore.notify();
+							}
+						}
+
+						@Override
+						protected void handleCompleted() {
+							successful.set(getData());
+
+							synchronized (semaphore) {
+								semaphore.notify();
+							}
+						}};
+					
+					service.longNoop(3, drm);
+				}
+				catch (Throwable exc) {
+					synchronized (exception) {
+						exception[0] = exc;
+					}
+					synchronized (semaphore) {
+						semaphore.notify();
+					}
+				}
+			}
+		};
+
+		// Kick off some work in a regular thread (non EDC service thread). Its logic will encounter
+		// an exception if the DSF session shuts down while they're running
+		new Thread(runnable).start();
+
+		// Tell the DSF session to shut down
+		TestUtils.shutdownDebugSession(launch, session);
+		
+		// Avoid a redundant shutdown by the @After method 
+		testDidShutdown = true;
+
+		// Wait until the thread either completes or encounters an
+		// exception
+		synchronized (semaphore) {
+			semaphore.wait(4 * 1000);
+		}
+
+		// it's expected to run into exception
+		synchronized (exception) {
+			assertNotNull(exception[0]);
+		}
+		
+		// the task (request monitor) is not completed successfully
+		assertFalse(successful.get());
 	}
 	
 	/**

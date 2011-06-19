@@ -85,8 +85,12 @@ public class LanguageSettingsProviderAssociation {
 					return url;
 			}
 		} catch (MalformedURLException exception) {}
+		
 		loadedIcons.add(url);
-		CDTSharedImages.register(url);
+		if (url!=null) {
+			CDTSharedImages.register(url);
+		}
+		
 		return url;
 	}
 
@@ -108,6 +112,7 @@ public class LanguageSettingsProviderAssociation {
 				IExtension[] extensions = extension.getExtensions();
 				for (IExtension ext : extensions) {
 					try {
+						@SuppressWarnings("unused")
 						String extensionID = ext.getUniqueIdentifier();
 						for (IConfigurationElement cfgEl : ext.getConfigurationElements()) {
 							if (cfgEl.getName().equals(ELEM_ID_ASSOCIATION)) {
@@ -165,19 +170,36 @@ public class LanguageSettingsProviderAssociation {
 	}
 
 	/**
-	 * Returns Language Settings Provider image registered for closest superclass.
+	 * Returns Language Settings Provider image registered for closest superclass
+	 * or interface.
 	 *
 	 * @param clazz - class to find Language Settings Provider image.
 	 * @return image or {@code null}
 	 */
 	public static URL getImage(Class<? extends ILanguageSettingsProvider> clazz) {
-		for (Class<?> c=clazz;c!=null;c=c.getSuperclass()) {
-			String className = c.getCanonicalName();
-			Set<Entry<String, URL>> entrySet = fImagesUrlByClass.entrySet();
-			for (Entry<String, URL> entry : entrySet) {
-				if (entry.getKey().equals(className)) {
-					return entry.getValue();
-				}
+		URL url = null;
+		
+		outer: for (Class<?> cl=clazz;cl!=null;cl=cl.getSuperclass()) {
+			url = getImageURL(cl);
+			if (url!=null)
+				break;
+			
+			// this does not check for superinterfaces, feel free to implement as needed
+			for (Class<?> in : cl.getInterfaces()) {
+				url = getImageURL(in);
+				if (url!=null)
+					break outer;
+			}
+		}
+		return url;
+	}
+
+	private static URL getImageURL(Class<?> clazz) {
+		String className = clazz.getCanonicalName();
+		Set<Entry<String, URL>> entrySet = fImagesUrlByClass.entrySet();
+		for (Entry<String, URL> entry : entrySet) {
+			if (entry.getKey().equals(className)) {
+				return entry.getValue();
 			}
 		}
 		return null;
@@ -196,14 +218,28 @@ public class LanguageSettingsProviderAssociation {
 		}
 
 		Class<? extends ILanguageSettingsProvider> clazz = provider.getClass();
-		for (Class<?> c=clazz;c!=null;c=c.getSuperclass()) {
-			String className = c.getCanonicalName();
-			if (fRegisteredClasses.contains(className)) {
-				optionsPage = createOptionsPageByClass(className);
-				return optionsPage;
+		outer: for (Class<?> cl=clazz;cl!=null;cl=cl.getSuperclass()) {
+			optionsPage = createOptionsPageByClass(cl);
+			if (optionsPage!=null)
+				break;
+
+			// this does not check for superinterfaces, feel free to implement as needed
+			for (Class<?> in : cl.getInterfaces()) {
+				optionsPage = createOptionsPageByClass(in);
+				if (optionsPage!=null)
+					break outer;
 			}
 		}
-		return null;
+		return optionsPage;
+	}
+
+	private static ICOptionPage createOptionsPageByClass(Class<?> c) {
+		ICOptionPage optionsPage = null;
+		String className = c.getCanonicalName();
+		if (fRegisteredClasses.contains(className)) {
+			optionsPage = createOptionsPageByClass(className);
+		}
+		return optionsPage;
 	}
 
 

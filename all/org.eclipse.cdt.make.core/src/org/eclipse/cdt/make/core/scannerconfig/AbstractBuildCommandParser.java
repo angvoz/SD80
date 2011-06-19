@@ -1,134 +1,130 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2011 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
+ *     Andrew Gvozdev - initial API and implementation
  *******************************************************************************/
 
 package org.eclipse.cdt.make.core.scannerconfig;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.ErrorParserManager;
-import org.eclipse.cdt.core.IErrorParser;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
-import org.w3c.dom.Element;
+import org.eclipse.cdt.core.IErrorParser2;
+import org.eclipse.cdt.core.IMarkerGenerator;
+import org.eclipse.cdt.core.errorparsers.RegexErrorParser;
+import org.eclipse.cdt.core.errorparsers.RegexErrorPattern;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 
-public abstract class AbstractBuildCommandParser extends LanguageSettingsSerializable implements
-		ILanguageSettingsOutputScanner, IErrorParser {
+public abstract class AbstractBuildCommandParser extends AbstractLanguageSettingsOutputScanner implements
+		ILanguageSettingsBuildOutputScanner {
 
-	private static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
+	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
+	private static final int PATTERN_OPTION_GROUP = 0;
+
+	@Override
+	protected String parseResourceName(String line) {
+		if (line==null) {
+			return null;
+		}
+		
+		String sourceFileName = null;
+		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
+		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
 	
-	private ICConfigurationDescription currentCfgDescription = null;
-	private IProject currentProject;
-
-	private boolean expandRelativePaths = true;
-
-	/**
-	 * @return the expandRelativePaths
-	 */
-	public boolean isExpandRelativePaths() {
-		return expandRelativePaths;
+		if (fileMatcher.matches()) {
+			sourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
+		} else {
+			String patternCompileQuotedFile = getPatternCompileQuotedFile();
+			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
+			if (fileMatcher.matches()) {
+				sourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
+			}
+		}
+		return sourceFileName;
 	}
 
-	/**
-	 * @param expandRelativePaths the expandRelativePaths to set
-	 */
-	public void setExpandRelativePaths(boolean expandRelativePaths) {
-		this.expandRelativePaths = expandRelativePaths;
+	@Override
+	protected List<String> parseOptions(String line) {
+		if (line==null) {
+			return null;
+		}
+		
+		List<String> options = new ArrayList<String>();
+		Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
+		while (optionMatcher.find()) {
+			String option = optionMatcher.group(PATTERN_OPTION_GROUP);
+			if (option!=null) {
+				options.add(option);
+			}
+		}
+		return options;
 	}
 
-
-	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
-		currentCfgDescription = cfgDescription;
-		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
+	@Override
+	public boolean processLine(String line, ErrorParserManager epm) {
+		return super.processLine(line, epm);
 	}
 
-	public ICConfigurationDescription getConfigurationDescription() {
-		return currentCfgDescription;
+	@SuppressWarnings("nls")
+	private String getGccCommandPattern() {
+		String parameter = getCustomParameter();
+		return "(" + parameter + ")";
 	}
 
-	public IProject getProject() {
-		return currentProject;
+	@SuppressWarnings("nls")
+	private String getPatternCompileUnquotedFile() {
+		String patternFileName = "([^'\"\\s]*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" + getGccCommandPattern() + "\"?.*\\s" + patternFileName + "(\\s.*)?[\r\n]*";
 	}
 
-	public final boolean processLine(String line) {
-		return processLine(line, null);
+	@SuppressWarnings("nls")
+	private String getPatternCompileQuotedFile() {
+		String patternFileName = "(.*\\." + getPatternFileExtensions() + ")";
+		return "\\s*\"?" + getGccCommandPattern() + "\"?.*\\s" + "(['\"])" + patternFileName + "\\"
+				+ (countGroups(getGccCommandPattern()) + 1) + "(\\s.*)?[\r\n]*";
 	}
 
-	/**
-	 * This method is expected to populate this.settingEntries with specific values
-	 * parsed from supplied lines.
-	 */
-	public abstract boolean processLine(String line, ErrorParserManager epm);
-
-	public void shutdown() {
+	private int getGroupForPatternUnquotedFile() {
+		return countGroups(getGccCommandPattern()) + 1;
 	}
 
-	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
-		IProject project = getProject();
-		ICConfigurationDescription cfgDescription = getConfigurationDescription();
-		if (rc!=null) {
-			ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(rc.getProjectRelativePath(), true);
-			String languageId = ls.getLanguageId();
-			setSettingEntries(cfgDescription, rc, languageId, entries);
+	private int getGroupForPatternQuotedFile() {
+		return countGroups(getGccCommandPattern()) + 2;
+	}
+
+	protected static abstract class AbstractBuildCommandPatternHighlighter extends RegexErrorParser implements IErrorParser2 {
+		public AbstractBuildCommandPatternHighlighter(String pluginExtension) {
+			init(pluginExtension);
+		}
+
+		protected void init(String buildCommandParserId) {
+			AbstractBuildCommandParser gccBuildCommandParser = (AbstractBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(buildCommandParserId);
+			{
+				String pat = gccBuildCommandParser.getPatternCompileUnquotedFile();
+				String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternUnquotedFile(); //$NON-NLS-1$
+				String descExpr = "$0"; //$NON-NLS-1$
+				addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
+			}
+			{
+				String pat = gccBuildCommandParser.getPatternCompileQuotedFile();
+				String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternQuotedFile(); //$NON-NLS-1$
+				String descExpr = "$0"; //$NON-NLS-1$
+				addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
+			}
+		}
+
+		public int getProcessLineBehaviour() {
+			return KEEP_LONGLINES;
 		}
 	}
 
-	@Override
-	public Element serialize(Element parentElement) {
-		Element elementProvider = super.serialize(parentElement);
-		elementProvider.setAttribute(ATTR_EXPAND_RELATIVE_PATHS, Boolean.toString(expandRelativePaths));
-		return elementProvider;
-	}
-	
-	@Override
-	public void load(Element providerNode) {
-		super.load(providerNode);
-		
-		String expandRelativePathsValue = XmlUtil.determineAttributeValue(providerNode, ATTR_EXPAND_RELATIVE_PATHS);
-		if (expandRelativePathsValue!=null)
-			expandRelativePaths = Boolean.parseBoolean(expandRelativePathsValue);
-	}
-	
-	/* (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = super.hashCode();
-		result = prime * result + (expandRelativePaths ? 1231 : 1237);
-		return result;
-	}
-
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (!super.equals(obj))
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		AbstractBuildCommandParser other = (AbstractBuildCommandParser) obj;
-		if (expandRelativePaths != other.expandRelativePaths)
-			return false;
-		return true;
-	}
-	
 
 }

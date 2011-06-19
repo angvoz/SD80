@@ -25,29 +25,23 @@ import org.eclipse.cdt.build.core.scannerconfig.ICfgScannerConfigBuilderInfo2Set
 import org.eclipse.cdt.build.internal.core.scannerconfig2.CfgScannerConfigProfileManager;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ErrorParserManager;
+import org.eclipse.cdt.core.ICConsoleParser;
 import org.eclipse.cdt.core.ICommandLauncher;
 import org.eclipse.cdt.core.IConsoleParser;
 import org.eclipse.cdt.core.IMarkerGenerator;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.envvar.IEnvironmentVariableManager;
-import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager_TBD;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICModelMarker;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.resources.RefreshScopeManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.internal.core.language.settings.providers.LanguageSettingsProvidersSerializer;
-import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
-import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
+import org.eclipse.cdt.make.core.scannerconfig.ILanguageSettingsBuiltinSpecsDetector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerConfigBuilderInfo2;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoCollector;
 import org.eclipse.cdt.make.core.scannerconfig.IScannerInfoConsoleParser;
@@ -142,7 +136,7 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 
 				ICConfigurationDescription cfgDescription = ManagedBuildManager.getDescriptionForConfiguration(configuration);
 				if (kind!=IncrementalProjectBuilder.CLEAN_BUILD) {
-					AbstractBuiltinSpecsDetector.runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
+					ManagedBuildManager.runBuiltinSpecsDetectors(cfgDescription, workingDirectory, env, monitor);
 				}
 
 				consoleHeader[1] = configuration.getName();
@@ -414,12 +408,11 @@ public class ExternalBuildRunner extends AbstractBuildRunner {
 		List<ILanguageSettingsProvider> lsProviders = cfgDescription.getLanguageSettingProviders();
 		for (ILanguageSettingsProvider lsProvider : lsProviders) {
 			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(lsProvider);
-			if (rawProvider instanceof IConsoleParser && !(rawProvider instanceof AbstractBuiltinSpecsDetector)) {
+			if (rawProvider instanceof ICConsoleParser && !(rawProvider instanceof ILanguageSettingsBuiltinSpecsDetector)) {
+				ICConsoleParser consoleParser = (ICConsoleParser) rawProvider;
 				try {
-					if (rawProvider instanceof AbstractBuildCommandParser) {
-						((AbstractBuildCommandParser)rawProvider).startup(cfgDescription);
-					}
-					clParserList.add((IConsoleParser)rawProvider);
+					consoleParser.startup(cfgDescription);
+					clParserList.add(consoleParser);
 				} catch (CoreException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

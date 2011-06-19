@@ -13,20 +13,20 @@ package org.eclipse.cdt.make.core.scannerconfig;
 
 import java.util.List;
 
-import org.eclipse.cdt.core.IConsoleParser;
+import org.eclipse.cdt.core.ICConsoleParser;
 import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 
-
-// TODO: YAGNI?
-public interface ILanguageSettingsOutputScanner extends ILanguageSettingsProvider, IConsoleParser {
+/**
+ * TODO: Is this interface superfluous?
+ */
+public interface ILanguageSettingsOutputScanner extends ILanguageSettingsProvider, ICConsoleParser {
 	
-	public void startup(ICConfigurationDescription cfgDescription) throws CoreException;
-
 	// Inherited from ICConsoleParser
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException;
 	public boolean processLine(String line);
 	public void shutdown();
 	

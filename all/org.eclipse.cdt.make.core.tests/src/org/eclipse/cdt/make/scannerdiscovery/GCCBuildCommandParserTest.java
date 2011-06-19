@@ -40,6 +40,7 @@ import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.internal.core.settings.model.CProjectDescriptionManager;
 import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandParser;
+import org.eclipse.cdt.make.core.scannerconfig.ILanguageSettingsBuildOutputScanner;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -65,16 +66,16 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	private class MockBuildCommandParser extends AbstractBuildCommandParser  implements Cloneable {
 		@Override
-		public boolean processLine(String line, ErrorParserManager epm) {
-			return true;
-		}
-		@Override
 		public MockBuildCommandParser cloneShallow() throws CloneNotSupportedException {
 			return (MockBuildCommandParser) super.cloneShallow();
 		}
 		@Override
 		public MockBuildCommandParser clone() throws CloneNotSupportedException {
 			return (MockBuildCommandParser) super.clone();
+		}
+		@Override
+		protected AbstractOptionParser[] getOptionParsers() {
+			return null;
 		}
 	}
 
@@ -159,7 +160,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 	public void testAbstractBuildCommandParser_CloneAndEquals() throws Exception {
 		// create instance to compare to
 		MockBuildCommandParser parser = new MockBuildCommandParser();
-		assertEquals(true, parser.isExpandRelativePaths());
+		assertEquals(true, parser.isResolvePaths());
 
 		// check clone after initialization
 		MockBuildCommandParser clone0 = parser.clone();
@@ -178,7 +179,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check 'expand relative paths' flag
 		{
 			MockBuildCommandParser clone = parser.clone();
-			boolean expandRelativePaths = clone.isExpandRelativePaths();
+			boolean expandRelativePaths = clone.isResolvePaths();
 			clone.setExpandRelativePaths( ! expandRelativePaths );
 			assertFalse(parser.equals(clone));
 		}
@@ -201,18 +202,18 @@ public class GCCBuildCommandParserTest extends TestCase {
 			// load it to new provider
 			MockBuildCommandParser parser = new MockBuildCommandParser();
 			parser.load(rootElement);
-			assertEquals(true, parser.isExpandRelativePaths());
+			assertEquals(true, parser.isResolvePaths());
 		}
 
 		Element elementProvider;
 		{
 			// define mock parser
 			MockBuildCommandParser parser = new MockBuildCommandParser();
-			assertEquals(true, parser.isExpandRelativePaths());
+			assertEquals(true, parser.isResolvePaths());
 
 			// redefine the settings
 			parser.setExpandRelativePaths(false);
-			assertEquals(false, parser.isExpandRelativePaths());
+			assertEquals(false, parser.isResolvePaths());
 
 			// serialize in XML
 			Document doc = XmlUtil.newDocument();
@@ -225,11 +226,11 @@ public class GCCBuildCommandParserTest extends TestCase {
 		{
 			// create another instance of the provider
 			MockBuildCommandParser parser = new MockBuildCommandParser();
-			assertEquals(true, parser.isExpandRelativePaths());
+			assertEquals(true, parser.isResolvePaths());
 
 			// load element
 			parser.load(elementProvider);
-			assertEquals(false, parser.isExpandRelativePaths());
+			assertEquals(false, parser.isResolvePaths());
 		}
 	}
 
@@ -253,7 +254,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 		final IFile file=ResourceHelper.createFile(project, "file.cpp");
 
 		// create test class
-		AbstractBuildCommandParser parser = new AbstractBuildCommandParser() {
+		ILanguageSettingsBuildOutputScanner parser = new MockBuildCommandParser() {
 			@Override
 			public boolean processLine(String line, ErrorParserManager epm) {
 				// pretending that we parsed the line
@@ -263,7 +264,6 @@ public class GCCBuildCommandParserTest extends TestCase {
 				setSettingEntries(entries, file);
 				return true;
 			}
-
 		};
 		// parse line
 		parser.startup(cfgDescription);

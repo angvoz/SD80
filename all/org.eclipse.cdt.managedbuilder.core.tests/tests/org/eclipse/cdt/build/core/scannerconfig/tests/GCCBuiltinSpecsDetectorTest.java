@@ -25,7 +25,8 @@ import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.testplugin.ResourceHelper;
 import org.eclipse.cdt.internal.core.XmlUtil;
-import org.eclipse.cdt.make.core.scannerconfig.AbstractBuiltinSpecsDetector;
+import org.eclipse.cdt.make.core.scannerconfig.ILanguageSettingsBuiltinSpecsDetector;
+import org.eclipse.cdt.managedbuilder.internal.scannerconfig.AbstractBuiltinSpecsDetector;
 import org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDetector;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
@@ -37,6 +38,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String PROVIDER_NAME = "provider name";
 	private static final String LANGUAGE_ID = "language.test.id";
 	private static final String LANGUAGE_ID_C = "org.eclipse.cdt.core.gcc";
+	private static final String LANGUAGE_ID_CPP = "org.eclipse.cdt.core.g++";
 	private static final String CUSTOM_PARAMETER = "customParameter";
 	private static final String ELEM_TEST = "test";
 	
@@ -44,23 +46,31 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
 	private static final String ATTR_RUN_ONCE = "run-once"; //$NON-NLS-1$
 
-	public class MockBuiltinSettingsDetector extends AbstractBuiltinSpecsDetector {
-		@Override
-		public boolean processLine(String line) {
-			if (detectedSettingEntries.size()==0) {
-				detectedSettingEntries.add(new CMacroEntry("TEST_MACRO", "TestValue", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
-				detectedSettingEntries.add(new CIncludePathEntry("/test/path/", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
-			}
-			return false;
-		}
-	}
-
 	private class MockBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector {
 		@Override
-		public boolean processLine(String line) {
-			return true;
+		protected String getToolchainId() {
+			return null;
+		}
+		@Override
+		protected List<String> parseOptions(String line) {
+			return null;
+		}
+		@Override
+		protected AbstractOptionParser[] getOptionParsers() {
+			return null;
 		}
 	}
+	
+//	public class MockBuiltinSettingsDetector extends MockBuiltinSpecsDetector {
+//		@Override
+//		public boolean processLine(String line) {
+//			if (detectedSettingEntries.size()==0) {
+//				detectedSettingEntries.add(new CMacroEntry("TEST_MACRO", "TestValue", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+//				detectedSettingEntries.add(new CIncludePathEntry("/test/path/", ICSettingEntry.BUILTIN|ICSettingEntry.READONLY));
+//			}
+//			return false;
+//		}
+//	}
 
 	@Override
 	protected void setUp() throws Exception {
@@ -114,25 +124,19 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	
 	public void testAbstractBuiltinSpecsDetector_CloneAndEquals() throws Exception {
 		// define mock detector
-		class MockDetector extends AbstractBuiltinSpecsDetector implements Cloneable {
+		class MockDetectorCloneable extends MockBuiltinSpecsDetector implements Cloneable {
 			@Override
-			public boolean processLine(String line) {
-				return true;
+			public MockDetectorCloneable clone() throws CloneNotSupportedException {
+				return (MockDetectorCloneable) super.clone();
 			}
-			
 			@Override
-			public MockDetector clone() throws CloneNotSupportedException {
-				return (MockDetector) super.clone();
-			}
-			
-			@Override
-			public MockDetector cloneShallow() throws CloneNotSupportedException {
-				return (MockDetector) super.cloneShallow();
+			public MockDetectorCloneable cloneShallow() throws CloneNotSupportedException {
+				return (MockDetectorCloneable) super.cloneShallow();
 			}
 		}
 		
 		// create instance to compare to
-		MockDetector detector = new MockDetector();
+		MockDetectorCloneable detector = new MockDetectorCloneable();
 		
 		List<String> languages = new ArrayList<String>();
 		languages.add(LANGUAGE_ID);
@@ -141,7 +145,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		entries.add(entry);
 
 		// check clone after initialization
-		MockDetector clone0 = detector.clone();
+		MockDetectorCloneable clone0 = detector.clone();
 		assertTrue(detector.equals(clone0));
 		
 		// configure provider
@@ -152,27 +156,27 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 		// check another clone after configuring
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			assertTrue(detector.equals(clone));
 		}
 		
 		// check custom parameter
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			clone.setCustomParameter("changed");
 			assertFalse(detector.equals(clone));
 		}
 		
 		// check language scope
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			clone.setLanguageScope(null);
 			assertFalse(detector.equals(clone));
 		}
 		
 		// check 'run once' flag
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			boolean runOnce = clone.isRunOnce();
 			clone.setRunOnce( ! runOnce );
 			assertFalse(detector.equals(clone));
@@ -180,7 +184,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		
 		// check console flag
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			boolean isConsoleEnabled = clone.isConsoleEnabled();
 			clone.setConsoleEnabled( ! isConsoleEnabled );
 			assertFalse(detector.equals(clone));
@@ -188,15 +192,15 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		
 		// check entries
 		{
-			MockDetector clone = detector.clone();
+			MockDetectorCloneable clone = detector.clone();
 			clone.setSettingEntries(null, null, null, null);
 			assertFalse(detector.equals(clone));
 		}
 		
 		// check cloneShallow()
 		{
-			MockDetector detector2 = detector.clone();
-			MockDetector clone = detector2.cloneShallow();
+			MockDetectorCloneable detector2 = detector.clone();
+			MockDetectorCloneable clone = detector2.cloneShallow();
 			assertFalse(detector2.equals(clone));
 			detector2.setSettingEntries(null, null, null, null);
 			assertTrue(detector2.equals(clone));
@@ -280,14 +284,13 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
 
-		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
+		ILanguageSettingsBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
 				// pretending that we parsed the line
 				detectedSettingEntries.add(new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
 				return true;
 			}
-
 		};
 		detector.startup(cfgDescription, LANGUAGE_ID);
 		detector.processLine("#define MACRO VALUE");
@@ -303,13 +306,12 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 
 	public void testAbstractBuiltinSpecsDetector_StartupShutdown() throws Exception {
 		// Define mock detector
-		AbstractBuiltinSpecsDetector detector = new AbstractBuiltinSpecsDetector() {
+		AbstractBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
 			@Override
 			public boolean processLine(String line) {
 				detectedSettingEntries.add(new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
 				return true;
 			}
-
 		};
 
 		// Test startup/shutdown on running with each build
@@ -358,7 +360,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_NoValue() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO");
 		detector.shutdown();
@@ -375,17 +377,28 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 				return super.getResolvedCommand();
 			}
 		}
-		MockGCCBuiltinSpecsDetector detector = new MockGCCBuiltinSpecsDetector();
-		detector.setCustomParameter("${COMMAND} -E -P -v -dD ${INPUTS}");
-		detector.startup(null, LANGUAGE_ID_C);
-		String resolvedCommand = detector.getResolvedCommand();
-		assertTrue(resolvedCommand.startsWith("gcc -E -P -v -dD "));
-		assertTrue(resolvedCommand.endsWith("spec.c"));
-		detector.shutdown();
+		{
+			MockGCCBuiltinSpecsDetector detector = new MockGCCBuiltinSpecsDetector();
+			detector.setCustomParameter("${COMMAND} -E -P -v -dD ${INPUTS}");
+			detector.startup(null, LANGUAGE_ID_C);
+			String resolvedCommand = detector.getResolvedCommand();
+			assertTrue(resolvedCommand.startsWith("gcc -E -P -v -dD "));
+			assertTrue(resolvedCommand.endsWith("spec.c"));
+			detector.shutdown();
+		}
+		{
+			MockGCCBuiltinSpecsDetector detector = new MockGCCBuiltinSpecsDetector();
+			detector.setCustomParameter("${COMMAND} -E -P -v -dD file.${EXT}");
+			detector.startup(null, LANGUAGE_ID_C);
+			String resolvedCommand = detector.getResolvedCommand();
+			assertTrue(resolvedCommand.startsWith("gcc -E -P -v -dD "));
+			assertTrue(resolvedCommand.endsWith("file.c"));
+			detector.shutdown();
+		}
 	}
 	
 	public void testGCCBuiltinSpecsDetector_Macro_NoArgs() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO VALUE");
 		detector.shutdown();
@@ -396,7 +409,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_Const() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO (3)");
 		detector.shutdown();
@@ -407,7 +420,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_EmptyArgList() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO() VALUE");
 		detector.shutdown();
@@ -418,7 +431,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_ParamUnused() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(X) VALUE");
 		detector.shutdown();
@@ -429,7 +442,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_ParamSpace() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(P1, P2) VALUE(P1, P2)");
 		detector.shutdown();
@@ -440,7 +453,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 	}
 
 	public void testGCCBuiltinSpecsDetector_Macro_ArgsNoValue() throws Exception {
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		detector.processLine("#define MACRO(P1, P2) ");
 		detector.shutdown();
@@ -454,17 +467,18 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		// Create model project and folders to test
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProject(projectName);
+		IPath tmpPath = ResourceHelper.createTemporaryFolder();
 		ResourceHelper.createFolder(project, "/incorrect/include1");
 		ResourceHelper.createFolder(project, "/local/include");
 		ResourceHelper.createFolder(project, "/usr/include");
 		ResourceHelper.createFolder(project, "/usr/include2");
 		ResourceHelper.createFolder(project, "/incorrect/include2");
-		String loc = project.getLocation().toString();
+		String loc = tmpPath.toString();
 
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 
-		detector.processLine(loc+"/incorrect/include1");
+		detector.processLine(" "+loc+"/incorrect/include1");
 		detector.processLine("#include \"...\" search starts here:");
 		detector.processLine(" "+loc+"/local/include");
 		detector.processLine("#include <...> search starts here:");
@@ -472,7 +486,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		detector.processLine(" "+loc+"/usr/include/../include2");
 		detector.processLine(" "+loc+"/missing/folder");
 		detector.processLine("End of search list.");
-		detector.processLine(loc+"/incorrect/include2");
+		detector.processLine(" "+loc+"/incorrect/include2");
 		detector.shutdown();
 
 		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
@@ -502,7 +516,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		IPath linkPath = dir1.append("linked");
 		ResourceHelper.createSymbolicLink(linkPath, dir2);
 		
-		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
+		ILanguageSettingsBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 		
 		detector.processLine("#include <...> search starts here:");

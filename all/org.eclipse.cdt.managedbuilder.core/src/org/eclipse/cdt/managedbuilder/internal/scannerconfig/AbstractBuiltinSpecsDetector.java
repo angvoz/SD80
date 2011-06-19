@@ -1,63 +1,61 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2011 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
+ *     Andrew Gvozdev - initial API and implementation
  *******************************************************************************/
 
-package org.eclipse.cdt.make.core.scannerconfig;
+package org.eclipse.cdt.managedbuilder.internal.scannerconfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CommandLauncher;
 import org.eclipse.cdt.core.ErrorParserManager;
 import org.eclipse.cdt.core.ICommandLauncher;
 import org.eclipse.cdt.core.IConsoleParser;
-import org.eclipse.cdt.core.index.IIndexManager;
-import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvider;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.model.CoreModel;
-import org.eclipse.cdt.core.model.ICElement;
-import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ILanguageDescriptor;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.internal.core.ConsoleOutputSniffer;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractLanguageSettingsOutputScanner;
+import org.eclipse.cdt.make.core.scannerconfig.ILanguageSettingsBuiltinSpecsDetector;
 import org.eclipse.cdt.make.internal.core.MakeMessages;
 import org.eclipse.cdt.make.internal.core.StreamMonitor;
 import org.eclipse.cdt.make.internal.core.scannerconfig2.SCMarkerGenerator;
+import org.eclipse.cdt.managedbuilder.core.IInputType;
+import org.eclipse.cdt.managedbuilder.core.ITool;
+import org.eclipse.cdt.managedbuilder.core.IToolChain;
+import org.eclipse.cdt.managedbuilder.core.ManagedBuildManager;
+import org.eclipse.cdt.managedbuilder.core.ManagedBuilderCorePlugin;
 import org.eclipse.cdt.utils.CommandLineUtil;
 import org.eclipse.cdt.utils.PathUtil;
-import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.w3c.dom.Element;
 
-public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSerializable implements
-		ILanguageSettingsOutputScanner {
+public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSettingsOutputScanner implements ILanguageSettingsBuiltinSpecsDetector {
+
+	private boolean isEnabled = true;
+	
+	
 	private static final String NEWLINE = System.getProperty("line.separator", "\n"); //$NON-NLS-1$ //$NON-NLS-2$
 	private static final String PLUGIN_CDT_MAKE_UI_ID = "org.eclipse.cdt.make.ui"; //$NON-NLS-1$
 	private static final String GMAKE_ERROR_PARSER_ID = "org.eclipse.cdt.core.GmakeErrorParser"; //$NON-NLS-1$
@@ -65,16 +63,24 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	private static final String ATTR_RUN_ONCE = "run-once"; //$NON-NLS-1$
 	private static final String ATTR_CONSOLE = "console"; //$NON-NLS-1$
 
+	protected static final String COMPILER_MACRO = "${COMMAND}";
+	protected static final String SPEC_FILE_MACRO = "${INPUTS}";
+	protected static final String SPEC_EXT_MACRO = "${EXT}";
+	protected static final String SPEC_FILE_BASE = "spec.";
+
 	// temporaries which are reassigned before running
-	private ICConfigurationDescription currentCfgDescription = null;
-	private IProject currentProject = null;
 	private String currentLanguageId = null;
 	private String currentCommandResolved = null;
 	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
 	private boolean runOnce = true;
 	private boolean isConsoleEnabled = false;
+	protected java.io.File specFile = null;
+	protected boolean preserveSpecFile = false;
 
+	public AbstractBuiltinSpecsDetector() {
+		isForProject = true;
+	}
 
 	@Override
 	public void configureProvider(String id, String name, List<String> languages, List<ICLanguageSettingEntry> entries, String customParameter) {
@@ -115,21 +121,40 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 		detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
 		currentCommandResolved = customParameter;
 
+		specFile = null;
+
 		if (!runOnce) {
 			setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
 		}
+
+		isEnabled = true;
+		String cmd = getCustomParameter();
+
+		if (cmd!=null && (cmd.contains(COMPILER_MACRO) || cmd.contains(SPEC_FILE_MACRO) || cmd.contains(SPEC_EXT_MACRO))) {
+			ITool tool = getTool(getToolchainId(), languageId);
+			isEnabled = tool!=null;
+			
+			if (tool!=null) {
+				if (cmd.contains(COMPILER_MACRO)) {
+					String compiler = getCompilerCommand(tool);
+					cmd = cmd.replace(COMPILER_MACRO, compiler);
+				}
+				if (cmd.contains(SPEC_FILE_MACRO)) {
+					String specFile = getSpecFile(languageId, tool);
+					cmd = cmd.replace(SPEC_FILE_MACRO, specFile);
+				}
+				if (cmd.contains(SPEC_EXT_MACRO)) {
+					String specFile = getSpecExt(languageId, tool);
+					cmd = cmd.replace(SPEC_EXT_MACRO, specFile);
+				}
+				setResolvedCommand(cmd);
+			}
+		}
 	}
 
+	@Override
 	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
 		startup(cfgDescription, null);
-	}
-
-	public ICConfigurationDescription getConfigurationDescription() {
-		return currentCfgDescription;
-	}
-
-	public IProject getProject() {
-		return currentProject;
 	}
 
 	public String getLanguage() {
@@ -137,12 +162,27 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	}
 
 	/**
-	 * This method is expected to populate {@link #detectedSettingEntries} with specific values
-	 * parsed from supplied lines.
+	 * TODO
 	 */
-	public abstract boolean processLine(String line);
+	@Override
+	protected String parseResourceName(String line) {
+		// For the project name
+		return "/";
+	}
 
+	@Override
 	public void shutdown() {
+		if (specFile!=null && !preserveSpecFile) {
+			specFile.delete();
+			specFile = null;
+		}
+
+		setResolvedCommand(null);
+
+		if (detectedSettingEntries==null) {
+			detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+		}
+
 		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
 			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
 		}
@@ -320,44 +360,98 @@ public abstract class AbstractBuiltinSpecsDetector extends LanguageSettingsSeria
 	}
 
 
-	// TODO: find better home
-	static public void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
-			String[] env, IProgressMonitor monitor) throws CoreException {
-		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
-		List<String> languageIds = new ArrayList<String>();
-		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
-			String id = languageSetting.getLanguageId();
-			if (id!=null) {
-				languageIds.add(id);
-			}
-		}
+	@Override
+	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
+		// Builtin specs detectors collect entries not per line but for the whole output
+		if (entries!=null)
+			detectedSettingEntries.addAll(entries);
+	}
 
-		for (ILanguageSettingsProvider provider : cfgDescription.getLanguageSettingProviders()) {
-			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
-			if (rawProvider instanceof AbstractBuiltinSpecsDetector) {
-				AbstractBuiltinSpecsDetector detector = (AbstractBuiltinSpecsDetector)rawProvider;
-				for (String languageId : languageIds) {
-					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
-						try {
-							// for workspace provider cfgDescription is used to figure out the current project for build console
-							detector.startup(cfgDescription, languageId);
-							detector.run(workingDirectory, env, monitor);
-						} catch (Throwable e) {
-							IStatus status = new Status(IStatus.ERROR, MakeCorePlugin.PLUGIN_ID, "Internal error in BuiltinSpecsDetector "+detector.getId(), e);
-							MakeCorePlugin.log(status);
-						}
-					}
+
+	
+	
+	
+	//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	@Override
+	public boolean processLine(String line, ErrorParserManager epm) {
+		if (isEnabled) {
+			return super.processLine(line, epm);
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean processLine(String line) {
+		if (isEnabled) {
+			return super.processLine(line);
+		}
+		return false;
+	}
+	
+	/**
+	 * TODO
+	 */
+	protected abstract String getToolchainId();
+
+	private ITool getTool(String toolchainId, String languageId) {
+		IToolChain toolchain = ManagedBuildManager.getExtensionToolChain(toolchainId);
+		if (toolchain != null) {
+			ITool[] tools = toolchain.getTools();
+			for (ITool tool : tools) {
+				IInputType[] inputTypes = tool.getInputTypes();
+				for (IInputType inType : inputTypes) {
+					String lang = inType.getLanguageId(tool);
+					if (languageId.equals(lang))
+						return tool;
 				}
 			}
 		}
-
-		// AG: FIXME
-//		LanguageSettingsManager.serialize(cfgDescription);
-		// AG: FIXME - rather send event that ls settings changed
-		IProject project = cfgDescription.getProjectDescription().getProject();
-		ICProject icProject = CoreModel.getDefault().create(project);
-		ICElement[] tuSelection = new ICElement[] {icProject};
-		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
+		ManagedBuilderCorePlugin.error("Unable to find tool in toolchain="+toolchainId+" for language="+languageId);
+		return null;
 	}
+
+	private String getCompilerCommand(ITool tool) {
+		String compiler = tool.getToolCommand();
+		if (compiler.length()==0) {
+			String msg = "Unable to find compiler command in toolchain="+getToolchainId();
+			ManagedBuilderCorePlugin.error(msg);
+		}
+		return compiler;
+	}
+
+	private String getSpecFile(String languageId, ITool tool) {
+		String ext = getSpecExt(languageId, tool);
+		
+		String specFileName = SPEC_FILE_BASE + ext;
+		IPath workingLocation = MakeCorePlugin.getWorkingDirectory();
+		IPath fileLocation = workingLocation.append(specFileName);
+
+		specFile = new java.io.File(fileLocation.toOSString());
+		// will preserve spec file if it was already there otherwise will delete upon finishing
+		preserveSpecFile = specFile.exists();
+		if (!preserveSpecFile) {
+			try {
+				specFile.createNewFile();
+			} catch (IOException e) {
+				ManagedBuilderCorePlugin.log(e);
+			}
+		}
+
+		return fileLocation.toString();
+	}
+
+	private String getSpecExt(String languageId, ITool tool) {
+		String ext = "";
+		String[] srcFileExtensions = tool.getAllInputExtensions();
+		if (srcFileExtensions!=null && srcFileExtensions.length>0) {
+			ext = srcFileExtensions[0];
+		}
+		if (ext.length()==0) {
+			ManagedBuilderCorePlugin.error("Unable to find file extension for language "+languageId);
+		}
+		return ext;
+	}
+
 
 }

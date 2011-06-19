@@ -15,7 +15,7 @@ import org.eclipse.cdt.core.language.settings.providers.ILanguageSettingsProvide
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 import org.eclipse.cdt.internal.ui.language.settings.providers.AbstractLanguageSettingProviderOptionPage;
 import org.eclipse.cdt.internal.ui.newui.StatusMessageLine;
-import org.eclipse.cdt.make.core.scannerconfig.GCCBuildCommandParser;
+import org.eclipse.cdt.make.core.scannerconfig.AbstractBuildCommandParser;
 import org.eclipse.cdt.utils.ui.controls.ControlFactory;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -90,7 +90,7 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 ////		gdRun.horizontalSpan = 2;
 ////		groupRun.setLayoutData(gdRun);
 
-		GCCBuildCommandParser provider = getRawProvider();
+		AbstractBuildCommandParser provider = getRawProvider();
 //		{
 //			runOnceRadioButton = new Button(groupRun, SWT.RADIO);
 //			runOnceRadioButton.setText("Run only once"); //$NON-NLS-1$
@@ -105,9 +105,9 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 //				public void widgetSelected(SelectionEvent evt) {
 //					boolean runOnceEnabled = runOnceRadioButton.getSelection();
 //					if (runOnceEnabled) {
-//						GCCBuildCommandParser provider = getRawProvider();
+//						AbstractBuildCommandParser provider = getRawProvider();
 //						if (runOnceEnabled != provider.isRunOnce()) {
-//							GCCBuildCommandParser selectedProvider = getWorkingCopy(providerId);
+//							AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
 //							selectedProvider.setRunOnce(runOnceEnabled);
 //							providerTab.refreshItem(selectedProvider);
 //						}
@@ -129,9 +129,9 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 //				public void widgetSelected(SelectionEvent evt) {
 //					boolean runEveryBuildEnabled = runEveryBuildRadioButton.getSelection();
 //					if (runEveryBuildEnabled) {
-//						GCCBuildCommandParser provider = getRawProvider();
+//						AbstractBuildCommandParser provider = getRawProvider();
 //						if (runEveryBuildEnabled != !provider.isRunOnce()) {
-//							GCCBuildCommandParser selectedProvider = getWorkingCopy(providerId);
+//							AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
 //							selectedProvider.setRunOnce(!runEveryBuildEnabled);
 //							providerTab.refreshItem(selectedProvider);
 //						}
@@ -164,9 +164,9 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 			inputCommand.addModifyListener(new ModifyListener() {
 				public void modifyText(ModifyEvent e) {
 					String text = inputCommand.getText();
-					GCCBuildCommandParser provider = getRawProvider();
+					AbstractBuildCommandParser provider = getRawProvider();
 					if (!text.equals(provider.getCustomParameter())) {
-						GCCBuildCommandParser selectedProvider = getWorkingCopy(providerId);
+						AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
 						selectedProvider.setCustomParameter(text);
 						providerTab.refreshItem(selectedProvider);
 					}
@@ -280,15 +280,15 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 			gd.horizontalSpan = 2;
 			expandRelativePathCheckBox.setLayoutData(gd);
 
-			expandRelativePathCheckBox.setSelection(provider.isExpandRelativePaths());
+			expandRelativePathCheckBox.setSelection(provider.isResolvePaths());
 			expandRelativePathCheckBox.setEnabled(fEditable);
 			expandRelativePathCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					boolean enabled = expandRelativePathCheckBox.getSelection();
-					GCCBuildCommandParser provider = getRawProvider();
-					if (enabled != provider.isExpandRelativePaths()) {
-						GCCBuildCommandParser selectedProvider = getWorkingCopy(providerId);
+					AbstractBuildCommandParser provider = getRawProvider();
+					if (enabled != provider.isResolvePaths()) {
+						AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
 						selectedProvider.setExpandRelativePaths(enabled);
 						providerTab.refreshItem(selectedProvider);
 					}
@@ -318,9 +318,9 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					boolean enabled = applyToProjectCheckBox.getSelection();
-					GCCBuildCommandParser provider = getRawProvider();
-					if (enabled != provider.isExpandRelativePaths()) {
-						GCCBuildCommandParser selectedProvider = getWorkingCopy(providerId);
+					AbstractBuildCommandParser provider = getRawProvider();
+					if (enabled != provider.isResolvePaths()) {
+						AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
 						selectedProvider.setExpandRelativePaths(enabled);
 						providerTab.refreshItem(selectedProvider);
 					}
@@ -345,16 +345,16 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 		setControl(composite);
 	}
 
-	private GCCBuildCommandParser getRawProvider() {
+	private AbstractBuildCommandParser getRawProvider() {
 		ILanguageSettingsProvider provider = LanguageSettingsManager.getRawProvider(providerTab.getProvider(providerId));
-		Assert.isTrue(provider instanceof GCCBuildCommandParser);
-		return (GCCBuildCommandParser) provider;
+		Assert.isTrue(provider instanceof AbstractBuildCommandParser);
+		return (AbstractBuildCommandParser) provider;
 	}
 
-	private GCCBuildCommandParser getWorkingCopy(String providerId) {
+	private AbstractBuildCommandParser getWorkingCopy(String providerId) {
 		ILanguageSettingsProvider provider = providerTab.getWorkingCopy(providerId);
-		Assert.isTrue(provider instanceof GCCBuildCommandParser);
-		return (GCCBuildCommandParser) provider;
+		Assert.isTrue(provider instanceof AbstractBuildCommandParser);
+		return (AbstractBuildCommandParser) provider;
 	}
 
 	@Override

@@ -155,6 +155,7 @@ public class LanguageSettingsImages {
 
 		boolean isWorkspacePath = (flag & ICSettingEntry.VALUE_WORKSPACE_PATH) != 0;
 		boolean isBuiltin = (flag & ICSettingEntry.BUILTIN) != 0;
+		boolean isFramework = (flag & ICSettingEntry.FRAMEWORKS_MAC) != 0;
 
 		switch (kind) {
 		case ICSettingEntry.INCLUDE_PATH:
@@ -163,6 +164,8 @@ public class LanguageSettingsImages {
 					imageKey = CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_PROJECT;
 				else
 					imageKey = CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_WORKSPACE;
+			else if (isFramework)
+				imageKey = CDTSharedImages.IMG_OBJS_FRAMEWORKS_FOLDER;
 			else if (isBuiltin)
 				imageKey = CDTSharedImages.IMG_OBJS_INCLUDES_FOLDER_SYSTEM;
 			else

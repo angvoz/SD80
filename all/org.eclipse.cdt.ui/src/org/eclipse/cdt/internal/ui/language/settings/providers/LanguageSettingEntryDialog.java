@@ -67,6 +67,7 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 	private Button buttonBrowse;
 	private Button buttonVars;
 	private Button checkBoxBuiltIn;
+	private Button checkBoxFramework;
 
 	private Button checkBoxAllCfgs;
 	private Button checkBoxAllLangs;
@@ -367,6 +368,24 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 		gd = new GridData(GridData.FILL_HORIZONTAL);
 		checkBoxBuiltIn.setLayoutData(gd);
 		checkBoxBuiltIn.addSelectionListener(new SelectionListener() {
+			
+			public void widgetSelected(SelectionEvent e) {
+				updateImages();
+				setButtons();
+			}
+			
+			public void widgetDefaultSelected(SelectionEvent e) {
+				widgetSelected(e);
+			}
+		});
+
+		// Checkbox "Framework"
+		checkBoxFramework = new Button(compCheckboxes, SWT.CHECK);
+		checkBoxFramework.setText("Framework folder (Mac only)");
+		checkBoxFramework.setSelection(entry!=null && (entry.getFlags()&ICSettingEntry.FRAMEWORKS_MAC)!=0);
+		gd = new GridData(GridData.FILL_HORIZONTAL);
+		checkBoxFramework.setLayoutData(gd);
+		checkBoxFramework.addSelectionListener(new SelectionListener() {
 
 			public void widgetSelected(SelectionEvent e) {
 				updateImages();
@@ -506,12 +525,13 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 			result = true;
 
 			int flagBuiltIn = checkBoxBuiltIn.getSelection() ? ICSettingEntry.BUILTIN : 0;
+			int flagFramework = checkBoxFramework.getSelection() ? ICSettingEntry.FRAMEWORKS_MAC : 0;
 			int indexPathKind = comboPathCategory.getSelectionIndex();
 			int kind = comboKind.getSelectionIndex();
 			boolean isProjectPath = indexPathKind==COMBO_PATH_INDEX_PROJECT;
 			boolean isWorkspacePath = (kind!=COMBO_INDEX_MACRO) && (isProjectPath || indexPathKind==COMBO_PATH_INDEX_WORKSPACE);
 			int flagWorkspace = isWorkspacePath ? ICSettingEntry.VALUE_WORKSPACE_PATH : 0;
-			int flags = flagBuiltIn | flagWorkspace;
+			int flags = flagBuiltIn | flagWorkspace | flagFramework;
 
 			ICLanguageSettingEntry entry=null;
 			switch (comboKind.getSelectionIndex()) {
@@ -609,9 +629,10 @@ public class LanguageSettingEntryDialog extends AbstractPropertyDialog {
 
 		int kind = comboIndexToKind(indexEntryKind);
 		int flagBuiltin = checkBoxBuiltIn.getSelection() ? ICSettingEntry.BUILTIN : 0;
+		int flagFramework = checkBoxFramework.getSelection() ? ICSettingEntry.FRAMEWORKS_MAC : 0;
 		boolean isWorkspacePath = indexPathKind==COMBO_PATH_INDEX_PROJECT || indexPathKind==COMBO_PATH_INDEX_WORKSPACE;
 		int flagWorkspace = isWorkspacePath ? ICSettingEntry.VALUE_WORKSPACE_PATH : 0;
-		int flags = flagBuiltin | flagWorkspace;
+		int flags = flagBuiltin | flagWorkspace | flagFramework;
 		Image image = LanguageSettingsImages.getImage(kind, flags, indexPathKind==COMBO_PATH_INDEX_PROJECT);
 
 		iconComboKind.setImage(image);

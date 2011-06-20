@@ -28,7 +28,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	// must match the toolchain definition in org.eclipse.cdt.managedbuilder.core.buildDefinitions extension point
 	private static final String GCC_TOOLCHAIN_ID = "cdt.managedbuild.toolchain.gnu.base";  //$NON-NLS-1$
 	
-	private enum State {NONE, EXPECTING_LOCAL_INCLUDE, EXPECTING_SYSTEM_INCLUDE}
+	private enum State {NONE, EXPECTING_LOCAL_INCLUDE, EXPECTING_SYSTEM_INCLUDE, EXPECTING_FRAMEWORKS}
 	State state = State.NONE;
 	
 	private static final int BUILTIN_SPECS_FLAG = ICSettingEntry.BUILTIN | ICSettingEntry.READONLY;
@@ -36,6 +36,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	static final AbstractOptionParser[] optionParsers = {
 			new IncludePathOptionParser("#include <(\\S.*)>", "$1", BUILTIN_SPECS_FLAG),
 			new IncludePathOptionParser("#include \"(\\S.*)\"", "$1", BUILTIN_SPECS_FLAG | ICSettingEntry.LOCAL),
+			new IncludePathOptionParser("#framework <(\\S.*)>", "$1", BUILTIN_SPECS_FLAG | ICSettingEntry.FRAMEWORKS_MAC),
 			new MacroOptionParser("#define (\\S*\\(.*?\\)) *(.*)", "$1", "$2", BUILTIN_SPECS_FLAG),
 			new MacroOptionParser("#define (\\S*) *(.*)", "$1", "$2", BUILTIN_SPECS_FLAG),
 	};
@@ -63,6 +64,15 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 			return makeList(line);
 		}
 
+		/**
+
+Framework search starts here:
+ /System/Library/Frameworks
+ /Library/Frameworks
+End of framework search list.
+
+		 */
+
 		// contribution of includes
 		if (line.equals("#include \"...\" search starts here:")) {
 			state = State.EXPECTING_LOCAL_INCLUDE;
@@ -70,14 +80,29 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 			state = State.EXPECTING_SYSTEM_INCLUDE;
 		} else if (line.startsWith("End of search list.")) {
 			state = State.NONE;
+		} else if (line.equals("Framework search starts here:")) {
+			state = State.EXPECTING_FRAMEWORKS;
+		} else if (line.startsWith("End of framework search list.")) {
+			state = State.NONE;
 		} else if (state==State.EXPECTING_LOCAL_INCLUDE) {
 			// making that up for the parser to figure out
 			line = "#include \""+line+"\"";
 			return makeList(line);
-		} else if (state==State.EXPECTING_SYSTEM_INCLUDE) {
-			// making that up for the parser to figure out
-			line = "#include <"+line+">";
-			return makeList(line);
+		} else {
+			String frameworkIndicator = "(framework directory)";
+			if (state==State.EXPECTING_SYSTEM_INCLUDE) {
+				// making that up for the parser to figure out
+				if (line.contains(frameworkIndicator)) {
+					line = "#framework <"+line.replace(frameworkIndicator, "").trim()+">";
+				} else {
+					line = "#include <"+line+">";
+				}
+				return makeList(line);
+			} else if (state==State.EXPECTING_FRAMEWORKS) {
+				// making that up for the parser to figure out
+				line = "#framework <"+line.replace(frameworkIndicator, "").trim()+">";
+				return makeList(line);
+			}
 		}
 
 		return null;

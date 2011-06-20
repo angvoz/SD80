@@ -270,11 +270,16 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 	private String[] convertToLocations(LinkedHashSet<ICLanguageSettingEntry> entriesPath, ICConfigurationDescription cfgDescription){
 		List<String> locations = new ArrayList<String>(entriesPath.size());
 		for (ICLanguageSettingEntry entry : entriesPath) {
-			ICLanguageSettingPathEntry entryPath = (ICLanguageSettingPathEntry)entry;
-			if (((ACPathEntry)entryPath).isValueWorkspacePath()) {
+			ACPathEntry entryPath = (ACPathEntry)entry;
+			if (entryPath.isValueWorkspacePath()) {
 				IPath loc = entryPath.getLocation();
 				if (loc!=null) {
-					locations.add(loc.toOSString());
+					if (checkBit(entryPath.getFlags(), ICSettingEntry.FRAMEWORKS_MAC)) {
+						locations.add(loc.append("/__framework__.framework/Headers/__header__").toOSString());
+						locations.add(loc.append("/__framework__.framework/PrivateHeaders/__header__").toOSString());
+					} else {
+						locations.add(loc.toOSString());
+					}
 				}
 			} else {
 				String locStr = entryPath.getName();
@@ -283,13 +288,18 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 				} else {
 					locStr = resolveEntry(locStr, cfgDescription);
 					if (locStr!=null) {
-						locations.add(locStr);
-						// add relative paths again for indexer to resolve from source file location
-						IPath unresolvedPath = entryPath.getLocation();
-						if (!unresolvedPath.isAbsolute()) {
-							IPath expandedPath = expandVariables(unresolvedPath, cfgDescription);
-							if (!expandedPath.isAbsolute()) {
-								locations.add(expandedPath.toOSString());
+						if (checkBit(entryPath.getFlags(), ICSettingEntry.FRAMEWORKS_MAC)) {
+							locations.add(locStr+"/__framework__.framework/Headers/__header__");
+							locations.add(locStr+"/__framework__.framework/PrivateHeaders/__header__");
+						} else {
+							locations.add(locStr);
+							// add relative paths again for indexer to resolve from source file location
+							IPath unresolvedPath = entryPath.getLocation();
+							if (!unresolvedPath.isAbsolute()) {
+								IPath expandedPath = expandVariables(unresolvedPath, cfgDescription);
+								if (!expandedPath.isAbsolute()) {
+									locations.add(expandedPath.toOSString());
+								}
 							}
 						}
 					}
@@ -298,6 +308,10 @@ public class LanguageSettingsScannerInfoProvider implements IScannerInfoProvider
 		}
 
 		return locations.toArray(new String[locations.size()]);
+	}
+
+	private static boolean checkBit(int flags, int bit) {
+		return (flags & bit) == bit;
 	}
 
 	public void subscribe(IResource resource, IScannerInfoChangeListener listener) {

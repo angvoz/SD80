@@ -326,6 +326,45 @@ public class LanguageSettingsScannerInfoProviderTests extends TestCase {
 	}
 
 	/**
+	 * Test Mac frameworks.
+	 */
+	public void testFramework() throws Exception {
+		// create a project
+		IProject project = ResourceHelper.createCDTProjectWithConfig(getName());
+		ICProjectDescription prjDescription = CProjectDescriptionManager.getInstance().getProjectDescription(project, false);
+		assertNotNull(prjDescription);
+		ICConfigurationDescription cfgDescription = prjDescription.getDefaultSettingConfiguration();
+		assertNotNull(cfgDescription);
+		
+		// sample file
+		IFile file = ResourceHelper.createFile(project, "file.c");
+		
+		// contribute the entries
+		IFolder frameworkFolder = ResourceHelper.createFolder(project, "Fmwk");
+		CIncludePathEntry frameworkPathEntry = new CIncludePathEntry(frameworkFolder, ICSettingEntry.FRAMEWORKS_MAC);
+		
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		entries.add(frameworkPathEntry);
+		
+		// add provider to the configuration
+		ILanguageSettingsProvider provider = new MockProvider(PROVIDER_ID, PROVIDER_NAME, entries);
+		List<ILanguageSettingsProvider> providers = new ArrayList<ILanguageSettingsProvider>();
+		providers.add(provider);
+		cfgDescription.setLanguageSettingProviders(providers);
+		
+		// test that the scannerInfoProvider gets the entries
+		LanguageSettingsScannerInfoProvider scannerInfoProvider = new LanguageSettingsScannerInfoProvider();
+		ExtendedScannerInfo info = scannerInfoProvider.getScannerInformation(file);
+		String[] actualIncludePaths = info.getIncludePaths();
+		// include paths
+		assertEquals(frameworkFolder.getLocation().append("/__framework__.framework/Headers/__header__"),
+				new Path(actualIncludePaths[0]));
+		assertEquals(frameworkFolder.getLocation().append("/__framework__.framework/PrivateHeaders/__header__"),
+				new Path(actualIncludePaths[1]));
+		assertEquals(2, actualIncludePaths.length);
+	}
+	
+	/**
 	 * Test duplicate entries.
 	 */
 	public void testDuplicate() throws Exception {

@@ -468,37 +468,49 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProject(projectName);
 		IPath tmpPath = ResourceHelper.createTemporaryFolder();
-		ResourceHelper.createFolder(project, "/incorrect/include1");
+		ResourceHelper.createFolder(project, "/misplaced/include1");
 		ResourceHelper.createFolder(project, "/local/include");
 		ResourceHelper.createFolder(project, "/usr/include");
 		ResourceHelper.createFolder(project, "/usr/include2");
-		ResourceHelper.createFolder(project, "/incorrect/include2");
+		ResourceHelper.createFolder(project, "/misplaced/include2");
+		ResourceHelper.createFolder(project, "/System/Library/Frameworks");
+		ResourceHelper.createFolder(project, "/Library/Frameworks");
+		ResourceHelper.createFolder(project, "/misplaced/include3");
 		String loc = tmpPath.toString();
 
 		GCCBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		detector.startup(null, LANGUAGE_ID_C);
 
-		detector.processLine(" "+loc+"/incorrect/include1");
+		detector.processLine(" "+loc+"/misplaced/include1");
 		detector.processLine("#include \"...\" search starts here:");
 		detector.processLine(" "+loc+"/local/include");
 		detector.processLine("#include <...> search starts here:");
 		detector.processLine(" "+loc+"/usr/include");
 		detector.processLine(" "+loc+"/usr/include/../include2");
 		detector.processLine(" "+loc+"/missing/folder");
+		detector.processLine(" "+loc+"/Library/Frameworks (framework directory)");
 		detector.processLine("End of search list.");
-		detector.processLine(" "+loc+"/incorrect/include2");
+		detector.processLine(" "+loc+"/misplaced/include2");
+		detector.processLine("Framework search starts here:");
+		detector.processLine(" "+loc+"/System/Library/Frameworks");
+		detector.processLine("End of search list.");
+		detector.processLine(" "+loc+"/misplaced/include3");
 		detector.shutdown();
 
 		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
-		ICLanguageSettingEntry expected0 = new CIncludePathEntry(loc+"/local/include", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY | ICSettingEntry.LOCAL);
-		ICLanguageSettingEntry expected1 = new CIncludePathEntry(loc+"/usr/include", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
-		ICLanguageSettingEntry expected2 = new CIncludePathEntry(loc+"/usr/include2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
-		ICLanguageSettingEntry expected3 = new CIncludePathEntry(loc+"/missing/folder", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
-		assertEquals(expected0, entries.get(0));
-		assertEquals(expected1, entries.get(1));
-		assertEquals(expected2, entries.get(2));
-		assertEquals(expected3, entries.get(3));
-		assertEquals(4, entries.size());
+		assertEquals(new CIncludePathEntry(loc+"/local/include", ICSettingEntry.LOCAL | ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(0));
+		assertEquals(new CIncludePathEntry(loc+"/usr/include", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(1));
+		assertEquals(new CIncludePathEntry(loc+"/usr/include2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(2));
+		assertEquals(new CIncludePathEntry(loc+"/missing/folder", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(3));
+		assertEquals(new CIncludePathEntry(loc+"/Library/Frameworks", ICSettingEntry.FRAMEWORKS_MAC | ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(4));
+		assertEquals(new CIncludePathEntry(loc+"/System/Library/Frameworks", ICSettingEntry.FRAMEWORKS_MAC | ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+				entries.get(5));
+		assertEquals(6, entries.size());
 	}
 	
 	public void testGCCBuiltinSpecsDetector_Includes_SymbolicLinkUp() throws Exception {

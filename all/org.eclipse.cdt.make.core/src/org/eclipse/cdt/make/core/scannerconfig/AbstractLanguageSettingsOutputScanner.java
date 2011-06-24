@@ -451,20 +451,23 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		
 		// then prefer referenced projects
+		Set<String> referencedProjectsNames = new LinkedHashSet<String>();
 		ICConfigurationDescription cfgDescription = getConfigurationDescription();
-		Map<String,String> refs = cfgDescription.getReferenceInfo();
-		Set<String> referencedProjectsNames = new LinkedHashSet<String>(refs.keySet());
-		for (String prjName : referencedProjectsNames) {
-			IProject prj = root.getProject(prjName);
-			if (prj.isOpen()) {
-				result.addAll(findPathInFolder(path, prj));
+		if (cfgDescription!=null) {
+			Map<String,String> refs = cfgDescription.getReferenceInfo();
+			referencedProjectsNames.addAll(refs.keySet());
+			for (String prjName : referencedProjectsNames) {
+				IProject prj = root.getProject(prjName);
+				if (prj.isOpen()) {
+					result.addAll(findPathInFolder(path, prj));
+				}
 			}
-		}
-		size = result.size();
-		if (size==1) { // found the one
-			return result.get(0);
-		} else if (size>1) { // ambiguous
-			return null;
+			size = result.size();
+			if (size==1) { // found the one
+				return result.get(0);
+			} else if (size>1) { // ambiguous
+				return null;
+			}
 		}
 	
 		// then check all other projects in workspace

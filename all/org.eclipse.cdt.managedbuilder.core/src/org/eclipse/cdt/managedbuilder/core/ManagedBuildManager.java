@@ -4811,7 +4811,8 @@ public class ManagedBuildManager extends AbstractCExtension {
 	 * TODO - better home?
 	 */
 	static public void runBuiltinSpecsDetectors(ICConfigurationDescription cfgDescription, IPath workingDirectory,
-			String[] env, IProgressMonitor monitor) throws CoreException {
+			String[] env, IProgressMonitor monitor) {
+		IProject project = cfgDescription.getProjectDescription().getProject();
 		ICFolderDescription rootFolderDescription = cfgDescription.getRootFolderDescription();
 		List<String> languageIds = new ArrayList<String>();
 		for (ICLanguageSetting languageSetting : rootFolderDescription.getLanguageSettings()) {
@@ -4825,12 +4826,15 @@ public class ManagedBuildManager extends AbstractCExtension {
 			ILanguageSettingsProvider rawProvider = LanguageSettingsManager.getRawProvider(provider);
 			if (rawProvider instanceof ILanguageSettingsBuiltinSpecsDetector) {
 				ILanguageSettingsBuiltinSpecsDetector detector = (ILanguageSettingsBuiltinSpecsDetector)rawProvider;
+				boolean isWorkspaceProvider = LanguageSettingsManager.isWorkspaceProvider(provider);
 				for (String languageId : languageIds) {
 					if (detector.getLanguageScope()==null || detector.getLanguageScope().contains(languageId)) {
 						try {
-							// for workspace provider cfgDescription is used to figure out the current project for build console
-							detector.startup(cfgDescription, languageId);
-							detector.run(workingDirectory, env, monitor);
+							if (isWorkspaceProvider) {
+								detector.run(project, languageId, workingDirectory, env, monitor);
+							} else {
+								detector.run(cfgDescription, languageId, workingDirectory, env, monitor);
+							}
 							// detector.shutdown() is called from ConsoleOutputSniffer
 						} catch (Throwable e) {
 							IStatus status = new Status(IStatus.ERROR, MakeCorePlugin.PLUGIN_ID, "Internal error in BuiltinSpecsDetector "+detector.getId(), e);
@@ -4841,13 +4845,18 @@ public class ManagedBuildManager extends AbstractCExtension {
 			}
 		}
 
+
 		// AG: FIXME
 //		LanguageSettingsManager.serialize(cfgDescription);
 		// AG: FIXME - rather send event that ls settings changed
-		IProject project = cfgDescription.getProjectDescription().getProject();
 		ICProject icProject = CoreModel.getDefault().create(project);
 		ICElement[] tuSelection = new ICElement[] {icProject};
-		CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
+			try {
+				CCorePlugin.getIndexManager().update(tuSelection, IIndexManager.UPDATE_ALL | IIndexManager.UPDATE_EXTERNAL_FILES_FOR_PROJECT);
+			} catch (CoreException e) {
+				IStatus status = new Status(IStatus.ERROR, ManagedBuilderCorePlugin.PLUGIN_ID, "Error updating CDT index", e);
+				ManagedBuilderCorePlugin.log(status);
+			}
 	}
 
 }

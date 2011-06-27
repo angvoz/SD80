@@ -84,8 +84,9 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	}
 
 	@Override
-	public void startup(ICConfigurationDescription cfgDescription, String languageId) throws CoreException {
-		super.startup(cfgDescription, languageId);
+	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
+		super.startup(cfgDescription);
+		
 		state = State.NONE;
 	}
 	

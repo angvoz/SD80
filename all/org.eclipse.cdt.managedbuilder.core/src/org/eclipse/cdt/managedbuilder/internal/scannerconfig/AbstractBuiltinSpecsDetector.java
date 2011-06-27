@@ -15,7 +15,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CommandLauncher;
@@ -172,21 +174,45 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 
 	@Override
 	public void shutdown() {
+		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
+			groupEntries(detectedSettingEntries);
+			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+		}
+		detectedSettingEntries = null;
+
 		if (specFile!=null && !preserveSpecFile) {
 			specFile.delete();
 			specFile = null;
 		}
 
 		currentCommandResolved = null;
+	}
 
-		if (detectedSettingEntries==null) {
-			detectedSettingEntries = new ArrayList<ICLanguageSettingEntry>();
+	protected void groupEntries(List<ICLanguageSettingEntry> inputEntries) {
+		Map<Integer, List<ICLanguageSettingEntry>> groupedEntries = new HashMap<Integer, List<ICLanguageSettingEntry>>();
+		int kindMax = 0;
+		for (ICLanguageSettingEntry entry : inputEntries) {
+			int kind = entry.getKind();
+			if (kind>kindMax) {
+				kindMax = kind;
+			}
+			
+			List<ICLanguageSettingEntry> entries = groupedEntries.get(kind);
+			if (entries==null) {
+				entries = new ArrayList<ICLanguageSettingEntry>();
+				groupedEntries.put(kind, entries);
+			}
+			entries.add(entry);
 		}
-
-		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
-			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+		
+		inputEntries.clear();
+		
+		for (int kind=1;kind<=kindMax;kind++) {
+			List<ICLanguageSettingEntry> entries = groupedEntries.get(kind);
+			if (entries!=null) {
+				inputEntries.addAll(entries);
+			}
 		}
-		detectedSettingEntries = null;
 	}
 
 	public void run(IProject project, String languageId, IPath workingDirectory, String[] env,

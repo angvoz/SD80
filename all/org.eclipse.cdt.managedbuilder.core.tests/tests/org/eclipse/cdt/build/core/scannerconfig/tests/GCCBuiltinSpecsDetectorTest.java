@@ -16,8 +16,12 @@ import java.util.List;
 import junit.framework.TestCase;
 
 import org.eclipse.cdt.core.model.CoreModel;
+import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
 import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
+import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
+import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
@@ -30,6 +34,7 @@ import org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDete
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -351,6 +356,68 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		}
 	}
 
+	public void testAbstractBuiltinSpecsDetector_GroupSettings() throws Exception {
+		// define benchmarks
+		final CIncludePathEntry includePath_1 = new CIncludePathEntry("/include/path_1", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CIncludePathEntry includePath_2 = new CIncludePathEntry("/include/path_2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CIncludeFileEntry includeFile_1 = new CIncludeFileEntry(new Path("/include.file1"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CIncludeFileEntry includeFile_2 = new CIncludeFileEntry(new Path("/include.file2"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CMacroEntry macro_1 = new CMacroEntry("MACRO_1", "", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CMacroEntry macro_2 = new CMacroEntry("MACRO_2", "", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY |ICSettingEntry.UNDEFINED);
+		final CMacroFileEntry macroFile_1 = new CMacroFileEntry(new Path("/macro.file1"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CMacroFileEntry macroFile_2 = new CMacroFileEntry(new Path("/macro.file2"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CLibraryPathEntry libraryPath_1 = new CLibraryPathEntry(new Path("/lib/path_1"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CLibraryPathEntry libraryPath_2 = new CLibraryPathEntry(new Path("/lib/path_2"), ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CLibraryFileEntry libraryFile_1 = new CLibraryFileEntry("lib_1.a", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		final CLibraryFileEntry libraryFile_2 = new CLibraryFileEntry("lib_2.a", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		
+		// Define mock detector adding unorganized entries
+		AbstractBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
+			@Override
+			public boolean processLine(String line) {
+				detectedSettingEntries.add(libraryFile_1);
+				detectedSettingEntries.add(libraryPath_1);
+				detectedSettingEntries.add(macroFile_1);
+				detectedSettingEntries.add(macro_1);
+				detectedSettingEntries.add(includeFile_1);
+				detectedSettingEntries.add(includePath_1);
+				
+				detectedSettingEntries.add(includePath_2);
+				detectedSettingEntries.add(includeFile_2);
+				detectedSettingEntries.add(macro_2);
+				detectedSettingEntries.add(macroFile_2);
+				detectedSettingEntries.add(libraryPath_2);
+				detectedSettingEntries.add(libraryFile_2);
+				return true;
+			}
+		};
+		
+		// run specs detector
+		detector.startup(null);
+		detector.processLine("");
+		detector.shutdown();
+		
+		
+		// compare benchmarks, expected well-sorted
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+		
+		int i=0;
+		assertEquals(includePath_1, entries.get(i++));
+		assertEquals(includePath_2, entries.get(i++));
+		assertEquals(includeFile_1, entries.get(i++));
+		assertEquals(includeFile_2, entries.get(i++));
+		assertEquals(macro_1, entries.get(i++));
+		assertEquals(macro_2, entries.get(i++));
+		assertEquals(macroFile_1, entries.get(i++));
+		assertEquals(macroFile_2, entries.get(i++));
+		assertEquals(libraryPath_1, entries.get(i++));
+		assertEquals(libraryPath_2, entries.get(i++));
+		assertEquals(libraryFile_1, entries.get(i++));
+		assertEquals(libraryFile_2, entries.get(i++));
+		
+		assertEquals(12, entries.size());
+	}
+	
 	public void testGCCBuiltinSpecsDetector_Macro_NoValue() throws Exception {
 		AbstractBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector();
 		

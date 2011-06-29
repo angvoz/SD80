@@ -19,7 +19,15 @@ public interface INoop extends IEDCService {
 	void longNoop(IDMContext whatever, DataRequestMonitor<Boolean> rm);
 
 	/**
-	 * This service simply loops for [duration] seconds, asking for the service
+	 * Simply sticks a boolean in the given RM after [delay] seconds have elapsed.
+	 * 
+	 * @param delay  time in seconds
+	 * @param rm
+	 */
+	void longNoop(int delay, DataRequestMonitor<Boolean> rm);
+
+	/**
+	 * This method simply loops for [duration] seconds, asking for the service
 	 * tracker every second and trying to use it to get a service. It's used in
 	 * a shutdown test to validate that threads in the EDC thread pool are given
 	 * a chance to complete before the DSF session moves forward with its

@@ -1,12 +1,12 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2009 Andrew Gvozdev (Quoin Inc.) and others.
+ * Copyright (c) 2009, 2011 Andrew Gvozdev and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
+ *     Andrew Gvozdev - initial API and implementation
  *******************************************************************************/
 
 package org.eclipse.cdt.make.core.scannerconfig;
@@ -62,133 +62,138 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		ILanguageSettingsOutputScanner {
 
 	protected static abstract class AbstractOptionParser {
-			protected final Pattern pattern;
-			protected final String patternStr;
-			protected String nameExpression;
-			protected String valueExpression;
-	
-			public AbstractOptionParser(String pattern, String nameExpression, String valueExpression) {
-				this.patternStr = pattern;
-				this.nameExpression = nameExpression;
-				this.valueExpression = valueExpression;
-	
-				this.pattern = Pattern.compile(pattern);
-			}
-	
-			public AbstractOptionParser(String pattern, String nameExpression) {
-				this(pattern, nameExpression, null);
-			}
-	
-			public int getKind() {
-				@SuppressWarnings("nls")
-				int entry = createEntry("dummy", "dummy", 0).getKind();
-				return entry;
-			}
-	
-			public abstract ICLanguageSettingEntry createEntry(String name, String value, int flag);
-	
-			/**
-			 * TODO: explain
-			 */
-			protected String extractOption(String input) {
-				@SuppressWarnings("nls")
-				String option = input.replaceFirst("(" + patternStr + ").*", "$1");
-				return option;
-			}
-	
-			protected String parseStr(Matcher matcher, String str) {
-				if (str != null)
-					return matcher.replaceAll(str);
-				return null;
-			}
-	
+		protected final Pattern pattern;
+		protected final String patternStr;
+		protected String nameExpression;
+		protected String valueExpression;
+		protected int extraFlag = 0;
+
+		public AbstractOptionParser(String pattern, String nameExpression, String valueExpression, int extraFlag) {
+			this.patternStr = pattern;
+			this.nameExpression = nameExpression;
+			this.valueExpression = valueExpression;
+			this.extraFlag = extraFlag;
+
+			this.pattern = Pattern.compile(pattern);
 		}
 
-	protected static class IncludePathOptionParser extends AbstractOptionParser {
-		private int extraFlag = 0;
+		public AbstractOptionParser(String pattern, String nameExpression, String valueExpression) {
+			this(pattern, nameExpression, valueExpression, 0);
+		}
+		
+		public AbstractOptionParser(String pattern, String nameExpression, int extraFlag) {
+			this(pattern, nameExpression, null, extraFlag);
+		}
 
-		public IncludePathOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+		public AbstractOptionParser(String pattern, String nameExpression) {
+			this(pattern, nameExpression, null);
 		}
 		
-		public IncludePathOptionParser(String pattern, String nameExpression, int flag) {
-			super(pattern, nameExpression);
-			extraFlag = flag;
+		public int getKind() {
+			@SuppressWarnings("nls")
+			int entry = createEntry("dummy", "dummy", 0).getKind();
+			return entry;
 		}
-		
-		@Override
-		public CIncludePathEntry createEntry(String name, String value, int flag) {
-			return new CIncludePathEntry(value, flag | extraFlag);
+
+		public abstract ICLanguageSettingEntry createEntry(String name, String value, int flag);
+
+		/**
+		 * TODO: explain
+		 */
+		protected String extractOption(String input) {
+			@SuppressWarnings("nls")
+			String option = input.replaceFirst("(" + patternStr + ").*", "$1");
+			return option;
+		}
+
+		protected String parseStr(Matcher matcher, String str) {
+			if (str != null)
+				return matcher.replaceAll(str);
+			return null;
 		}
 
 	}
 
-	protected static class IncludeFileOptionParser extends AbstractOptionParser {
-			public IncludeFileOptionParser(String pattern, String nameExpression) {
-				super(pattern, nameExpression);
-			}
-	
-			@Override
-			public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-				return new CIncludeFileEntry(value, flag);
-			}
+	protected static class IncludePathOptionParser extends AbstractOptionParser {
+		public IncludePathOptionParser(String pattern, String nameExpression) {
+			super(pattern, nameExpression);
 		}
+		public IncludePathOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public CIncludePathEntry createEntry(String name, String value, int flag) {
+			return new CIncludePathEntry(value, flag | extraFlag);
+		}
+	}
+
+	protected static class IncludeFileOptionParser extends AbstractOptionParser {
+		public IncludeFileOptionParser(String pattern, String nameExpression) {
+			super(pattern, nameExpression);
+		}
+		public IncludeFileOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CIncludeFileEntry(value, flag | extraFlag);
+		}
+	}
 
 	protected static class MacroOptionParser extends AbstractOptionParser {
-			private int extraFlag = 0;
-	
-			public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
-				super(pattern, nameExpression, valueExpression);
-			}
-	
-			public MacroOptionParser(String pattern, String nameExpression, String valueExpression, int flag) {
-				super(pattern, nameExpression, valueExpression);
-				this.extraFlag = flag;
-			}
-	
-			public MacroOptionParser(String pattern, String nameExpression, int flag) {
-				super(pattern, nameExpression);
-				this.extraFlag = flag;
-			}
-			
-			@Override
-			public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-				return new CMacroEntry(name, value, flag | extraFlag);
-			}
+		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
+			super(pattern, nameExpression, valueExpression);
 		}
+		public MacroOptionParser(String pattern, String nameExpression, String valueExpression, int extraFlag) {
+			super(pattern, nameExpression, valueExpression, extraFlag);
+		}
+		public MacroOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CMacroEntry(name, value, flag | extraFlag);
+		}
+	}
 
 	protected static class MacroFileOptionParser extends AbstractOptionParser {
-			public MacroFileOptionParser(String pattern, String nameExpression) {
-				super(pattern, nameExpression);
-			}
-	
-			@Override
-			public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-				return new CMacroFileEntry(value, flag);
-			}
+		public MacroFileOptionParser(String pattern, String nameExpression) {
+			super(pattern, nameExpression);
 		}
+		public MacroFileOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CMacroFileEntry(value, flag | extraFlag);
+		}
+	}
 
 	protected static class LibraryPathOptionParser extends AbstractOptionParser {
-			public LibraryPathOptionParser(String pattern, String nameExpression) {
-				super(pattern, nameExpression);
-			}
-	
-			@Override
-			public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-				return new CLibraryPathEntry(value, flag);
-			}
+		public LibraryPathOptionParser(String pattern, String nameExpression) {
+			super(pattern, nameExpression);
 		}
+		public LibraryPathOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CLibraryPathEntry(value, flag | extraFlag);
+		}
+	}
 
 	protected static class LibraryFileOptionParser extends AbstractOptionParser {
-			public LibraryFileOptionParser(String pattern, String nameExpression) {
-				super(pattern, nameExpression);
-			}
-	
-			@Override
-			public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-				return new CLibraryFileEntry(value, flag);
-			}
+		public LibraryFileOptionParser(String pattern, String nameExpression) {
+			super(pattern, nameExpression);
 		}
+		public LibraryFileOptionParser(String pattern, String nameExpression, int extraFlag) {
+			super(pattern, nameExpression, extraFlag);
+		}
+		@Override
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return new CLibraryFileEntry(value, flag | extraFlag);
+		}
+	}
 
 	protected static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
 
@@ -260,17 +265,6 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			expandRelativePaths = Boolean.parseBoolean(expandRelativePathsValue);
 	}
 	
-	/* (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = super.hashCode();
-		result = prime * result + (expandRelativePaths ? 1231 : 1237);
-		return result;
-	}
-
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
 		// FIXME
@@ -703,23 +697,6 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return null;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (!super.equals(obj))
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		AbstractLanguageSettingsOutputScanner other = (AbstractLanguageSettingsOutputScanner) obj;
-		if (expandRelativePaths != other.expandRelativePaths)
-			return false;
-		return true;
-	}
-
 	@SuppressWarnings("nls")
 	private String expressionLogicalOr(Set<String> fileExts) {
 		String pattern = "(";
@@ -756,6 +733,34 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		@SuppressWarnings("nls")
 		int count = str.replaceAll("[^\\(]", "").length();
 		return count;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + (expandRelativePaths ? 1231 : 1237);
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AbstractLanguageSettingsOutputScanner other = (AbstractLanguageSettingsOutputScanner) obj;
+		if (expandRelativePaths != other.expandRelativePaths)
+			return false;
+		return true;
 	}
 
 }

@@ -26,8 +26,38 @@ import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsManager;
 public abstract class AbstractBuildCommandParser extends AbstractLanguageSettingsOutputScanner implements
 		ILanguageSettingsBuildOutputScanner {
 
-	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
-	private static final int PATTERN_OPTION_GROUP = 0;
+	private static final Pattern OPTIONS_PATTERN = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
+	private static final int OPTION_GROUP = 0;
+	
+	/**
+	 * Note: design patterns to keep file group the same and matching {@link #FILE_GROUP}
+	 */
+	@SuppressWarnings("nls")
+	private static final String[] PATTERN_TEMPLATES = {
+		"\\s*\"?${COMPILER_PATTERN}\"?.*\\s" + "()([^'\"\\s]*\\.${EXTENSIONS_PATTERN})(\\s.*)?[\r\n]*", // compiling unquoted file
+		"\\s*\"?${COMPILER_PATTERN}\"?.*\\s" + "(['\"])(.*\\.${EXTENSIONS_PATTERN})\\${COMPILER_GROUPS+1}(\\s.*)?[\r\n]*" // compiling quoted file
+	};
+	private static final int FILE_GROUP = 2;
+	
+	
+	@SuppressWarnings("nls")
+	private String getCompilerCommandPattern() {
+		String parameter = getCustomParameter();
+		return "(" + parameter + ")";
+	}
+
+	private int adjustFileGroup() {
+		return countGroups(getCompilerCommandPattern()) + FILE_GROUP;
+	}
+
+	private String makePattern(String template) {
+		@SuppressWarnings("nls")
+		String pattern = template
+				.replace("${COMPILER_PATTERN}", getCompilerCommandPattern())
+				.replace("${EXTENSIONS_PATTERN}", getPatternFileExtensions())
+				.replace("${COMPILER_GROUPS+1}", new Integer(countGroups(getCompilerCommandPattern()) + 1).toString());
+		return pattern;
+	}
 
 	@Override
 	protected String parseResourceName(String line) {
@@ -35,20 +65,16 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 			return null;
 		}
 		
-		String sourceFileName = null;
-		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
-		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
-	
-		if (fileMatcher.matches()) {
-			sourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
-		} else {
-			String patternCompileQuotedFile = getPatternCompileQuotedFile();
-			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
+		for (String template : PATTERN_TEMPLATES) {
+			String pattern = makePattern(template);
+			Matcher fileMatcher = Pattern.compile(pattern).matcher(line);
 			if (fileMatcher.matches()) {
-				sourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
+				int fileGroup = adjustFileGroup();
+				String sourceFileName = fileMatcher.group(fileGroup);
+				return sourceFileName;
 			}
 		}
-		return sourceFileName;
+		return null;
 	}
 
 	@Override
@@ -58,9 +84,9 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 		}
 		
 		List<String> options = new ArrayList<String>();
-		Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
+		Matcher optionMatcher = OPTIONS_PATTERN.matcher(line);
 		while (optionMatcher.find()) {
-			String option = optionMatcher.group(PATTERN_OPTION_GROUP);
+			String option = optionMatcher.group(OPTION_GROUP);
 			if (option!=null) {
 				options.add(option);
 			}
@@ -68,56 +94,30 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 		return options;
 	}
 
+	// This is redundant but let us keep it here to navigate in java code easier
 	@Override
 	public boolean processLine(String line, ErrorParserManager epm) {
 		return super.processLine(line, epm);
 	}
 
-	@SuppressWarnings("nls")
-	private String getGccCommandPattern() {
-		String parameter = getCustomParameter();
-		return "(" + parameter + ")";
-	}
-
-	@SuppressWarnings("nls")
-	private String getPatternCompileUnquotedFile() {
-		String patternFileName = "([^'\"\\s]*\\." + getPatternFileExtensions() + ")";
-		return "\\s*\"?" + getGccCommandPattern() + "\"?.*\\s" + patternFileName + "(\\s.*)?[\r\n]*";
-	}
-
-	@SuppressWarnings("nls")
-	private String getPatternCompileQuotedFile() {
-		String patternFileName = "(.*\\." + getPatternFileExtensions() + ")";
-		return "\\s*\"?" + getGccCommandPattern() + "\"?.*\\s" + "(['\"])" + patternFileName + "\\"
-				+ (countGroups(getGccCommandPattern()) + 1) + "(\\s.*)?[\r\n]*";
-	}
-
-	private int getGroupForPatternUnquotedFile() {
-		return countGroups(getGccCommandPattern()) + 1;
-	}
-
-	private int getGroupForPatternQuotedFile() {
-		return countGroups(getGccCommandPattern()) + 2;
-	}
-
+	/**
+	 * Trivial Error Parser which allows highlighting of output lines matching the patterns
+	 * of this parser. Intended for better troubleshooting experience.
+	 * Implementers are supposed to add the error parser as an extension. Initialize with
+	 * build command parser extension ID. 
+	 */
 	protected static abstract class AbstractBuildCommandPatternHighlighter extends RegexErrorParser implements IErrorParser2 {
-		public AbstractBuildCommandPatternHighlighter(String pluginExtension) {
-			init(pluginExtension);
+		public AbstractBuildCommandPatternHighlighter(String buildCommandParserPluginExtension) {
+			init(buildCommandParserPluginExtension);
 		}
 
 		protected void init(String buildCommandParserId) {
-			AbstractBuildCommandParser gccBuildCommandParser = (AbstractBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(buildCommandParserId);
-			{
-				String pat = gccBuildCommandParser.getPatternCompileUnquotedFile();
-				String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternUnquotedFile(); //$NON-NLS-1$
+			AbstractBuildCommandParser buildCommandParser = (AbstractBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(buildCommandParserId);
+			for (String template : PATTERN_TEMPLATES) {
+				String pattern = buildCommandParser.makePattern(template);
+				String fileExpr = "$"+buildCommandParser.adjustFileGroup(); //$NON-NLS-1$
 				String descExpr = "$0"; //$NON-NLS-1$
-				addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
-			}
-			{
-				String pat = gccBuildCommandParser.getPatternCompileQuotedFile();
-				String fileExpr = "$"+gccBuildCommandParser.getGroupForPatternQuotedFile(); //$NON-NLS-1$
-				String descExpr = "$0"; //$NON-NLS-1$
-				addPattern(new RegexErrorPattern(pat, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
+				addPattern(new RegexErrorPattern(pattern, fileExpr, null, descExpr, null, IMarkerGenerator.SEVERITY_WARNING, true));
 			}
 		}
 

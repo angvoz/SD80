@@ -255,11 +255,22 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			}
 
 			if (buildDirURI == null && currentCfgDescription != null) {
-				// FIXME - take build dir from configuration
+				IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
+				buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(builderCWD);
 			}
 			
 			if (buildDirURI == null && currentProject != null) {
 				buildDirURI = currentProject.getLocationURI();
+			}
+			
+			if (buildDirURI == null && currentResource != null) {
+				IContainer container;
+				if (currentResource instanceof IContainer) {
+					container = (IContainer) currentResource;
+				} else {
+					container = currentResource.getParent();
+				}
+				buildDirURI = container.getLocationURI();
 			}
 		}
 
@@ -324,7 +335,10 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		
 		URI uri = getURI(parsedPath, baseURI);
 		if (uri != null) {
-			IResource rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
+			IResource rc = null;
+			if (uri.isAbsolute()) {
+				rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
+			}
 			if (rc != null) {
 				IPath path = rc.getFullPath();
 				resolvedPath = path.toString();
@@ -380,7 +394,9 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		URI uri = null;
 	
 		if (baseURI==null) {
-			uri = resolvePathFromBaseLocation(name, new Path("/"));
+			if (new Path(name).isAbsolute()) {
+				uri = resolvePathFromBaseLocation(name, new Path("/"));
+			}
 		} else if (baseURI.getScheme().equals(EFS.SCHEME_FILE)) {
 			// location on the local filesystem
 			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
@@ -488,13 +504,41 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	private IResource findResource(String parsedResourceName) {
+		if (parsedResourceName==null)
+			return null;
+		
 		IResource sourceFile = null;
-		if (parsedResourceName != null) {
-			if (errorParserManager != null) {
-				sourceFile = errorParserManager.findFileName(parsedResourceName);
-			} else if (currentProject != null){
-				sourceFile = currentProject.findMember(parsedResourceName);
+		// try ErrorParserManager
+		if (errorParserManager != null) {
+			sourceFile = errorParserManager.findFileName(parsedResourceName);
+		}
+		// try to find absolute path in the workspace
+		if (sourceFile == null && new Path(parsedResourceName).isAbsolute()) {
+			IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+			URI uri = org.eclipse.core.filesystem.URIUtil.toURI(parsedResourceName);
+			IResource[] resources = root.findFilesForLocationURI(uri);
+			if (resources.length > 0) {
+				sourceFile = resources[0];
+				if (currentProject!=null) {
+					for (IResource rc : resources) {
+						if (rc.getProject().equals(currentProject)) {
+							sourceFile = rc;
+							break;
+						}
+					}
+				}
+				return sourceFile;
 			}
+			
+			
+		}
+		// try path relative to build dir from configuration
+		if (sourceFile == null) {
+			// TODO
+		}
+		// try path relative to the project
+		if (sourceFile == null && currentProject != null) {
+			sourceFile = currentProject.findMember(parsedResourceName);
 		}
 		return sourceFile;
 	}

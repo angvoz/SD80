@@ -171,7 +171,7 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	public void shutdown() {
 		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
 			groupEntries(detectedSettingEntries);
-			setSettingEntries(currentCfgDescription, resource, currentLanguageId, detectedSettingEntries);
+			setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, detectedSettingEntries);
 			
 			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
 					+ " collected " + detectedSettingEntries.size() + " entries" + " for language " + currentLanguageId);
@@ -363,7 +363,7 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	 * TODO
 	 */
 	@Override
-	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
+	protected void setSettingEntries(List<ICLanguageSettingEntry> entries) {
 		// Builtin specs detectors collect entries not per line but for the whole output
 		if (entries!=null)
 			detectedSettingEntries.addAll(entries);

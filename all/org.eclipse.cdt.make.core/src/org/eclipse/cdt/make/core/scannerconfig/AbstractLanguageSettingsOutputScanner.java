@@ -26,12 +26,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.ErrorParserManager;
-import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
 import org.eclipse.cdt.core.model.ILanguage;
 import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.cdt.core.settings.model.util.CDataUtil;
@@ -62,10 +60,10 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 
 	protected ICConfigurationDescription currentCfgDescription = null;
 	protected IProject currentProject = null;
+	protected IResource currentResource = null;
 	protected String currentLanguageId = null;
 
 	protected ErrorParserManager errorParserManager = null;
-	protected IResource resource = null;
 	protected String parsedResourceName = null;
 	protected boolean isResolvingPaths = true;
 
@@ -204,12 +202,12 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	public void shutdown() {
 	}
 
-	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
-		if (rc!=null) {
-			setSettingEntries(currentCfgDescription, rc, currentLanguageId, entries);
+	protected void setSettingEntries(List<ICLanguageSettingEntry> entries) {
+		if (currentResource!=null) {
+			setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, entries);
 			
 			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
-					+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + resource);
+					+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + currentResource);
 			MakeCorePlugin.log(status);
 		}
 	}
@@ -221,7 +219,7 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		if (!isLanguageInScope(currentLanguageId))
 			return false;
 
-		resource = findResource(parsedResourceName);
+		currentResource = findResource(parsedResourceName);
 	
 		URI buildDirURI = null;
 		URI cwdURI = null;
@@ -233,17 +231,17 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		 */
 		URI mappedRootURI = null;
 
-		if (resource!=null && isResolvingPaths) {
+		if (currentResource!=null && isResolvingPaths) {
 			IPath parsedSrcPath = new Path(parsedResourceName);
 			if (parsedSrcPath.isAbsolute()) {
-				mappedRootURI = getMappedRoot(resource, parsedSrcPath);
+				mappedRootURI = getMappedRoot(currentResource, parsedSrcPath);
 			} else {
 				mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(
-						resource.getLocationURI(), "/"); //$NON-NLS-1$
+						currentResource.getLocationURI(), "/"); //$NON-NLS-1$
 			}
 
 			if (!parsedSrcPath.isAbsolute()) {
-				cwdURI = findBaseLocationURI(resource.getLocationURI(), parsedResourceName);
+				cwdURI = findBaseLocationURI(currentResource.getLocationURI(), parsedResourceName);
 			}
 			if (cwdURI == null && errorParserManager != null) {
 				cwdURI = errorParserManager.getWorkingDirectoryURI();
@@ -256,9 +254,12 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 				buildDirURI = cwdURI;
 			}
 
-			if (buildDirURI == null) {
+			if (buildDirURI == null && currentCfgDescription != null) {
 				// FIXME - take build dir from configuration
-				buildDirURI = resource.getProject().getLocationURI();
+			}
+			
+			if (buildDirURI == null && currentProject != null) {
+				buildDirURI = currentProject.getLocationURI();
 			}
 		}
 
@@ -285,9 +286,9 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 				}
 			}
 			if (entries.size() > 0) {
-				setSettingEntries(entries, resource);
+				setSettingEntries(entries);
 			} else {
-				setSettingEntries(null, resource);
+				setSettingEntries(null);
 			}
 		}
 		return false;

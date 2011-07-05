@@ -258,10 +258,11 @@ public class GCCBuildCommandParserTest extends TestCase {
 			@Override
 			public boolean processLine(String line, ErrorParserManager epm) {
 				// pretending that we parsed the line
+				currentResource = file;
 				List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
 				ICLanguageSettingEntry entry = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN);
 				entries.add(entry);
-				setSettingEntries(entries, file);
+				setSettingEntries(entries);
 				return true;
 			}
 		};

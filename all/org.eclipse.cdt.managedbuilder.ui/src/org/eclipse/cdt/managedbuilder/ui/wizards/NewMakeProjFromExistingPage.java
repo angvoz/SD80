@@ -77,7 +77,7 @@ public class NewMakeProjFromExistingPage extends WizardPage {
 		addToolchainSelector(comp);
 
 		checkBoxTryNewSD = new Button(comp, SWT.CHECK);
-		checkBoxTryNewSD.setText(org.eclipse.cdt.internal.ui.newui.Messages.CDTMainWizardPage_TrySD80);
+		checkBoxTryNewSD.setText(org.eclipse.cdt.internal.ui.newui.Messages.CDTMainWizardPage_TrySD90);
 		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 		gd.horizontalSpan = 2;
 		checkBoxTryNewSD.setLayoutData(gd);

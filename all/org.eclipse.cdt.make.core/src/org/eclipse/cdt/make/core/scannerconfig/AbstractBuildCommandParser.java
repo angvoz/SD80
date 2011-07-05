@@ -60,7 +60,7 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 	}
 
 	@Override
-	protected String parseResourceName(String line) {
+	protected String parseForResourceName(String line) {
 		if (line==null) {
 			return null;
 		}
@@ -78,7 +78,7 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 	}
 
 	@Override
-	protected List<String> parseOptions(String line) {
+	protected List<String> parseForOptions(String line) {
 		if (line==null) {
 			return null;
 		}

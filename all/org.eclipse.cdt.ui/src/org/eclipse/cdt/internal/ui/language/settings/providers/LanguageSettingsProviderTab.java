@@ -251,7 +251,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		fStatusLine = new StatusMessageLine(usercomp, SWT.LEFT, 2);
 
 		// "I want to try new scanner discovery" temporary checkbox
-		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
+		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD90, 2, GridData.FILL_HORIZONTAL);
 		enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -389,7 +389,7 @@ public class LanguageSettingsProviderTab extends AbstractCPropertyTab {
 		if (!page.isForPrefs()) {
 			if (globalProviderCheckBox==null) {
 				globalProviderCheckBox = new Button(groupOptionsPage, SWT.CHECK);
-				globalProviderCheckBox.setText("Global provider shared between projects");
+				globalProviderCheckBox.setText("Use global provider sharing settings among projects");
 				globalProviderCheckBox.addSelectionListener(new SelectionAdapter() {
 					@Override
 					public void widgetSelected(SelectionEvent e) {

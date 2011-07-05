@@ -437,7 +437,7 @@ public class LanguageSettingsEntriesTab extends AbstractCPropertyTab {
 		builtInCheckBox.setEnabled(true);
 
 		// "I want to try new scanner discovery" temporary checkbox
-		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD80, 2, GridData.FILL_HORIZONTAL);
+		enableProvidersCheckBox = setupCheck(usercomp, Messages.CDTMainWizardPage_TrySD90, 2, GridData.FILL_HORIZONTAL);
 		enableProvidersCheckBox.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {

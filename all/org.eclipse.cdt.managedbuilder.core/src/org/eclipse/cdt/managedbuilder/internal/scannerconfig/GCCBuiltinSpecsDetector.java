@@ -31,13 +31,12 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	private enum State {NONE, EXPECTING_LOCAL_INCLUDE, EXPECTING_SYSTEM_INCLUDE}
 	State state = State.NONE;
 	
-	private static final int BUILTIN_SPECS_FLAG = ICSettingEntry.BUILTIN | ICSettingEntry.READONLY;
 	@SuppressWarnings("nls")
 	static final AbstractOptionParser[] optionParsers = {
-			new IncludePathOptionParser("#include <(\\S.*)>", "$1", BUILTIN_SPECS_FLAG),
-			new IncludePathOptionParser("#include \"(\\S.*)\"", "$1", BUILTIN_SPECS_FLAG | ICSettingEntry.LOCAL),
-			new MacroOptionParser("#define (\\S*\\(.*?\\)) *(.*)", "$1", "$2", BUILTIN_SPECS_FLAG),
-			new MacroOptionParser("#define (\\S*) *(.*)", "$1", "$2", BUILTIN_SPECS_FLAG),
+			new IncludePathOptionParser("#include \"(\\S.*)\"", "$1", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY | ICSettingEntry.LOCAL),
+			new IncludePathOptionParser("#include <(\\S.*)>", "$1", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("#define (\\S*\\(.*?\\)) *(.*)", "$1", "$2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("#define (\\S*) *(.*)", "$1", "$2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
 	};
 
 	@Override
@@ -55,7 +54,7 @@ public class GCCBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	}
 	
 	@Override
-	protected List<String> parseOptions(String line) {
+	protected List<String> parseForOptions(String line) {
 		line = line.trim();
 
 		// contribution of -dD option

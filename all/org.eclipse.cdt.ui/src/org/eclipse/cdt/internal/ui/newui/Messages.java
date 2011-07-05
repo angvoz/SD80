@@ -84,7 +84,7 @@ public class Messages extends NLS {
 	public static String CDTCommonProjectWizard_creatingProject;
 	public static String CDTMainWizardPage_0;
 	public static String CDTMainWizardPage_1;
-	public static String CDTMainWizardPage_TrySD80;
+	public static String CDTMainWizardPage_TrySD90;
 	public static String CLocationOutputTab_0;
 	public static String CLocationSourceTab_0;
 	public static String CLocationTab_0;

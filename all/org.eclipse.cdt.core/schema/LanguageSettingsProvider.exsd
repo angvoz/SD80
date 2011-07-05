@@ -214,7 +214,7 @@ If there is a need to configure a provider, attribute parameter could be used in
          <meta.section type="since"/>
       </appInfo>
       <documentation>
-         CDT 8.0
+         CDT 9.0
       </documentation>
    </annotation>
 

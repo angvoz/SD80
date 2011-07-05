@@ -44,19 +44,18 @@ public class XlcBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 //	private static final String XLC_TOOLCHAIN_ID = "cdt.managedbuild.toolchain.xlc.exe.debug";  //$NON-NLS-1$
 	private static final String GCC_TOOLCHAIN_ID = "cdt.managedbuild.toolchain.gnu.base";  //$NON-NLS-1$
 	
-	private static final Pattern PATTERN_OPTIONS = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
-	private static final int PATTERN_OPTION_GROUP = 0;
+	private static final Pattern OPTIONS_PATTERN = Pattern.compile("-[^\\s\"']*(\\s*((\".*?\")|('.*?')|([^-\\s][^\\s]+)))?"); //$NON-NLS-1$
+	private static final int OPTION_GROUP = 0;
 
-	private static final int BUILTIN_SPECS_FLAG = ICSettingEntry.BUILTIN | ICSettingEntry.READONLY;
 	@SuppressWarnings("nls")
 	private static final AbstractOptionParser[] optionParsers = {
-			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2", BUILTIN_SPECS_FLAG | ICSettingEntry.LOCAL),
-			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1", BUILTIN_SPECS_FLAG),
-			new IncludePathOptionParser("-qc\\+\\+=\\s*([^\\s\"']*)", "$1", BUILTIN_SPECS_FLAG),
-			new MacroOptionParser("-D\\s*([\"'])([^=]*)(=(.*))?\\1", "$2", "$4", BUILTIN_SPECS_FLAG),
-			new MacroOptionParser("-D\\s*([^\\s=\"']*)=(\\\\([\"']))(.*?)\\2", "$1", "$3$4$3", BUILTIN_SPECS_FLAG),
-			new MacroOptionParser("-D\\s*([^\\s=\"']*)=([\"'])(.*?)\\2", "$1", "$3", BUILTIN_SPECS_FLAG),
-			new MacroOptionParser("-D\\s*([^\\s=\"']*)(=([^\\s\"']*))?", "$1", "$3", BUILTIN_SPECS_FLAG),
+			new IncludePathOptionParser("-I\\s*([\"'])(.*)\\1", "$2", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY | ICSettingEntry.LOCAL),
+			new IncludePathOptionParser("-I\\s*([^\\s\"']*)", "$1", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new IncludePathOptionParser("-qc\\+\\+=\\s*([^\\s\"']*)", "$1", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("-D\\s*([\"'])([^=]*)(=(.*))?\\1", "$2", "$4", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("-D\\s*([^\\s=\"']*)=(\\\\([\"']))(.*?)\\2", "$1", "$3$4$3", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("-D\\s*([^\\s=\"']*)=([\"'])(.*?)\\2", "$1", "$3", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
+			new MacroOptionParser("-D\\s*([^\\s=\"']*)(=([^\\s\"']*))?", "$1", "$3", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY),
 	};
 
 	@Override
@@ -71,11 +70,11 @@ public class XlcBuiltinSpecsDetector extends AbstractBuiltinSpecsDetector implem
 	}
 
 	@Override
-	protected List<String> parseOptions(String line) {
+	protected List<String> parseForOptions(String line) {
 		List<String> options = new ArrayList<String>();
-		Matcher optionMatcher = PATTERN_OPTIONS.matcher(line);
+		Matcher optionMatcher = OPTIONS_PATTERN.matcher(line);
 		while (optionMatcher.find()) {
-			String option = optionMatcher.group(PATTERN_OPTION_GROUP);
+			String option = optionMatcher.group(OPTION_GROUP);
 			if (option!=null) {
 				options.add(option);
 			}

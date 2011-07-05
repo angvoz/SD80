@@ -71,8 +71,6 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	protected static final String SPEC_EXT_MACRO = "${EXT}"; //$NON-NLS-1$
 	protected static final String SPEC_FILE_BASE = "spec."; //$NON-NLS-1$
 
-	// temporaries which are reassigned before running
-	private String currentLanguageId = null;
 	private String currentCommandResolved = null;
 	protected List<ICLanguageSettingEntry> detectedSettingEntries = null;
 
@@ -80,11 +78,6 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	private boolean isConsoleEnabled = false;
 	protected java.io.File specFile = null;
 	protected boolean preserveSpecFile = false;
-
-	protected AbstractBuiltinSpecsDetector() {
-		// TODO
-		isForProject = true;
-	}
 
 	/**
 	 * TODO
@@ -147,9 +140,15 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	 * TODO
 	 */
 	@Override
-	protected String parseResourceName(String line) {
-		// For the project name
-		return "/";
+	protected String parseForResourceName(String line) {
+		// This works as if workspace-wide
+		return null;
+	}
+	
+	@Override
+	protected String determineLanguage(String parsedResourceName) {
+		// language id is supposed to be set by run(), just return it
+		return currentLanguageId;
 	}
 
 	@Override
@@ -165,10 +164,6 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 
 		specFile = null;
 
-		if (!runOnce) {
-			setSettingEntries(cfgDescription, currentProject, currentLanguageId, null);
-		}
-
 		currentCommandResolved = resolveCommand(currentLanguageId);
 	}
 
@@ -176,7 +171,11 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	public void shutdown() {
 		if (detectedSettingEntries!=null && detectedSettingEntries.size()>0) {
 			groupEntries(detectedSettingEntries);
-			setSettingEntries(currentCfgDescription, currentProject, currentLanguageId, detectedSettingEntries);
+			setSettingEntries(currentCfgDescription, resource, currentLanguageId, detectedSettingEntries);
+			
+			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
+					+ " collected " + detectedSettingEntries.size() + " entries" + " for language " + currentLanguageId);
+			ManagedBuilderCorePlugin.log(status);
 		}
 		detectedSettingEntries = null;
 
@@ -217,7 +216,10 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 
 	public void run(IProject project, String languageId, IPath workingDirectory, String[] env,
 			IProgressMonitor monitor) throws CoreException, IOException {
-
+		if (isRunOnce() && !isEmpty()) {
+			return;
+		}
+		
 		currentProject = project;
 		currentLanguageId = languageId;
 		startup(null);
@@ -228,6 +230,10 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	public void run(ICConfigurationDescription cfgDescription, String languageId, IPath workingDirectory,
 			String[] env, IProgressMonitor monitor) throws CoreException, IOException {
 		Assert.isNotNull(cfgDescription);
+		
+		if (isRunOnce() && !isEmpty()) {
+			return;
+		}
 
 		currentLanguageId = languageId;
 		startup(cfgDescription);
@@ -242,11 +248,6 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 	private void run(IPath workingDirectory, String[] env, IProgressMonitor monitor)
 			throws CoreException, IOException {
 
-		String command = currentCommandResolved;
-		if (command==null || command.trim().length()==0) {
-			return;
-		}
-
 		IConsole console;
 		if (isConsoleEnabled) {
 			console = startProviderConsole();
@@ -257,8 +258,11 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 		console.start(currentProject);
 		OutputStream cos = console.getOutputStream();
 
-		ErrorParserManager epm = new ErrorParserManager(currentProject, new SCMarkerGenerator(), new String[] {GMAKE_ERROR_PARSER_ID});
-		epm.setOutputStream(cos);
+		ErrorParserManager epm = null;
+		if (currentProject!=null) {
+			epm = new ErrorParserManager(currentProject, new SCMarkerGenerator(), new String[] {GMAKE_ERROR_PARSER_ID});
+			epm.setOutputStream(cos);
+		}
 		
 		if (monitor==null) {
 			monitor = new NullProgressMonitor();
@@ -275,6 +279,32 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 		OutputStream consoleOut = sniffer.getOutputStream();
 		OutputStream consoleErr = sniffer.getErrorStream();
 
+		boolean isSuccess = false;
+		try {
+			isSuccess = runProgram(currentCommandResolved, env, workingDirectory, monitor, consoleOut, consoleErr);
+		} catch (Exception e) {
+			ManagedBuilderCorePlugin.log(e);
+		}
+		if (!isSuccess) {
+			try {
+				consoleOut.close();
+			} catch (IOException e) {
+				ManagedBuilderCorePlugin.log(e);
+			}
+			try {
+				consoleErr.close();
+			} catch (IOException e) {
+				ManagedBuilderCorePlugin.log(e);
+			}
+		}
+	}
+
+	protected boolean runProgram(String command, String[] env, IPath workingDirectory, IProgressMonitor monitor,
+			OutputStream consoleOut, OutputStream consoleErr) throws CoreException, IOException {
+		
+		if (command==null || command.trim().length()==0) {
+			return false;
+		}
 
 		String errMsg = null;
 		ICommandLauncher launcher = new CommandLauncher();
@@ -307,7 +337,7 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 		if (errMsg!=null) {
 			String errorPrefix = MakeMessages.getString("ExternalScannerInfoProvider.Error_Prefix"); //$NON-NLS-1$
 
-			msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Provider_Error", command);
+			String msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Provider_Error", command);
 			printLine(consoleErr, errorPrefix + msg + NEWLINE);
 
 			// Launching failed, trying to figure out possible cause
@@ -323,7 +353,10 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 				msg = MakeMessages.getFormattedString("ExternalScannerInfoProvider.Working_Directory", workingDirectory); //$NON-NLS-1$
 				printLine(consoleErr, PATH_ENV + "=[" + envPath + "]" + NEWLINE); //$NON-NLS-1$ //$NON-NLS-2$
 			}
+			return false;
 		}
+		
+		return true;
 	}
 
 	/**
@@ -422,7 +455,7 @@ public abstract class AbstractBuiltinSpecsDetector extends AbstractLanguageSetti
 		return ext;
 	}
 
-	private void printLine(OutputStream stream, String msg) throws IOException {
+	protected void printLine(OutputStream stream, String msg) throws IOException {
 		stream.write((msg + NEWLINE).getBytes());
 		stream.flush();
 	}

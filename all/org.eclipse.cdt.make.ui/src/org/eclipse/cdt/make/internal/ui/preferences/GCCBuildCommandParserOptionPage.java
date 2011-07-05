@@ -275,21 +275,21 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 
 		{
 			expandRelativePathCheckBox = new Button(composite, SWT.CHECK);
-			expandRelativePathCheckBox.setText("Use heuristics to resolve relative paths");
+			expandRelativePathCheckBox.setText("Use heuristics to resolve paths");
 			GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 			gd.horizontalSpan = 2;
 			expandRelativePathCheckBox.setLayoutData(gd);
 
-			expandRelativePathCheckBox.setSelection(provider.isResolvePaths());
+			expandRelativePathCheckBox.setSelection(provider.isResolvingPaths());
 			expandRelativePathCheckBox.setEnabled(fEditable);
 			expandRelativePathCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					boolean enabled = expandRelativePathCheckBox.getSelection();
 					AbstractBuildCommandParser provider = getRawProvider();
-					if (enabled != provider.isResolvePaths()) {
+					if (enabled != provider.isResolvingPaths()) {
 						AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
-						selectedProvider.setExpandRelativePaths(enabled);
+						selectedProvider.setResolvingPaths(enabled);
 						providerTab.refreshItem(selectedProvider);
 					}
 				}
@@ -319,9 +319,9 @@ public final class GCCBuildCommandParserOptionPage extends AbstractLanguageSetti
 				public void widgetSelected(SelectionEvent e) {
 					boolean enabled = applyToProjectCheckBox.getSelection();
 					AbstractBuildCommandParser provider = getRawProvider();
-					if (enabled != provider.isResolvePaths()) {
+					if (enabled != provider.isResolvingPaths()) {
 						AbstractBuildCommandParser selectedProvider = getWorkingCopy(providerId);
-						selectedProvider.setExpandRelativePaths(enabled);
+						selectedProvider.setResolvingPaths(enabled);
 						providerTab.refreshItem(selectedProvider);
 					}
 				}

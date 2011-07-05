@@ -66,16 +66,16 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	private class MockBuildCommandParser extends AbstractBuildCommandParser  implements Cloneable {
 		@Override
+		protected AbstractOptionParser[] getOptionParsers() {
+			return new AbstractOptionParser[] {};
+		}
+		@Override
 		public MockBuildCommandParser cloneShallow() throws CloneNotSupportedException {
 			return (MockBuildCommandParser) super.cloneShallow();
 		}
 		@Override
 		public MockBuildCommandParser clone() throws CloneNotSupportedException {
 			return (MockBuildCommandParser) super.clone();
-		}
-		@Override
-		protected AbstractOptionParser[] getOptionParsers() {
-			return null;
 		}
 	}
 
@@ -160,14 +160,14 @@ public class GCCBuildCommandParserTest extends TestCase {
 	public void testAbstractBuildCommandParser_CloneAndEquals() throws Exception {
 		// create instance to compare to
 		MockBuildCommandParser parser = new MockBuildCommandParser();
-		assertEquals(true, parser.isResolvePaths());
+		assertEquals(true, parser.isResolvingPaths());
 
 		// check clone after initialization
 		MockBuildCommandParser clone0 = parser.clone();
 		assertTrue(parser.equals(clone0));
 
 		// configure provider
-		parser.setExpandRelativePaths(false);
+		parser.setResolvingPaths(false);
 		assertFalse(parser.equals(clone0));
 
 		// check another clone after configuring
@@ -179,8 +179,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// check 'expand relative paths' flag
 		{
 			MockBuildCommandParser clone = parser.clone();
-			boolean expandRelativePaths = clone.isResolvePaths();
-			clone.setExpandRelativePaths( ! expandRelativePaths );
+			boolean expandRelativePaths = clone.isResolvingPaths();
+			clone.setResolvingPaths( ! expandRelativePaths );
 			assertFalse(parser.equals(clone));
 		}
 
@@ -202,18 +202,18 @@ public class GCCBuildCommandParserTest extends TestCase {
 			// load it to new provider
 			MockBuildCommandParser parser = new MockBuildCommandParser();
 			parser.load(rootElement);
-			assertEquals(true, parser.isResolvePaths());
+			assertEquals(true, parser.isResolvingPaths());
 		}
 
 		Element elementProvider;
 		{
 			// define mock parser
 			MockBuildCommandParser parser = new MockBuildCommandParser();
-			assertEquals(true, parser.isResolvePaths());
+			assertEquals(true, parser.isResolvingPaths());
 
 			// redefine the settings
-			parser.setExpandRelativePaths(false);
-			assertEquals(false, parser.isResolvePaths());
+			parser.setResolvingPaths(false);
+			assertEquals(false, parser.isResolvingPaths());
 
 			// serialize in XML
 			Document doc = XmlUtil.newDocument();
@@ -226,11 +226,11 @@ public class GCCBuildCommandParserTest extends TestCase {
 		{
 			// create another instance of the provider
 			MockBuildCommandParser parser = new MockBuildCommandParser();
-			assertEquals(true, parser.isResolvePaths());
+			assertEquals(true, parser.isResolvingPaths());
 
 			// load element
 			parser.load(elementProvider);
-			assertEquals(false, parser.isResolvePaths());
+			assertEquals(false, parser.isResolvingPaths());
 		}
 	}
 
@@ -282,6 +282,16 @@ public class GCCBuildCommandParserTest extends TestCase {
 		CMacroEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN);
 		assertEquals(expected, entries.get(0));
 	}
+
+//	public void testGCCBuildCommandParser_Nulls() throws Exception {
+//		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
+//		parser.startup(null);
+//		parser.processLine(null);
+//		parser.shutdown();
+//
+//		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(null, null, null);
+//		assertNull(entries);
+//	}
 
 	/**
 	 */
@@ -818,15 +828,9 @@ public class GCCBuildCommandParserTest extends TestCase {
 		parser.startup(cfgDescription);
 		parser.processLine("gcc -I/path0 missing.cpp");
 		parser.shutdown();
-
-		// add the file to the project (to be able to inquire)
-		IFile file=ResourceHelper.createFile(project, "missing.cpp");
-		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
-		String languageId = ls.getLanguageId();
-
-		// check populated entries
-		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(cfgDescription, file, languageId);
-		assertEquals(null, entries);
+		
+		// check entries
+		assertTrue(parser.isEmpty());
 	}
 
 	/**
@@ -937,28 +941,28 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// do not test on non-windows systems where drive letters are not supported
 		if (! Platform.getOS().equals(Platform.OS_WIN32))
 			return;
-
+		
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-
+		
 		IFile file=ResourceHelper.createFile(project, "file.cpp");
 		ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(file.getProjectRelativePath(), true);
 		String languageId = ls.getLanguageId();
-
+		
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
-		parser.setExpandRelativePaths(true);
-
+		parser.setResolvingPaths(true);
+		
 		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -IC:\\path"
 				+ " file.cpp");
 		parser.shutdown();
-
+		
 		// check populated entries
 		IPath path0 = new Path("C:\\path").setDevice(project.getLocation().getDevice());
 		{
@@ -967,7 +971,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 			assertEquals(expected, entries.get(0));
 		}
 	}
-
+	
 	/**
 	 */
 	public void testPathEntry_ExpandRelativePath() throws Exception {
@@ -985,7 +989,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
-		parser.setExpandRelativePaths(true);
+		parser.setResolvingPaths(true);
 
 		// parse line
 		parser.startup(cfgDescription);
@@ -1025,7 +1029,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 		// create GCCBuildCommandParser with expandRelativePaths=false
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
-		parser.setExpandRelativePaths(false);
+		parser.setResolvingPaths(false);
 
 		// parse line
 		parser.startup(cfgDescription);
@@ -1061,7 +1065,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
-		parser.setExpandRelativePaths(true);
+		parser.setResolvingPaths(true);
 
 		// parse line
 		parser.startup(cfgDescription);
@@ -1566,9 +1570,47 @@ public class GCCBuildCommandParserTest extends TestCase {
 		}
 	}
 
+	public void testContentType_None() throws Exception {
+		MockBuildCommandParser parser = new MockBuildCommandParser() {
+			@Override
+			protected String parseForResourceName(String line) {
+				return "file.wrong-content-type";
+			}
+		};
+		parser.startup(null);
+		parser.processLine("gcc file.wrong-content-type");
+		parser.shutdown();
+		
+		List<ICLanguageSettingEntry> entries = parser.getSettingEntries(null, null, null);
+		assertNull(entries);
+	}
+	
 	/**
 	 */
-	public void testContentTypeFileExtensions() throws Exception {
+	public void testContentType_MisMatch() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		ResourceHelper.createFile(project, "file.c");
+		
+		// create GCCBuildCommandParser
+		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
+		// restrict the parser's language scope to C++ only
+		parser.setLanguageScope(new ArrayList<String>() {{add(LANG_CPP);}});
+
+		// parse line
+		parser.startup(cfgDescription);
+		parser.processLine("gcc -I/path0 file.c");
+		parser.shutdown();
+		
+		assertTrue(parser.isEmpty());
+	}
+
+	/**
+	 */
+	public void testContentType_FileExtensions() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1582,7 +1624,8 @@ public class GCCBuildCommandParserTest extends TestCase {
 		contentType.addFileSpec("x++", IContentTypeSettings.FILE_EXTENSION_SPEC);
 
 		IFile file=ResourceHelper.createFile(project, "file.x++");
-		contentType = manager.findContentTypeFor("file.x++");
+		IContentType contentTypeX = manager.findContentTypeFor("file.x++");
+		assertEquals(contentType, contentTypeX);
 
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);

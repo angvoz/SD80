@@ -10,6 +10,8 @@
  *******************************************************************************/
  package org.eclipse.cdt.build.core.scannerconfig.tests;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +36,7 @@ import org.eclipse.cdt.managedbuilder.internal.scannerconfig.GCCBuiltinSpecsDete
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -57,7 +60,7 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 			return null;
 		}
 		@Override
-		protected List<String> parseOptions(String line) {
+		protected List<String> parseForOptions(String line) {
 			return null;
 		}
 		@Override
@@ -272,87 +275,129 @@ public class GCCBuiltinSpecsDetectorTest extends TestCase {
 		
 	}
 
-	public void testAbstractBuiltinSpecsDetector_Basic() throws Exception {
+	public void testAbstractBuiltinSpecsDetector_RunConfiguration() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
 		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
-
+		
 		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
-
-		AbstractBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
+		
+		AbstractBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector() {
 			@Override
-			public boolean processLine(String line) {
-				// pretending that we parsed the line
-				detectedSettingEntries.add(new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
+			protected boolean runProgram(String command, String[] env, IPath workingDirectory, IProgressMonitor monitor,
+					OutputStream consoleOut, OutputStream consoleErr) throws CoreException, IOException {
+				printLine(consoleOut, "#define MACRO VALUE");
+				consoleOut.close();
+				consoleErr.close();
 				return true;
 			}
 		};
+		
 		detector.setLanguageScope(new ArrayList<String>() {{add(LANGUAGE_ID);}});
-		detector.setCustomParameter("echo #define MACRO VALUE");
 		
 		detector.run(cfgDescription, LANGUAGE_ID, null, null, null);
-
+		assertFalse(detector.isEmpty());
+		
 		List<ICLanguageSettingEntry> noentries = detector.getSettingEntries(null, null, null);
 		assertNull(noentries);
-
-		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(cfgDescription, project, LANGUAGE_ID);
+		
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(cfgDescription, null, LANGUAGE_ID);
 		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
 		assertEquals(expected, entries.get(0));
 	}
-
-	public void testAbstractBuiltinSpecsDetector_StartupShutdown() throws Exception {
-		// Define mock detector
-		AbstractBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
+	
+	public void testAbstractBuiltinSpecsDetector_RunProject() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		
+		AbstractBuiltinSpecsDetector detector = new GCCBuiltinSpecsDetector() {
 			@Override
-			public boolean processLine(String line) {
-				detectedSettingEntries.add(new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
+			protected boolean runProgram(String command, String[] env, IPath workingDirectory, IProgressMonitor monitor,
+					OutputStream consoleOut, OutputStream consoleErr) throws CoreException, IOException {
+				printLine(consoleOut, "#define MACRO VALUE");
+				consoleOut.close();
+				consoleErr.close();
 				return true;
 			}
 		};
+		
+		detector.setLanguageScope(new ArrayList<String>() {{add(LANGUAGE_ID);}});
+		
+		detector.run(project, LANGUAGE_ID, null, null, null);
+		assertFalse(detector.isEmpty());
+		
+		List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID);
+		ICLanguageSettingEntry expected = new CMacroEntry("MACRO", "VALUE", ICSettingEntry.BUILTIN | ICSettingEntry.READONLY);
+		assertEquals(expected, entries.get(0));
+	}
+	
+	public void testAbstractBuiltinSpecsDetector_RunOnce() throws Exception {
+		// Create model project and accompanied descriptions
+		String projectName = getName();
+		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
+		ICConfigurationDescription[] cfgDescriptions = getConfigurationDescriptions(project);
+		ICConfigurationDescription cfgDescription = cfgDescriptions[0];
+		
+		// Define mock detector which collects number of entries equal to count
+		AbstractBuiltinSpecsDetector detector = new MockBuiltinSpecsDetector() {
+			int count=0;
+			@Override
+			public boolean processLine(String line) {
+				count++;
+				for (int i=0;i<count;i++) {
+					detectedSettingEntries.add(new CMacroEntry("MACRO", ""+count, ICSettingEntry.BUILTIN | ICSettingEntry.READONLY));
+				}
+				return true;
+			}
+			
+			@Override
+			protected boolean runProgram(String command, String[] env, IPath workingDirectory, IProgressMonitor monitor,
+					OutputStream consoleOut, OutputStream consoleErr) throws CoreException, IOException {
+				printLine(consoleOut, "dummy line");
+				consoleOut.close();
+				consoleErr.close();
+				return true;
+			}
 
-		// Test startup/shutdown on running with each build
+		};
+
+		// set to run with each build
 		detector.setRunOnce(false);
 		assertEquals(false, detector.isRunOnce());
 
-		detector.startup(null);
+		// run first time
+		detector.run(project, LANGUAGE_ID_C, null, null, null);
 		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertNull(entries);
-		}
-		detector.processLine("#define MACRO VALUE");
-		detector.shutdown();
-		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
 			assertEquals(1, entries.size());
 		}
 
-		detector.startup(null);
+		// run second time
+		detector.run(project, LANGUAGE_ID_C, null, null, null);
 		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertNull(entries);
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
+			assertEquals(2, entries.size());
 		}
-		detector.processLine("#define MACRO VALUE");
-		detector.shutdown();
-		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(1, entries.size());
-		}
-
-		// Test startup on running once
+		
+		// set to run once
 		detector.setRunOnce(true);
 		assertEquals(true, detector.isRunOnce());
+		assertFalse(detector.isEmpty());
 
-		detector.startup(null);
+		detector.run(project, LANGUAGE_ID_C, null, null, null);
 		{
-			// Should not clear entries
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(1, entries.size());
+			// should not collect when provider is not empty
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
+			assertEquals(2, entries.size());
 		}
-		detector.shutdown();
+		
+		detector.run(cfgDescription, LANGUAGE_ID_C, null, null, null);
 		{
-			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, null);
-			assertEquals(1, entries.size());
+			// should not collect when provider is not empty
+			List<ICLanguageSettingEntry> entries = detector.getSettingEntries(null, null, LANGUAGE_ID_C);
+			assertEquals(2, entries.size());
 		}
 	}
 

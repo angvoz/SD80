@@ -26,23 +26,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.ErrorParserManager;
+import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsBaseProvider;
 import org.eclipse.cdt.core.language.settings.providers.LanguageSettingsSerializable;
-import org.eclipse.cdt.core.settings.model.CIncludeFileEntry;
-import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
-import org.eclipse.cdt.core.settings.model.CLibraryFileEntry;
-import org.eclipse.cdt.core.settings.model.CLibraryPathEntry;
-import org.eclipse.cdt.core.settings.model.CMacroEntry;
-import org.eclipse.cdt.core.settings.model.CMacroFileEntry;
+import org.eclipse.cdt.core.model.ILanguage;
+import org.eclipse.cdt.core.model.LanguageManager;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.cdt.internal.core.XmlUtil;
 import org.eclipse.cdt.make.core.MakeCorePlugin;
 import org.eclipse.cdt.utils.EFSExtensionManager;
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -61,14 +58,29 @@ import org.w3c.dom.Element;
 public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSettingsSerializable implements
 		ILanguageSettingsOutputScanner {
 
+	protected static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
+
+	protected ICConfigurationDescription currentCfgDescription = null;
+	protected IProject currentProject = null;
+	protected String currentLanguageId = null;
+
+	protected ErrorParserManager errorParserManager = null;
+	protected IResource resource = null;
+	protected String parsedResourceName = null;
+	protected boolean isResolvingPaths = true;
+
 	protected static abstract class AbstractOptionParser {
 		protected final Pattern pattern;
 		protected final String patternStr;
 		protected String nameExpression;
 		protected String valueExpression;
 		protected int extraFlag = 0;
+		protected int kind = 0;
+		private String parsedName;
+		private String parsedValue;
 
-		public AbstractOptionParser(String pattern, String nameExpression, String valueExpression, int extraFlag) {
+		public AbstractOptionParser(int kind, String pattern, String nameExpression, String valueExpression, int extraFlag) {
+			this.kind = kind;
 			this.patternStr = pattern;
 			this.nameExpression = nameExpression;
 			this.valueExpression = valueExpression;
@@ -77,25 +89,9 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			this.pattern = Pattern.compile(pattern);
 		}
 
-		public AbstractOptionParser(String pattern, String nameExpression, String valueExpression) {
-			this(pattern, nameExpression, valueExpression, 0);
+		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
+			return (ICLanguageSettingEntry) CDataUtil.createEntry(kind, name, value, null, flag | extraFlag);
 		}
-		
-		public AbstractOptionParser(String pattern, String nameExpression, int extraFlag) {
-			this(pattern, nameExpression, null, extraFlag);
-		}
-
-		public AbstractOptionParser(String pattern, String nameExpression) {
-			this(pattern, nameExpression, null);
-		}
-		
-		public int getKind() {
-			@SuppressWarnings("nls")
-			int entry = createEntry("dummy", "dummy", 0).getKind();
-			return entry;
-		}
-
-		public abstract ICLanguageSettingEntry createEntry(String name, String value, int flag);
 
 		/**
 		 * TODO: explain
@@ -112,124 +108,93 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			return null;
 		}
 
+		protected boolean isPathKind() {
+			return kind == ICSettingEntry.INCLUDE_PATH || kind == ICSettingEntry.INCLUDE_FILE
+					|| kind == ICSettingEntry.MACRO_FILE || kind == ICSettingEntry.LIBRARY_PATH;
+		}
+
+		public boolean parseOption(String option) {
+			String opt = extractOption(option);
+			Matcher matcher = pattern.matcher(opt);
+			boolean isMatch = matcher.matches();
+			if (isMatch) {
+				parsedName = parseStr(matcher, nameExpression);
+				parsedValue = parseStr(matcher, valueExpression);
+			}
+			return isMatch;
+		}
+
 	}
 
 	protected static class IncludePathOptionParser extends AbstractOptionParser {
 		public IncludePathOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+			super(ICLanguageSettingEntry.INCLUDE_PATH, pattern, nameExpression, nameExpression, 0);
 		}
 		public IncludePathOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public CIncludePathEntry createEntry(String name, String value, int flag) {
-			return new CIncludePathEntry(value, flag | extraFlag);
+			super(ICLanguageSettingEntry.INCLUDE_PATH, pattern, nameExpression, nameExpression, extraFlag);
 		}
 	}
 
 	protected static class IncludeFileOptionParser extends AbstractOptionParser {
 		public IncludeFileOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+			super(ICLanguageSettingEntry.INCLUDE_FILE, pattern, nameExpression, nameExpression, 0);
 		}
 		public IncludeFileOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-			return new CIncludeFileEntry(value, flag | extraFlag);
+			super(ICLanguageSettingEntry.INCLUDE_FILE, pattern, nameExpression, nameExpression, extraFlag);
 		}
 	}
 
 	protected static class MacroOptionParser extends AbstractOptionParser {
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression) {
-			super(pattern, nameExpression, valueExpression);
+			super(ICLanguageSettingEntry.MACRO, pattern, nameExpression, valueExpression, 0);
 		}
 		public MacroOptionParser(String pattern, String nameExpression, String valueExpression, int extraFlag) {
-			super(pattern, nameExpression, valueExpression, extraFlag);
+			super(ICLanguageSettingEntry.MACRO, pattern, nameExpression, valueExpression, extraFlag);
 		}
 		public MacroOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-			return new CMacroEntry(name, value, flag | extraFlag);
+			super(ICLanguageSettingEntry.MACRO, pattern, nameExpression, null, extraFlag);
 		}
 	}
 
 	protected static class MacroFileOptionParser extends AbstractOptionParser {
 		public MacroFileOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+			super(ICLanguageSettingEntry.MACRO_FILE, pattern, nameExpression, nameExpression, 0);
 		}
 		public MacroFileOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-			return new CMacroFileEntry(value, flag | extraFlag);
+			super(ICLanguageSettingEntry.MACRO_FILE, pattern, nameExpression, nameExpression, extraFlag);
 		}
 	}
 
 	protected static class LibraryPathOptionParser extends AbstractOptionParser {
 		public LibraryPathOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+			super(ICLanguageSettingEntry.LIBRARY_PATH, pattern, nameExpression, nameExpression, 0);
 		}
 		public LibraryPathOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-			return new CLibraryPathEntry(value, flag | extraFlag);
+			super(ICLanguageSettingEntry.LIBRARY_PATH, pattern, nameExpression, nameExpression, extraFlag);
 		}
 	}
 
 	protected static class LibraryFileOptionParser extends AbstractOptionParser {
 		public LibraryFileOptionParser(String pattern, String nameExpression) {
-			super(pattern, nameExpression);
+			super(ICLanguageSettingEntry.LIBRARY_FILE, pattern, nameExpression, nameExpression, 0);
 		}
 		public LibraryFileOptionParser(String pattern, String nameExpression, int extraFlag) {
-			super(pattern, nameExpression, extraFlag);
-		}
-		@Override
-		public ICLanguageSettingEntry createEntry(String name, String value, int flag) {
-			return new CLibraryFileEntry(value, flag | extraFlag);
+			super(ICLanguageSettingEntry.LIBRARY_FILE, pattern, nameExpression, nameExpression, extraFlag);
 		}
 	}
 
-	protected static final String ATTR_EXPAND_RELATIVE_PATHS = "expand-relative-paths"; //$NON-NLS-1$
-
-	protected ICConfigurationDescription currentCfgDescription = null;
-	protected IProject currentProject;
-
-	protected ErrorParserManager errorParserManager = null;
-
-	protected IResource resource = null;
-
-	protected String parsedResourceName = null;
-
-	protected boolean expandRelativePaths = true;
-	
-	protected boolean isForProject = false;
-
-	public boolean isResolvePaths() {
-		return expandRelativePaths;
+	public boolean isResolvingPaths() {
+		return isResolvingPaths;
 	}
 
-	public void setExpandRelativePaths(boolean expandRelativePaths) {
-		this.expandRelativePaths = expandRelativePaths;
+	public void setResolvingPaths(boolean resolvePaths) {
+		this.isResolvingPaths = resolvePaths;
 	}
 
 
 	public void startup(ICConfigurationDescription cfgDescription) throws CoreException {
 		currentCfgDescription = cfgDescription;
 		currentProject = cfgDescription != null ? cfgDescription.getProjectDescription().getProject() : null;
-	}
-
-	protected ICConfigurationDescription getConfigurationDescription() {
-		return currentCfgDescription;
-	}
-
-	protected IProject getProject() {
-		return currentProject;
 	}
 
 	public boolean processLine(String line) {
@@ -240,223 +205,210 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	protected void setSettingEntries(List<ICLanguageSettingEntry> entries, IResource rc) {
-		IProject project = getProject();
-		ICConfigurationDescription cfgDescription = getConfigurationDescription();
 		if (rc!=null) {
-			ICLanguageSetting ls = cfgDescription.getLanguageSettingForFile(rc.getProjectRelativePath(), true);
-			String languageId = ls.getLanguageId();
-			setSettingEntries(cfgDescription, rc, languageId, entries);
+			setSettingEntries(currentCfgDescription, rc, currentLanguageId, entries);
+			
+			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
+					+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + resource);
+			MakeCorePlugin.log(status);
 		}
 	}
 
-	@Override
-	public Element serialize(Element parentElement) {
-		Element elementProvider = super.serialize(parentElement);
-		elementProvider.setAttribute(ATTR_EXPAND_RELATIVE_PATHS, Boolean.toString(expandRelativePaths));
-		return elementProvider;
-	}
-	
-	@Override
-	public void load(Element providerNode) {
-		super.load(providerNode);
-		
-		String expandRelativePathsValue = XmlUtil.determineAttributeValue(providerNode, ATTR_EXPAND_RELATIVE_PATHS);
-		if (expandRelativePathsValue!=null)
-			expandRelativePaths = Boolean.parseBoolean(expandRelativePathsValue);
-	}
-	
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
-		// FIXME
-		if (isForProject) {
-//			resource = currentProject;
-			resource = null;
-		} else {
-			parsedResourceName = parseResourceName(line);
-			resource = findResource(parsedResourceName);
-		}
-		
+		parsedResourceName = parseForResourceName(line);
+		currentLanguageId = determineLanguage(parsedResourceName);
+		if (!isLanguageInScope(currentLanguageId))
+			return false;
 
+		resource = findResource(parsedResourceName);
 	
-//		if (resource != null) {
-			URI buildDirURI = null;
-			URI cwdURI = null;
-	
-			/*
-			 * Where source tree starts if mapped. This kind of mapping applied automatically in cases when
-			 * the absolute path to the source file on the remote system is simulated inside a project in the
-			 * workspace.
-			 */
-			URI mappedRootURI = null;
-	
-			if (resource!=null && isResolvePaths()) {
-				IPath parsedSrcPath = new Path(parsedResourceName);
-				if (parsedSrcPath.isAbsolute()) {
-					mappedRootURI = getMappedRoot(resource, parsedSrcPath);
-				} else {
-					mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(
-							resource.getLocationURI(), "/"); //$NON-NLS-1$
-				}
-	
-				if (!parsedSrcPath.isAbsolute()) {
-					cwdURI = findBaseLocationURI(resource.getLocationURI(), parsedResourceName);
-				}
-				if (cwdURI == null && errorParserManager != null) {
-					cwdURI = errorParserManager.getWorkingDirectoryURI();
-				}
-	
-				String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI)
-						: null;
-				if (cwdPath != null && mappedRootURI != null) {
-					buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
-				} else {
-					buildDirURI = cwdURI;
-				}
-	
-				if (buildDirURI == null) {
-					// FIXME - take build dir from configuration
-					buildDirURI = resource.getProject().getLocationURI();
-				}
+		URI buildDirURI = null;
+		URI cwdURI = null;
+
+		/**
+		 * Where source tree starts if mapped. This kind of mapping applied automatically in cases when
+		 * the absolute path to the source file on the remote system is simulated inside a project in the
+		 * workspace.
+		 */
+		URI mappedRootURI = null;
+
+		if (resource!=null && isResolvingPaths) {
+			IPath parsedSrcPath = new Path(parsedResourceName);
+			if (parsedSrcPath.isAbsolute()) {
+				mappedRootURI = getMappedRoot(resource, parsedSrcPath);
+			} else {
+				mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(
+						resource.getLocationURI(), "/"); //$NON-NLS-1$
 			}
-	
-			List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
-			
-			List<String> options = parseOptions(line);
-			if (options!=null) {
-				for (String option : options) {
-					for (AbstractOptionParser optionParser : getOptionParsers()) {
+
+			if (!parsedSrcPath.isAbsolute()) {
+				cwdURI = findBaseLocationURI(resource.getLocationURI(), parsedResourceName);
+			}
+			if (cwdURI == null && errorParserManager != null) {
+				cwdURI = errorParserManager.getWorkingDirectoryURI();
+			}
+
+			String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
+			if (cwdPath != null && mappedRootURI != null) {
+				buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
+			} else {
+				buildDirURI = cwdURI;
+			}
+
+			if (buildDirURI == null) {
+				// FIXME - take build dir from configuration
+				buildDirURI = resource.getProject().getLocationURI();
+			}
+		}
+
+		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
+		
+		List<String> options = parseForOptions(line);
+		if (options!=null) {
+			for (String option : options) {
+				for (AbstractOptionParser optionParser : getOptionParsers()) {
+					if (optionParser.parseOption(option)) {
 						ICLanguageSettingEntry entry = null;
-		
-						String opt = optionParser.extractOption(option);
-						Matcher matcher = optionParser.pattern.matcher(opt);
-						if (matcher.matches()) {
-							String parsedName = optionParser.parseStr(matcher, optionParser.nameExpression);
-							String name = parsedName;
-							String value = null;
-							int flag = 0;
-		
-							int kind = optionParser.getKind();
-							switch (kind) {
-							case ICSettingEntry.MACRO:
-								value = optionParser.parseStr(matcher, optionParser.valueExpression);
-								break;
-							case ICSettingEntry.INCLUDE_PATH:
-							case ICSettingEntry.INCLUDE_FILE:
-							case ICSettingEntry.MACRO_FILE:
-							case ICSettingEntry.LIBRARY_PATH:
-								if (isResolvePaths()) {
-									URI baseURI = new Path(name).isAbsolute() ? mappedRootURI : buildDirURI;
-									URI uri = getURI(name, baseURI);
-									if (uri != null) {
-										IPath path = getFullWorkspacePath(uri, kind);
-										if (path != null) {
-											name = path.toString();
-											flag = ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
-										} else {
-											path = getFilesystemLocation(uri);
-											if (path != null) {
-												name = path.toString();
-											}
-											if (path == null || !new File(name).exists()) {
-												IResource resource = findPathInWorkspace(parsedName);
-												if (resource != null) {
-													path = resource.getFullPath();
-													name = path.toString();
-													flag = ICSettingEntry.VALUE_WORKSPACE_PATH
-															| ICSettingEntry.RESOLVED;
-												}
-											}
-										}
-									}
-								}
-								value = name;
-								break;
-							case ICSettingEntry.LIBRARY_FILE:
-								value = name;
-								break;
-							}
-		
-							entry = optionParser.createEntry(name, value, flag);
+						if (isResolvingPaths && optionParser.isPathKind()) {
+							URI baseURI = new Path(optionParser.parsedName).isAbsolute() ? mappedRootURI : buildDirURI;
+							entry = createResolvedPathEntry(optionParser, optionParser.parsedName, 0, baseURI);
+						} else {
+							entry = optionParser.createEntry(optionParser.parsedName, optionParser.parsedValue, 0);
 						}
-		
+
 						if (entry != null && !entries.contains(entry)) {
 							entries.add(entry);
 							break;
 						}
 					}
 				}
-				if (entries.size() > 0) {
-					setSettingEntries(entries, resource);
-				} else {
-					setSettingEntries(null, resource);
-				}
-				IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
-						+ " collected " + entries.size() + " entries for " + resource);
-				MakeCorePlugin.log(status);
 			}
-		// FIXME
-//		} else {
-//			if (parsedResourceName != null) {
-//				IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass()
-//						.getSimpleName() + " not found resource " + parsedResourceName);
-//				MakeCorePlugin.log(status);
-//			}
-//	
-//		}
+			if (entries.size() > 0) {
+				setSettingEntries(entries, resource);
+			} else {
+				setSettingEntries(null, resource);
+			}
+		}
 		return false;
+	}
+
+	protected boolean isLanguageInScope(String languageId) {
+		List<String> languageIds = getLanguageScope();
+		return languageIds == null || languageIds.contains(languageId);
+	}
+
+	protected String determineLanguage(String parsedResourceName) {
+		if (parsedResourceName==null)
+			return null;
+
+		String fileName = new Path(parsedResourceName).lastSegment().toString();
+		IContentTypeManager manager = Platform.getContentTypeManager();
+		IContentType contentType = manager.findContentTypeFor(fileName);
+		if (contentType==null)
+			return null;
+		
+		ILanguage lang = LanguageManager.getInstance().getLanguage(contentType);
+		if (lang==null)
+			return null;
+		
+		return lang.getId();
+	}
+
+	private ICLanguageSettingEntry createResolvedPathEntry(AbstractOptionParser optionParser,
+			String parsedPath, int flag, URI baseURI) {
+		
+		ICLanguageSettingEntry entry;
+		String resolvedPath = null;
+		
+		URI uri = getURI(parsedPath, baseURI);
+		if (uri != null) {
+			IResource rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
+			if (rc != null) {
+				IPath path = rc.getFullPath();
+				resolvedPath = path.toString();
+				flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
+			} else {
+				IPath path = getFilesystemLocation(uri);
+				if (path != null && new File(path.toString()).exists()) {
+					resolvedPath = path.toString();
+				}
+				if (resolvedPath == null) {
+					Set<String> referencedProjectsNames = new LinkedHashSet<String>();
+					if (currentCfgDescription!=null) {
+						Map<String,String> refs = currentCfgDescription.getReferenceInfo();
+						referencedProjectsNames.addAll(refs.keySet());
+					}
+					IResource resource = resolveResourceInWorkspace(parsedPath, currentProject, referencedProjectsNames);
+					if (resource != null) {
+						path = resource.getFullPath();
+						resolvedPath = path.toString();
+						flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
+					}
+				}
+				if (resolvedPath==null && path!=null) {
+					resolvedPath = path.toString();
+				}
+			}
+		}
+		if (resolvedPath==null) {
+			resolvedPath = parsedPath;
+		}
+
+		entry = optionParser.createEntry(resolvedPath, resolvedPath, flag);
+		return entry;
 	}
 
 	/**
 	 * TODO
 	 */
-	protected abstract List<String> parseOptions(String line);
+	protected abstract String parseForResourceName(String line);
+	
+	/**
+	 * TODO
+	 */
+	protected abstract List<String> parseForOptions(String line);
 
 	/**
 	 * TODO
 	 */
 	protected abstract AbstractOptionParser[] getOptionParsers();
 
-	/**
-	 * TODO
-	 */
-	protected abstract String parseResourceName(String line);
 
-	private IResource findPathInWorkspace(String parsedName) {
+	private static URI getURI(String name, URI baseURI) {
+		URI uri = null;
+	
+		if (baseURI==null) {
+			uri = resolvePathFromBaseLocation(name, new Path("/"));
+		} else if (baseURI.getScheme().equals(EFS.SCHEME_FILE)) {
+			// location on the local filesystem
+			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
+			// careful not to use 'path' here but 'name' as we want to properly navigate symlinks
+			uri = resolvePathFromBaseLocation(name, baseLocation);
+		} else {
+			// use canonicalized path here, in particular replace all '\' with '/' for Windows paths
+			Path path = new Path(name);
+			uri = EFSExtensionManager.getDefault().append(baseURI, path.toString());
+		}
+	
+		if (uri == null) {
+			// if everything fails
+			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
+		}
+		return uri;
+	}
+
+	private static IResource resolveResourceInWorkspace(String parsedName, IProject preferredProject, Set<String> referencedProjectsNames) {
 		IPath path = new Path(parsedName);
 		// FIXME
 		if (path.equals(new Path(".")) || path.equals(new Path(".."))) {
 			return null;
 		}
 	
-		IProject project = getProject();
-		if (project==null) {
-			return null;
-		}
-
-		// prefer the current project
-		List<IResource> result = findPathInFolder(path, project);
-		int size = result.size();
-		if (size==1) { // found the one
-			return result.get(0);
-		} else if (size>1) { // ambiguous
-			return null;
-		}
-	
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		
-		// then prefer referenced projects
-		Set<String> referencedProjectsNames = new LinkedHashSet<String>();
-		ICConfigurationDescription cfgDescription = getConfigurationDescription();
-		if (cfgDescription!=null) {
-			Map<String,String> refs = cfgDescription.getReferenceInfo();
-			referencedProjectsNames.addAll(refs.keySet());
-			for (String prjName : referencedProjectsNames) {
-				IProject prj = root.getProject(prjName);
-				if (prj.isOpen()) {
-					result.addAll(findPathInFolder(path, prj));
-				}
-			}
-			size = result.size();
+		// prefer current project
+		if (preferredProject!=null) {
+			List<IResource> result = findPathInFolder(path, preferredProject);
+			int size = result.size();
 			if (size==1) { // found the one
 				return result.get(0);
 			} else if (size>1) { // ambiguous
@@ -464,24 +416,57 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			}
 		}
 	
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		
+		// then prefer referenced projects
+		if (referencedProjectsNames.size() > 0) {
+			IResource rc = null;
+			for (String prjName : referencedProjectsNames) {
+				IProject prj = root.getProject(prjName);
+				if (prj.isOpen()) {
+					List<IResource> result = findPathInFolder(path, prj);
+					int size = result.size();
+					if (size==1 && rc==null) {
+						rc = result.get(0);
+					} else if (size > 0) {
+						// ambiguous
+						rc = null;
+						break;
+					}
+				}
+			}
+			if (rc!=null) {
+				return rc;
+			}
+		}
+	
 		// then check all other projects in workspace
 		IProject[] projects = root.getProjects();
-		for (IProject prj : projects) {
-			if (!prj.equals(project) && !referencedProjectsNames.contains(prj.getName()) && prj.isOpen()) {
-				result.addAll(findPathInFolder(path, prj));
+		if (projects.length > 0) {
+			IResource rc = null;
+			for (IProject prj : projects) {
+				if (!prj.equals(preferredProject) && !referencedProjectsNames.contains(prj.getName()) && prj.isOpen()) {
+					List<IResource> result = findPathInFolder(path, prj);
+					int size = result.size();
+					if (size==1 && rc==null) {
+						rc = result.get(0);
+					} else if (size > 0) {
+						// ambiguous
+						rc = null;
+						break;
+					}
+				}
 			}
-			
-		}
-		size = result.size();
-		if (size==1) { // found the one
-			return result.get(0);
+			if (rc!=null) {
+				return rc;
+			}
 		}
 		
 		// not found or ambiguous
 		return null;
 	}
 
-	private List<IResource> findPathInFolder(IPath path, IContainer folder) {
+	private static List<IResource> findPathInFolder(IPath path, IContainer folder) {
 		List<IResource> paths = new ArrayList<IResource>();
 		IResource resource = folder.findMember(path);
 		if (resource != null) {
@@ -506,32 +491,12 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		if (parsedResourceName != null) {
 			if (errorParserManager != null) {
 				sourceFile = errorParserManager.findFileName(parsedResourceName);
-			} else {
-				IProject project = getProject();
-				sourceFile = project.findMember(parsedResourceName);
+			} else if (currentProject != null){
+				sourceFile = currentProject.findMember(parsedResourceName);
 			}
 		}
 		return sourceFile;
 	}
-
-	
-	
-//	private String parseSourceFileName(String line) {
-//		String sourceFileName = null;
-//		String patternCompileUnquotedFile = getPatternCompileUnquotedFile();
-//		Matcher fileMatcher = Pattern.compile(patternCompileUnquotedFile).matcher(line);
-//	
-//		if (fileMatcher.matches()) {
-//			sourceFileName = fileMatcher.group(getGroupForPatternUnquotedFile());
-//		} else {
-//			String patternCompileQuotedFile = getPatternCompileQuotedFile();
-//			fileMatcher = Pattern.compile(patternCompileQuotedFile).matcher(line);
-//			if (fileMatcher.matches()) {
-//				sourceFileName = fileMatcher.group(getGroupForPatternQuotedFile());
-//			}
-//		}
-//		return sourceFileName;
-//	}
 
 	private URI findBaseLocationURI(URI fileURI, String relativeFileName) {
 		URI cwdURI = null;
@@ -589,36 +554,13 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return mappedRootURI;
 	}
 
-	private URI getURI(String name, URI baseURI) {
-		URI uri = null;
-	
-		if (baseURI==null) {
-			uri = resolvePathFromBaseLocation(name, new Path("/"));
-		} else if (baseURI.getScheme().equals(EFS.SCHEME_FILE)) {
-			// location on the local filesystem
-			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
-			// careful not to use 'path' here but 'name' as we want to properly navigate symlinks
-			uri = resolvePathFromBaseLocation(name, baseLocation);
-		} else {
-			// use canonicalized path here, in particular replace all '\' with '/' for Windows paths
-			Path path = new Path(name);
-			uri = EFSExtensionManager.getDefault().append(baseURI, path.toString());
-		}
-	
-		if (uri == null) {
-			// if everything fails
-			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
-		}
-		return uri;
-	}
-
 	/**
 	 * The manipulations here are done to resolve "../" navigation for symbolic links where "link/.." cannot
 	 * be collapsed as it must follow the real filesystem path. {@link java.io.File#getCanonicalPath()} deals
 	 * with that correctly but {@link Path} or {@link URI} try to normalize the path which would be incorrect
 	 * here.
 	 */
-	private URI resolvePathFromBaseLocation(String name, IPath baseLocation) {
+	private static URI resolvePathFromBaseLocation(String name, IPath baseLocation) {
 		String pathName = name;
 		if (baseLocation != null && !baseLocation.isEmpty()) {
 			String device = new Path(pathName).getDevice();
@@ -646,43 +588,51 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return uri;
 	}
 
-	private IPath getFullWorkspacePath(URI uri, int kind) {
-		IPath path = null;
+	private static IResource findResourceForLocationURI(URI uri, int kind, IProject preferredProject) {
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 	
 		switch (kind) {
 		case ICSettingEntry.INCLUDE_PATH:
-		case ICSettingEntry.LIBRARY_PATH:
-			IContainer[] folders = root.findContainersForLocationURI(uri);
-			if (folders.length > 0) {
-				IContainer container = folders[0];
-				if ((container instanceof IProject || container instanceof IFolder)) { // treat IWorkspaceRoot
-																						// as non-workspace
-																						// path
-					path = container.getFullPath();
-				}
-			}
-			break;
-		case ICSettingEntry.INCLUDE_FILE:
-		case ICSettingEntry.MACRO_FILE:
-			IFile[] files = root.findFilesForLocationURI(uri);
-			if (files.length > 0) {
-				IFile file = files[0];
-				for (IFile f : files) {
-					if (f.getProject().equals(getProject())) {
-						file = f;
-						break;
+		case ICSettingEntry.LIBRARY_PATH: {
+			IResource[] resources = root.findContainersForLocationURI(uri);
+			if (resources.length > 0) {
+				IResource resource = null;
+				for (IResource rc : resources) {
+					if ((rc instanceof IProject || rc instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
+						if (rc.equals(preferredProject) || rc.getProject().equals(preferredProject)) {
+							resource = rc;
+							break;
+						}
+						if (resource==null) {
+							resource=rc; // to be deterministic assign to the first qualified resource
+						}
 					}
 				}
-				path = file.getFullPath();
+				return resource;
 			}
 			break;
 		}
+		case ICSettingEntry.INCLUDE_FILE:
+		case ICSettingEntry.MACRO_FILE: {
+			IResource[] resources = root.findFilesForLocationURI(uri);
+			if (resources.length > 0) {
+				IResource resource = resources[0];
+				for (IResource rc : resources) {
+					if (rc.getProject().equals(preferredProject)) {
+						resource = rc;
+						break;
+					}
+				}
+				return resource;
+			}
+			break;
+		}
+		}
 	
-		return path;
+		return null;
 	}
 
-	private IPath getFilesystemLocation(URI uri) {
+	private static IPath getFilesystemLocation(URI uri) {
 		// EFSExtensionManager mapping
 		String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
 		uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
@@ -712,7 +662,7 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		pattern += ")";
 		return pattern;
 	}
-
+	
 	protected String getPatternFileExtensions() {
 		IContentTypeManager manager = Platform.getContentTypeManager();
 	
@@ -735,20 +685,30 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return count;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
+	@Override
+	public Element serialize(Element parentElement) {
+		Element elementProvider = super.serialize(parentElement);
+		elementProvider.setAttribute(ATTR_EXPAND_RELATIVE_PATHS, Boolean.toString(isResolvingPaths));
+		return elementProvider;
+	}
+	
+	@Override
+	public void load(Element providerNode) {
+		super.load(providerNode);
+		
+		String expandRelativePathsValue = XmlUtil.determineAttributeValue(providerNode, ATTR_EXPAND_RELATIVE_PATHS);
+		if (expandRelativePathsValue!=null)
+			isResolvingPaths = Boolean.parseBoolean(expandRelativePathsValue);
+	}
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + (expandRelativePaths ? 1231 : 1237);
+		result = prime * result + (isResolvingPaths ? 1231 : 1237);
 		return result;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -758,7 +718,7 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		if (getClass() != obj.getClass())
 			return false;
 		AbstractLanguageSettingsOutputScanner other = (AbstractLanguageSettingsOutputScanner) obj;
-		if (expandRelativePaths != other.expandRelativePaths)
+		if (isResolvingPaths != other.isResolvingPaths)
 			return false;
 		return true;
 	}

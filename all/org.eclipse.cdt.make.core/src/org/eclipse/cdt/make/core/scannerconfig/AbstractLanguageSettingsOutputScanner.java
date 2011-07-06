@@ -213,63 +213,26 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	public boolean processLine(String line, ErrorParserManager epm) {
 		errorParserManager = epm;
 		parsedResourceName = parseForResourceName(line);
+		
 		currentLanguageId = determineLanguage(parsedResourceName);
 		if (!isLanguageInScope(currentLanguageId))
 			return false;
 
 		currentResource = findResource(parsedResourceName);
-	
-		URI buildDirURI = null;
-		URI cwdURI = null;
 
 		/**
-		 * Where source tree starts if mapped. This kind of mapping applied automatically in cases when
+		 * Where source tree starts if mapped. This kind of mapping is useful for example in cases when
 		 * the absolute path to the source file on the remote system is simulated inside a project in the
 		 * workspace.
 		 */
 		URI mappedRootURI = null;
+		URI buildDirURI = null;
 
-		if (currentResource!=null && isResolvingPaths) {
-			IPath parsedSrcPath = new Path(parsedResourceName);
-			if (parsedSrcPath.isAbsolute()) {
-				mappedRootURI = getMappedRoot(currentResource, parsedSrcPath);
-			} else {
-				mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(
-						currentResource.getLocationURI(), "/"); //$NON-NLS-1$
+		if (isResolvingPaths) {
+			if (currentResource!=null) {
+				mappedRootURI = getMappedRootURI(currentResource, parsedResourceName);
 			}
-
-			if (!parsedSrcPath.isAbsolute()) {
-				cwdURI = findBaseLocationURI(currentResource.getLocationURI(), parsedResourceName);
-			}
-			if (cwdURI == null && errorParserManager != null) {
-				cwdURI = errorParserManager.getWorkingDirectoryURI();
-			}
-
-			String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
-			if (cwdPath != null && mappedRootURI != null) {
-				buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
-			} else {
-				buildDirURI = cwdURI;
-			}
-
-			if (buildDirURI == null && currentCfgDescription != null) {
-				IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
-				buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(builderCWD);
-			}
-			
-			if (buildDirURI == null && currentProject != null) {
-				buildDirURI = currentProject.getLocationURI();
-			}
-			
-			if (buildDirURI == null && currentResource != null) {
-				IContainer container;
-				if (currentResource instanceof IContainer) {
-					container = (IContainer) currentResource;
-				} else {
-					container = currentResource.getParent();
-				}
-				buildDirURI = container.getLocationURI();
-			}
+			buildDirURI = getBuildDirURI(mappedRootURI);
 		}
 
 		List<ICLanguageSettingEntry> entries = new ArrayList<ICLanguageSettingEntry>();
@@ -278,19 +241,24 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		if (options!=null) {
 			for (String option : options) {
 				for (AbstractOptionParser optionParser : getOptionParsers()) {
-					if (optionParser.parseOption(option)) {
-						ICLanguageSettingEntry entry = null;
-						if (isResolvingPaths && optionParser.isPathKind()) {
-							URI baseURI = new Path(optionParser.parsedName).isAbsolute() ? mappedRootURI : buildDirURI;
-							entry = createResolvedPathEntry(optionParser, optionParser.parsedName, 0, baseURI);
-						} else {
-							entry = optionParser.createEntry(optionParser.parsedName, optionParser.parsedValue, 0);
+					try {
+						if (optionParser.parseOption(option)) {
+							ICLanguageSettingEntry entry = null;
+							if (isResolvingPaths && optionParser.isPathKind()) {
+								URI baseURI = new Path(optionParser.parsedName).isAbsolute() ? mappedRootURI : buildDirURI;
+								entry = createResolvedPathEntry(optionParser, optionParser.parsedName, 0, baseURI);
+							} else {
+								entry = optionParser.createEntry(optionParser.parsedName, optionParser.parsedValue, 0);
+							}
+	
+							if (entry != null && !entries.contains(entry)) {
+								entries.add(entry);
+								break;
+							}
 						}
-
-						if (entry != null && !entries.contains(entry)) {
-							entries.add(entry);
-							break;
-						}
+					} catch (Throwable e) {
+						// protect from rogue parsers extending this class
+						MakeCorePlugin.log(e);
 					}
 				}
 			}
@@ -301,6 +269,45 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			}
 		}
 		return false;
+	}
+
+	private URI getBuildDirURI(URI mappedRootURI) {
+		URI buildDirURI = null;
+		
+		URI cwdURI = null;
+		if (currentResource!=null && parsedResourceName!=null && !new Path(parsedResourceName).isAbsolute()) {
+			cwdURI = findBaseLocationURI(currentResource.getLocationURI(), parsedResourceName);
+		}
+		if (cwdURI == null && errorParserManager != null) {
+			cwdURI = errorParserManager.getWorkingDirectoryURI();
+		}
+
+		String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
+		if (cwdPath != null && mappedRootURI != null) {
+			buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
+		} else {
+			buildDirURI = cwdURI;
+		}
+
+		if (buildDirURI == null && currentCfgDescription != null) {
+			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
+			buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(builderCWD);
+		}
+		
+		if (buildDirURI == null && currentProject != null) {
+			buildDirURI = currentProject.getLocationURI();
+		}
+		
+		if (buildDirURI == null && currentResource != null) {
+			IContainer container;
+			if (currentResource instanceof IContainer) {
+				container = (IContainer) currentResource;
+			} else {
+				container = currentResource.getParent();
+			}
+			buildDirURI = container.getLocationURI();
+		}
+		return buildDirURI;
 	}
 
 	protected boolean isLanguageInScope(String languageId) {
@@ -332,38 +339,37 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		String resolvedPath = null;
 		
 		URI uri = getURI(parsedPath, baseURI);
-		if (uri != null) {
-			IResource rc = null;
-			if (uri.isAbsolute()) {
-				rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
-			}
-			if (rc != null) {
-				IPath path = rc.getFullPath();
+		IResource rc = null;
+		if (uri != null && uri.isAbsolute()) {
+			rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
+		}
+		if (rc != null) {
+			IPath path = rc.getFullPath();
+			resolvedPath = path.toString();
+			flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
+		} else {
+			IPath path = getFilesystemLocation(uri);
+			if (path != null && new File(path.toString()).exists()) {
 				resolvedPath = path.toString();
-				flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
-			} else {
-				IPath path = getFilesystemLocation(uri);
-				if (path != null && new File(path.toString()).exists()) {
+			}
+			if (resolvedPath == null) {
+				Set<String> referencedProjectsNames = new LinkedHashSet<String>();
+				if (currentCfgDescription!=null) {
+					Map<String,String> refs = currentCfgDescription.getReferenceInfo();
+					referencedProjectsNames.addAll(refs.keySet());
+				}
+				IResource resource = resolveResourceInWorkspace(parsedPath, currentProject, referencedProjectsNames);
+				if (resource != null) {
+					path = resource.getFullPath();
 					resolvedPath = path.toString();
+					flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
 				}
-				if (resolvedPath == null) {
-					Set<String> referencedProjectsNames = new LinkedHashSet<String>();
-					if (currentCfgDescription!=null) {
-						Map<String,String> refs = currentCfgDescription.getReferenceInfo();
-						referencedProjectsNames.addAll(refs.keySet());
-					}
-					IResource resource = resolveResourceInWorkspace(parsedPath, currentProject, referencedProjectsNames);
-					if (resource != null) {
-						path = resource.getFullPath();
-						resolvedPath = path.toString();
-						flag = flag | ICSettingEntry.VALUE_WORKSPACE_PATH | ICSettingEntry.RESOLVED;
-					}
-				}
-				if (resolvedPath==null && path!=null) {
-					resolvedPath = path.toString();
-				}
+			}
+			if (resolvedPath==null && path!=null) {
+				resolvedPath = path.toString();
 			}
 		}
+		
 		if (resolvedPath==null) {
 			resolvedPath = parsedPath;
 		}
@@ -578,23 +584,37 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return cwdURI;
 	}
 
-	private URI getMappedRoot(IResource sourceFile, IPath parsedSrcPath) {
+	/**
+	 * In case when absolute path is mapped to the source tree in a project
+	 * this function will try to figure mapping and return "mapped root",
+	 * i.e URI where the root path would be mapped. The mapped root will be
+	 * used to prepend to other "absolute" paths where appropriate.
+	 * 
+	 * @param sourceFile - a resource referred by parsed path
+	 * @param parsedResourceName - path as appears in the output
+	 * @return mapped path as URI
+	 */
+	private static URI getMappedRootURI(IResource sourceFile, String parsedResourceName) {
 		URI fileURI = sourceFile.getLocationURI();
-		IPath mappedRootPath = new Path("/"); //$NON-NLS-1$
-		IPath absPath = sourceFile.getLocation();
-		int absSegmentsCount = absPath.segmentCount();
-		int relSegmentsCount = parsedSrcPath.segmentCount();
-		if (absSegmentsCount >= relSegmentsCount) {
-			IPath ending = absPath.removeFirstSegments(absSegmentsCount - relSegmentsCount);
-			ending = ending.setDevice(parsedSrcPath.getDevice()).makeAbsolute();
-			if (ending.equals(parsedSrcPath.makeAbsolute())) {
-				mappedRootPath = absPath.removeLastSegments(relSegmentsCount);
+		String mappedRoot = "/"; //$NON-NLS-1$
+		
+		if (parsedResourceName!=null) {
+			IPath parsedSrcPath = new Path(parsedResourceName);
+			if (parsedSrcPath.isAbsolute()) {
+				IPath absPath = sourceFile.getLocation();
+				int absSegmentsCount = absPath.segmentCount();
+				int relSegmentsCount = parsedSrcPath.segmentCount();
+				if (absSegmentsCount >= relSegmentsCount) {
+					IPath ending = absPath.removeFirstSegments(absSegmentsCount - relSegmentsCount);
+					ending = ending.setDevice(parsedSrcPath.getDevice()).makeAbsolute();
+					if (ending.equals(parsedSrcPath.makeAbsolute())) {
+						mappedRoot = absPath.removeLastSegments(relSegmentsCount).toString();
+					}
+				}
 			}
 		}
-	
-		URI mappedRootURI = EFSExtensionManager.getDefault().createNewURIFromPath(fileURI,
-				mappedRootPath.toString());
-		return mappedRootURI;
+		URI uri = EFSExtensionManager.getDefault().createNewURIFromPath(fileURI, mappedRoot);
+		return uri;
 	}
 
 	/**
@@ -632,6 +652,9 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	private static IResource findResourceForLocationURI(URI uri, int kind, IProject preferredProject) {
+		if (uri==null)
+			return null;
+		
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 	
 		switch (kind) {
@@ -676,6 +699,9 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	private static IPath getFilesystemLocation(URI uri) {
+		if (uri==null)
+			return null;
+		
 		// EFSExtensionManager mapping
 		String pathStr = EFSExtensionManager.getDefault().getMappedPath(uri);
 		uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);

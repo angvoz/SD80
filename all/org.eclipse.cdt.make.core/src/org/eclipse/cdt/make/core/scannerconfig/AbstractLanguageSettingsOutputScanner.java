@@ -512,38 +512,49 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 			return null;
 		
 		IResource sourceFile = null;
+		
 		// try ErrorParserManager
 		if (errorParserManager != null) {
 			sourceFile = errorParserManager.findFileName(parsedResourceName);
 		}
 		// try to find absolute path in the workspace
 		if (sourceFile == null && new Path(parsedResourceName).isAbsolute()) {
-			IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 			URI uri = org.eclipse.core.filesystem.URIUtil.toURI(parsedResourceName);
-			IResource[] resources = root.findFilesForLocationURI(uri);
-			if (resources.length > 0) {
-				sourceFile = resources[0];
-				if (currentProject!=null) {
-					for (IResource rc : resources) {
-						if (rc.getProject().equals(currentProject)) {
-							sourceFile = rc;
-							break;
-						}
-					}
-				}
-				return sourceFile;
-			}
-			
-			
+			sourceFile = findFileForLocationURI(uri, currentProject);
 		}
 		// try path relative to build dir from configuration
-		if (sourceFile == null) {
-			// TODO
+		if (sourceFile == null && currentCfgDescription != null) {
+			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
+			if (builderCWD!=null) {
+				IPath path = builderCWD.append(parsedResourceName);
+				URI uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+				sourceFile = findFileForLocationURI(uri, currentProject);
+			}
 		}
 		// try path relative to the project
 		if (sourceFile == null && currentProject != null) {
 			sourceFile = currentProject.findMember(parsedResourceName);
 		}
+		return sourceFile;
+	}
+
+	private static IResource findFileForLocationURI(URI uri, IProject preferredProject) {
+		IResource sourceFile;
+		IResource result = null;
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IResource[] resources = root.findFilesForLocationURI(uri);
+		if (resources.length > 0) {
+			result = resources[0];
+			if (preferredProject!=null) {
+				for (IResource rc : resources) {
+					if (rc.getProject().equals(preferredProject)) {
+						result = rc;
+						break;
+					}
+				}
+			}
+		}
+		sourceFile = result;
 		return sourceFile;
 	}
 
@@ -655,47 +666,41 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		if (uri==null)
 			return null;
 		
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IResource resource = null;
 	
 		switch (kind) {
 		case ICSettingEntry.INCLUDE_PATH:
-		case ICSettingEntry.LIBRARY_PATH: {
-			IResource[] resources = root.findContainersForLocationURI(uri);
-			if (resources.length > 0) {
-				IResource resource = null;
-				for (IResource rc : resources) {
-					if ((rc instanceof IProject || rc instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
-						if (rc.equals(preferredProject) || rc.getProject().equals(preferredProject)) {
-							resource = rc;
-							break;
-						}
-						if (resource==null) {
-							resource=rc; // to be deterministic assign to the first qualified resource
-						}
-					}
-				}
-				return resource;
-			}
+		case ICSettingEntry.LIBRARY_PATH:
+			resource = findContainerForLocationURI(uri, preferredProject);
+			break;
+		case ICSettingEntry.INCLUDE_FILE:
+		case ICSettingEntry.MACRO_FILE:
+			resource = findFileForLocationURI(uri, preferredProject);
 			break;
 		}
-		case ICSettingEntry.INCLUDE_FILE:
-		case ICSettingEntry.MACRO_FILE: {
-			IResource[] resources = root.findFilesForLocationURI(uri);
-			if (resources.length > 0) {
-				IResource resource = resources[0];
-				for (IResource rc : resources) {
-					if (rc.getProject().equals(preferredProject)) {
+	
+		return resource;
+	}
+
+	private static IResource findContainerForLocationURI(URI uri, IProject preferredProject) {
+		IResource resource = null;
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IResource[] resources = root.findContainersForLocationURI(uri);
+		if (resources.length > 0) {
+			for (IResource rc : resources) {
+				if ((rc instanceof IProject || rc instanceof IFolder)) { // treat IWorkspaceRoot as non-workspace path
+					IProject prj = rc instanceof IProject ? (IProject)rc : rc.getProject();
+					if (prj.equals(preferredProject)) {
 						resource = rc;
 						break;
 					}
+					if (resource==null) {
+						resource=rc; // to be deterministic the first qualified resource has preference
+					}
 				}
-				return resource;
 			}
-			break;
 		}
-		}
-	
-		return null;
+		return resource;
 	}
 
 	private static IPath getFilesystemLocation(URI uri) {

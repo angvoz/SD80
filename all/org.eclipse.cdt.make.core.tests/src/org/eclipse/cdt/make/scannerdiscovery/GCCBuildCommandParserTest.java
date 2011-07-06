@@ -1591,7 +1591,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
-	public void testPathEntry_BuildDirDefinedByConfiguration_AsInCdtBuilder() throws Exception {
+	public void testPathEntry_BuildDirDefinedByConfiguration_RelativePath() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);
@@ -1616,17 +1616,12 @@ public class GCCBuildCommandParserTest extends TestCase {
 		// create GCCBuildCommandParser
 		GCCBuildCommandParser parser = (GCCBuildCommandParser) LanguageSettingsManager.getExtensionProviderCopy(GCC_BUILD_COMMAND_PARSER_EXT);
 
-		// create ErrorParserManager with build dir taken from the configuration
-		URI cfgBuildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(cfgDescription.getBuildSetting().getBuilderCWD());
-		ErrorParserManager epm = new ErrorParserManager(project, cfgBuildDirURI, null, null);
-
 		// parse line
 		parser.startup(cfgDescription);
 		parser.processLine("gcc "
 				+ " -I."
 				+ " -Iinclude"
-				+ " file.cpp",
-				epm);
+				+ " file.cpp");
 		parser.shutdown();
 
 		// check populated entries
@@ -1639,7 +1634,7 @@ public class GCCBuildCommandParserTest extends TestCase {
 
 	/**
 	 */
-	public void testPathEntry_BuildDirDefinedByConfiguration_Solely() throws Exception {
+	public void testPathEntry_BuildDirDefinedByConfiguration_AbsolutePath() throws Exception {
 		// Create model project and accompanied descriptions
 		String projectName = getName();
 		IProject project = ResourceHelper.createCDTProjectWithConfig(projectName);

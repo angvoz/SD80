@@ -181,6 +181,36 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		}
 	}
 
+	/**
+	 * Parse the line returning the resource name as appears in the output.
+	 * This is the resource where {@link ICLanguageSettingEntry} list is being added.
+	 * 
+	 * @param line - one input line from the output stripped from end of line characters.
+	 * @return the resource name as appears in the output or {@code null}.
+	 *    Note that {@code null} can have different semantics and can mean "no resource found"
+	 *    or "applicable to any resource". By default "no resource found" is used in this
+	 *    abstract class but extenders can handle otherwise.
+	 */
+	protected abstract String parseForResourceName(String line);
+
+	/**
+	 * Parse the line returning the list of substrings to be treated each as input to
+	 * the option parsers. It is assumed that each substring presents one
+	 * {@link ICLanguageSettingEntry} (for example compiler options {@code -I/path} or
+	 * {@code -DMACRO=1}.
+	 * 
+	 * @param line - one input line from the output stripped from end of line characters.
+	 * @return list of substrings representing language settings entries.
+	 */
+	protected abstract List<String> parseForOptions(String line);
+
+	/**
+	 * @return array of option parsers defining how to parse a string to
+	 * {@link ICLanguageSettingEntry}.
+	 * See {@link AbstractOptionParser} and its specific extenders.
+	 */
+	protected abstract AbstractOptionParser[] getOptionParsers();
+
 	public boolean isResolvingPaths() {
 		return isResolvingPaths;
 	}
@@ -200,14 +230,6 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	public void shutdown() {
-	}
-
-	protected void setSettingEntries(List<ICLanguageSettingEntry> entries) {
-		setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, entries);
-		
-		IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
-				+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + currentResource);
-		MakeCorePlugin.log(status);
 	}
 
 	public boolean processLine(String line, ErrorParserManager epm) {
@@ -271,54 +293,19 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return false;
 	}
 
-	private URI getBuildDirURI(URI mappedRootURI) {
-		URI buildDirURI = null;
+	protected void setSettingEntries(List<ICLanguageSettingEntry> entries) {
+		setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, entries);
 		
-		URI cwdURI = null;
-		if (currentResource!=null && parsedResourceName!=null && !new Path(parsedResourceName).isAbsolute()) {
-			cwdURI = findBaseLocationURI(currentResource.getLocationURI(), parsedResourceName);
-		}
-		if (cwdURI == null && errorParserManager != null) {
-			cwdURI = errorParserManager.getWorkingDirectoryURI();
-		}
-
-		String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
-		if (cwdPath != null && mappedRootURI != null) {
-			buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
-		} else {
-			buildDirURI = cwdURI;
-		}
-
-		if (buildDirURI == null && currentCfgDescription != null) {
-			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
-			buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(builderCWD);
-		}
-		
-		if (buildDirURI == null && currentProject != null) {
-			buildDirURI = currentProject.getLocationURI();
-		}
-		
-		if (buildDirURI == null && currentResource != null) {
-			IContainer container;
-			if (currentResource instanceof IContainer) {
-				container = (IContainer) currentResource;
-			} else {
-				container = currentResource.getParent();
-			}
-			buildDirURI = container.getLocationURI();
-		}
-		return buildDirURI;
-	}
-
-	protected boolean isLanguageInScope(String languageId) {
-		List<String> languageIds = getLanguageScope();
-		return languageIds == null || languageIds.contains(languageId);
+		// TODO - for debugging only, eventually remove
+		IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
+				+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + currentResource);
+		MakeCorePlugin.log(status);
 	}
 
 	protected String determineLanguage(String parsedResourceName) {
 		if (parsedResourceName==null)
 			return null;
-
+	
 		String fileName = new Path(parsedResourceName).lastSegment().toString();
 		IContentTypeManager manager = Platform.getContentTypeManager();
 		IContentType contentType = manager.findContentTypeFor(fileName);
@@ -332,13 +319,34 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return lang.getId();
 	}
 
+	protected boolean isLanguageInScope(String languageId) {
+		List<String> languageIds = getLanguageScope();
+		return languageIds == null || languageIds.contains(languageId);
+	}
+
+	protected String getPatternFileExtensions() {
+		IContentTypeManager manager = Platform.getContentTypeManager();
+	
+		Set<String> fileExts = new HashSet<String>();
+	
+		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource"); //$NON-NLS-1$
+		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+	
+		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource"); //$NON-NLS-1$
+		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
+	
+		String pattern = expressionLogicalOr(fileExts);
+	
+		return pattern;
+	}
+
 	private ICLanguageSettingEntry createResolvedPathEntry(AbstractOptionParser optionParser,
 			String parsedPath, int flag, URI baseURI) {
 		
 		ICLanguageSettingEntry entry;
 		String resolvedPath = null;
 		
-		URI uri = getURI(parsedPath, baseURI);
+		URI uri = determineURI(parsedPath, baseURI);
 		IResource rc = null;
 		if (uri != null && uri.isAbsolute()) {
 			rc = findResourceForLocationURI(uri, optionParser.kind, currentProject);
@@ -378,51 +386,111 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return entry;
 	}
 
-	/**
-	 * TODO
-	 */
-	protected abstract String parseForResourceName(String line);
+	private IResource findResource(String parsedResourceName) {
+		if (parsedResourceName==null)
+			return null;
+		
+		IResource sourceFile = null;
+		
+		// try ErrorParserManager
+		if (errorParserManager != null) {
+			sourceFile = errorParserManager.findFileName(parsedResourceName);
+		}
+		// try to find absolute path in the workspace
+		if (sourceFile == null && new Path(parsedResourceName).isAbsolute()) {
+			URI uri = org.eclipse.core.filesystem.URIUtil.toURI(parsedResourceName);
+			sourceFile = findFileForLocationURI(uri, currentProject);
+		}
+		// try path relative to build dir from configuration
+		if (sourceFile == null && currentCfgDescription != null) {
+			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
+			if (builderCWD!=null) {
+				IPath path = builderCWD.append(parsedResourceName);
+				URI uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
+				sourceFile = findFileForLocationURI(uri, currentProject);
+			}
+		}
+		// try path relative to the project
+		if (sourceFile == null && currentProject != null) {
+			sourceFile = currentProject.findMember(parsedResourceName);
+		}
+		return sourceFile;
+	}
+
+	private URI getBuildDirURI(URI mappedRootURI) {
+		URI buildDirURI = null;
+		
+		URI cwdURI = null;
+		if (currentResource!=null && parsedResourceName!=null && !new Path(parsedResourceName).isAbsolute()) {
+			cwdURI = findBaseLocationURI(currentResource.getLocationURI(), parsedResourceName);
+		}
+		if (cwdURI == null && errorParserManager != null) {
+			cwdURI = errorParserManager.getWorkingDirectoryURI();
+		}
 	
-	/**
-	 * TODO
-	 */
-	protected abstract List<String> parseForOptions(String line);
+		String cwdPath = cwdURI != null ? EFSExtensionManager.getDefault().getPathFromURI(cwdURI) : null;
+		if (cwdPath != null && mappedRootURI != null) {
+			buildDirURI = EFSExtensionManager.getDefault().append(mappedRootURI, cwdPath);
+		} else {
+			buildDirURI = cwdURI;
+		}
+	
+		if (buildDirURI == null && currentCfgDescription != null) {
+			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
+			buildDirURI = org.eclipse.core.filesystem.URIUtil.toURI(builderCWD);
+		}
+		
+		if (buildDirURI == null && currentProject != null) {
+			buildDirURI = currentProject.getLocationURI();
+		}
+		
+		if (buildDirURI == null && currentResource != null) {
+			IContainer container;
+			if (currentResource instanceof IContainer) {
+				container = (IContainer) currentResource;
+			} else {
+				container = currentResource.getParent();
+			}
+			buildDirURI = container.getLocationURI();
+		}
+		return buildDirURI;
+	}
 
 	/**
-	 * TODO
+	 * Determine URI appending to baseURI when possible.
+	 * 
+	 * @param pathStr - path to the resource, can be absolute or relative
+	 * @param baseURI - base {@link URI} where path to the resource is rooted
+	 * @return {@link URI} of the resource
 	 */
-	protected abstract AbstractOptionParser[] getOptionParsers();
-
-
-	private static URI getURI(String name, URI baseURI) {
+	private static URI determineURI(String pathStr, URI baseURI) {
 		URI uri = null;
 	
 		if (baseURI==null) {
-			if (new Path(name).isAbsolute()) {
-				uri = resolvePathFromBaseLocation(name, new Path("/"));
+			if (new Path(pathStr).isAbsolute()) {
+				uri = resolvePathFromBaseLocation(pathStr, Path.ROOT);
 			}
 		} else if (baseURI.getScheme().equals(EFS.SCHEME_FILE)) {
 			// location on the local filesystem
 			IPath baseLocation = org.eclipse.core.filesystem.URIUtil.toPath(baseURI);
-			// careful not to use 'path' here but 'name' as we want to properly navigate symlinks
-			uri = resolvePathFromBaseLocation(name, baseLocation);
+			// careful not to use Path here but 'pathStr' as String as we want to properly navigate symlinks
+			uri = resolvePathFromBaseLocation(pathStr, baseLocation);
 		} else {
 			// use canonicalized path here, in particular replace all '\' with '/' for Windows paths
-			Path path = new Path(name);
+			Path path = new Path(pathStr);
 			uri = EFSExtensionManager.getDefault().append(baseURI, path.toString());
 		}
 	
 		if (uri == null) {
-			// if everything fails
-			uri = org.eclipse.core.filesystem.URIUtil.toURI(name);
+			// if everything fails just wrap string to URI
+			uri = org.eclipse.core.filesystem.URIUtil.toURI(pathStr);
 		}
 		return uri;
 	}
 
 	private static IResource resolveResourceInWorkspace(String parsedName, IProject preferredProject, Set<String> referencedProjectsNames) {
 		IPath path = new Path(parsedName);
-		// FIXME
-		if (path.equals(new Path(".")) || path.equals(new Path(".."))) {
+		if (path.equals(new Path(".")) || path.equals(new Path(".."))) { //$NON-NLS-1$ //$NON-NLS-2$
 			return null;
 		}
 	
@@ -507,37 +575,6 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return paths;
 	}
 
-	private IResource findResource(String parsedResourceName) {
-		if (parsedResourceName==null)
-			return null;
-		
-		IResource sourceFile = null;
-		
-		// try ErrorParserManager
-		if (errorParserManager != null) {
-			sourceFile = errorParserManager.findFileName(parsedResourceName);
-		}
-		// try to find absolute path in the workspace
-		if (sourceFile == null && new Path(parsedResourceName).isAbsolute()) {
-			URI uri = org.eclipse.core.filesystem.URIUtil.toURI(parsedResourceName);
-			sourceFile = findFileForLocationURI(uri, currentProject);
-		}
-		// try path relative to build dir from configuration
-		if (sourceFile == null && currentCfgDescription != null) {
-			IPath builderCWD = currentCfgDescription.getBuildSetting().getBuilderCWD();
-			if (builderCWD!=null) {
-				IPath path = builderCWD.append(parsedResourceName);
-				URI uri = org.eclipse.core.filesystem.URIUtil.toURI(path);
-				sourceFile = findFileForLocationURI(uri, currentProject);
-			}
-		}
-		// try path relative to the project
-		if (sourceFile == null && currentProject != null) {
-			sourceFile = currentProject.findMember(parsedResourceName);
-		}
-		return sourceFile;
-	}
-
 	private static IResource findFileForLocationURI(URI uri, IProject preferredProject) {
 		IResource sourceFile;
 		IResource result = null;
@@ -558,7 +595,7 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return sourceFile;
 	}
 
-	private URI findBaseLocationURI(URI fileURI, String relativeFileName) {
+	private static URI findBaseLocationURI(URI fileURI, String relativeFileName) {
 		URI cwdURI = null;
 		String path = fileURI.getPath();
 	
@@ -722,7 +759,7 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	@SuppressWarnings("nls")
-	private String expressionLogicalOr(Set<String> fileExts) {
+	private static String expressionLogicalOr(Set<String> fileExts) {
 		String pattern = "(";
 		for (String ext : fileExts) {
 			if (pattern.length() != 1)
@@ -737,22 +774,6 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 		return pattern;
 	}
 	
-	protected String getPatternFileExtensions() {
-		IContentTypeManager manager = Platform.getContentTypeManager();
-	
-		Set<String> fileExts = new HashSet<String>();
-	
-		IContentType contentTypeCpp = manager.getContentType("org.eclipse.cdt.core.cxxSource"); //$NON-NLS-1$
-		fileExts.addAll(Arrays.asList(contentTypeCpp.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-	
-		IContentType contentTypeC = manager.getContentType("org.eclipse.cdt.core.cSource"); //$NON-NLS-1$
-		fileExts.addAll(Arrays.asList(contentTypeC.getFileSpecs(IContentType.FILE_EXTENSION_SPEC)));
-	
-		String pattern = expressionLogicalOr(fileExts);
-	
-		return pattern;
-	}
-
 	protected static int countGroups(String str) {
 		@SuppressWarnings("nls")
 		int count = str.replaceAll("[^\\(]", "").length();

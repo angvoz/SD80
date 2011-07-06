@@ -79,7 +79,7 @@ public abstract class AbstractBuildCommandParser extends AbstractLanguageSetting
 
 	@Override
 	protected List<String> parseForOptions(String line) {
-		if (line==null) {
+		if (line==null || currentResource==null) {
 			return null;
 		}
 		

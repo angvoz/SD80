@@ -203,13 +203,11 @@ public abstract class AbstractLanguageSettingsOutputScanner extends LanguageSett
 	}
 
 	protected void setSettingEntries(List<ICLanguageSettingEntry> entries) {
-		if (currentResource!=null) {
-			setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, entries);
-			
-			IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
-					+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + currentResource);
-			MakeCorePlugin.log(status);
-		}
+		setSettingEntries(currentCfgDescription, currentResource, currentLanguageId, entries);
+		
+		IStatus status = new Status(IStatus.INFO, MakeCorePlugin.PLUGIN_ID, getClass().getSimpleName()
+				+ " collected " + (entries!=null ? ("" + entries.size()) : "null") + " entries for " + currentResource);
+		MakeCorePlugin.log(status);
 	}
 
 	public boolean processLine(String line, ErrorParserManager epm) {
